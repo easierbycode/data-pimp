@@ -8,7 +8,8 @@
   },
   "tasks": {
     "start": "deno run -A main.ts",
-    "dev": "deno run -A --inspect-brk main.ts"
+    "dev": "deno run -A --inspect-brk main.ts",
+    "dev:deno-db": "deno run --tunnel main.ts"
   },
   "deploy": {
     "org": "easierbycode",
