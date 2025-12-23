@@ -3,6 +3,8 @@
 /// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
+const MAX_GELF_MESSAGE_SIZE = 8000; // Max size for UDP GELF
+
 self.onmessage = async (event) => {
   const { url } = event.data;
   try {
@@ -12,11 +14,15 @@ self.onmessage = async (event) => {
 
     // Send a structured log to Graylog in GELF format
     try {
+      let fullMessage = JSON.stringify(data);
+      if (fullMessage.length > MAX_GELF_MESSAGE_SIZE) {
+        fullMessage = fullMessage.substring(0, MAX_GELF_MESSAGE_SIZE - 25) + "... [TRUNCATED]";
+      }
       const gelfMessage = {
         version: "1.1",
         host: "deno-app",  // identifier for the source
         short_message: `Fetched data from ${url}`,
-        full_message: JSON.stringify(data),
+        full_message: fullMessage,
         timestamp: Date.now() / 1000,  // UNIX timestamp in seconds
         _worker: "fetchWorker"        // custom field (example)
       };
