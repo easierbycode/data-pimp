@@ -3,6 +3,7 @@
 
 const CHARACTER_URL = "https://spritehub-c3a33-default-rtdb.firebaseio.com/characters/dukeNukem.json";
 const GRAYLOG_ENDPOINT = "http://graylog-server.thirsty.store:12201/gelf";
+const MAX_GELF_MESSAGE_SIZE = 8000; // Max size for UDP GELF
 
 // Page routes that should serve the React SPA
 const SPA_ROUTES = [
@@ -35,11 +36,15 @@ async function fetchCharacter() {
 
 async function logToGraylog(data: unknown) {
   try {
+    let fullMessage = JSON.stringify(data);
+    if (fullMessage.length > MAX_GELF_MESSAGE_SIZE) {
+      fullMessage = fullMessage.substring(0, MAX_GELF_MESSAGE_SIZE - 25) + "... [TRUNCATED]";
+    }
     const gelfMessage = {
       version: "1.1",
       host: "deno-app",
       short_message: `Fetched data from ${CHARACTER_URL}`,
-      full_message: JSON.stringify(data),
+      full_message: fullMessage,
       timestamp: Date.now() / 1000,
       _source: "fetchHandler",
     };
