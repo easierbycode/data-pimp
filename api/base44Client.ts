@@ -1,7 +1,7 @@
 // Base44 API Client for Deno Deploy
 // This is a Deno-compatible implementation of the base44 API client
 
-const API_BASE_URL = Deno.env.get("BASE44_API_URL") || "https://api.base44.com";
+const API_BASE_URL = Deno.env.get("BASE44_API_URL") || "https://thirsty.store";
 const API_KEY = Deno.env.get("BASE44_API_KEY") || "";
 
 interface EntityRecord {
