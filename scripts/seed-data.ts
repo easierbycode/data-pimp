@@ -12,11 +12,11 @@
 
  */
 
- 
+
 
 import { base44, type Sample, type Bundle } from "../api/base44Client.ts";
 
- 
+
 
 // Beauty brands for demo data
 
@@ -44,7 +44,7 @@ const brands = [
 
 ];
 
- 
+
 
 // Product categories and types
 
@@ -60,7 +60,7 @@ const productTypes = [
 
 ];
 
- 
+
 
 // Locations
 
@@ -80,7 +80,7 @@ const locations = [
 
 ];
 
- 
+
 
 // Bundle definitions
 
@@ -118,7 +118,7 @@ const bundleDefinitions = [
 
 ];
 
- 
+
 
 // Generate samples
 
@@ -126,11 +126,11 @@ function generateSamples(): Omit<Sample, "id" | "created_date" | "updated_date">
 
   const samples: Omit<Sample, "id" | "created_date" | "updated_date">[] = [];
 
- 
+
 
   let sampleNum = 1;
 
- 
+
 
   for (const category of productTypes) {
 
@@ -140,7 +140,7 @@ function generateSamples(): Omit<Sample, "id" | "created_date" | "updated_date">
 
       const numVariants = Math.floor(Math.random() * 2) + 2;
 
- 
+
 
       for (let v = 0; v < numVariants && sampleNum <= 100; v++) {
 
@@ -154,7 +154,7 @@ function generateSamples(): Omit<Sample, "id" | "created_date" | "updated_date">
 
         const status = statuses[Math.floor(Math.random() * statuses.length)];
 
- 
+
 
         samples.push({
 
@@ -180,7 +180,7 @@ function generateSamples(): Omit<Sample, "id" | "created_date" | "updated_date">
 
         });
 
- 
+
 
         sampleNum++;
 
@@ -190,13 +190,13 @@ function generateSamples(): Omit<Sample, "id" | "created_date" | "updated_date">
 
   }
 
- 
+
 
   return samples.slice(0, 100); // Ensure exactly 100 samples
 
 }
 
- 
+
 
 // Generate bundles
 
@@ -216,13 +216,13 @@ function generateBundles(): Omit<Bundle, "id" | "created_date" | "updated_date">
 
 }
 
- 
+
 
 async function clearExistingData() {
 
   console.log("🗑️  Clearing existing data...");
 
- 
+
 
   try {
 
@@ -238,7 +238,7 @@ async function clearExistingData() {
 
     console.log(`   Deleted ${transactions.length} transactions`);
 
- 
+
 
     // Clear samples
 
@@ -252,7 +252,7 @@ async function clearExistingData() {
 
     console.log(`   Deleted ${samples.length} samples`);
 
- 
+
 
     // Clear bundles
 
@@ -274,13 +274,13 @@ async function clearExistingData() {
 
 }
 
- 
+
 
 async function seedData() {
 
   console.log("🌱 Starting data seed...\n");
 
- 
+
 
   // Check for API configuration
 
@@ -288,27 +288,29 @@ async function seedData() {
 
   const apiUrl = Deno.env.get("LP_API_URL") || "https://thirsty.store";
 
- 
+
 
   console.log(`📡 API URL: ${apiUrl || "https://thirsty.store (default)"}`);
 
   console.log(`🔑 API Key: ${apiKey ? "✓ configured" : "⚠️  not set"}\n`);
 
- 
+
 
   if (!apiKey) {
-
-    console.log("⚠️  Warning: LP_API_KEY not set. API calls may fail.\n");
-
+    console.error("✗ Error: LP_API_KEY environment variable is not set.");
+    console.error(
+      "   Please set it to your API key before running the seed script."
+    );
+    Deno.exit(1);
   }
 
- 
+
 
   // Clear existing data
 
   await clearExistingData();
 
- 
+
 
   console.log("\n📦 Creating bundles...");
 
@@ -316,7 +318,7 @@ async function seedData() {
 
   const createdBundles: Bundle[] = [];
 
- 
+
 
   for (const bundle of bundles) {
 
@@ -336,11 +338,11 @@ async function seedData() {
 
   }
 
- 
+
 
   console.log(`\n   Created ${createdBundles.length} bundles\n`);
 
- 
+
 
   console.log("📦 Creating samples...");
 
@@ -350,7 +352,7 @@ async function seedData() {
 
   let errorCount = 0;
 
- 
+
 
   // Assign some samples to bundles (distribute across bundles)
 
@@ -370,7 +372,7 @@ async function seedData() {
 
     }
 
- 
+
 
     try {
 
@@ -394,11 +396,11 @@ async function seedData() {
 
   }
 
- 
+
 
   console.log(`\n   Created ${createdCount} samples (${errorCount} errors)\n`);
 
- 
+
 
   console.log("✅ Seed complete!\n");
 
@@ -414,7 +416,7 @@ async function seedData() {
 
 }
 
- 
+
 
 // Run the seed
 
