@@ -1,5 +1,5 @@
-PriceDisplayimport React from 'react';
-import { ExternalLink } from 'lucide-react';
+import React from "react";
+import { ExternalLink } from "lucide-react";
 
 export default function PriceDisplay({ currentPrice, bestPrice, bestPriceSource, lastChecked }) {
   const formatPrice = (price) => {

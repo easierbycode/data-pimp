@@ -1,7 +1,7 @@
-QRCodeDisplayimport React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Copy, Check, QrCode } from 'lucide-react';
-import { useTranslation } from '../i18n/translations';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button.tsx";
+import { Copy, Check, QrCode } from "lucide-react";
+import { useTranslation } from "../i18n/translations.tsx";
 
 export default function QRCodeDisplay({ code, showImage = false }) {
   const [copied, setCopied] = useState(false);

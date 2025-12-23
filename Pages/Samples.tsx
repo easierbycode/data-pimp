@@ -1,16 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Plus, Search, Filter, Grid3X3, List, Loader2 } from 'lucide-react';
-import SampleCard from '../components/samples/SampleCard';
-import { useTranslation } from '../components/i18n/translations';
+import React, { useState, useMemo } from "react";
+import { base44 } from "@/api/base44Client.ts";
+import type { Sample } from "@/api/base44Client.ts";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Plus, Search, Filter, Grid3X3, List, Loader2 } from "lucide-react";
+import SampleCard from "../Components/samples/SampleCard.tsx";
+import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function Samples() {
   const { t } = useTranslation();

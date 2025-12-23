@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Input } from "@/components/ui/input";
-import { QrCode, Loader2 } from 'lucide-react';
-import { useTranslation } from '../i18n/translations';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Input } from "@/components/ui/input.tsx";
+import { QrCode, Loader2 } from "lucide-react";
+import { useTranslation } from "../i18n/translations.tsx";
 
 export default function ScannerInput({ onScan, disabled = false }) {
   const { t } = useTranslation();

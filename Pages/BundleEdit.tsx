@@ -1,12 +1,12 @@
-import React from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import BundleForm from '../components/bundles/BundleForm';
-import { useTranslation } from '../components/i18n/translations';
+import React from "react";
+import { base44 } from "@/api/base44Client.ts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button.tsx";
+import BundleForm from "../Components/bundles/BundleForm.tsx";
+import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function BundleEdit() {
   const { t } = useTranslation();

@@ -1,14 +1,14 @@
-import React from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  ArrowLeft, Edit, Trash2, Package, MapPin, Calendar, 
+import React from "react";
+import { base44 } from "@/api/base44Client.ts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button.tsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import {
+  ArrowLeft, Edit, Trash2, Package, MapPin, Calendar,
   User, ExternalLink, Loader2, AlertTriangle
-} from 'lucide-react';
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,12 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import StatusBadge from '../components/ui/StatusBadge';
-import FireSaleBadge from '../components/ui/FireSaleBadge';
-import QRCodeDisplay from '../components/ui/QRCodeDisplay';
-import PriceDisplay from '../components/ui/PriceDisplay';
-import { useTranslation } from '../components/i18n/translations';
+} from "@/components/ui/alert-dialog.tsx";
+import StatusBadge from "../Components/ui/StatusBadge.tsx";
+import FireSaleBadge from "../Components/ui/FireSaleBadge.tsx";
+import QRCodeDisplay from "../Components/ui/QRCodeDisplay.tsx";
+import PriceDisplay from "../Components/ui/PriceDisplay.tsx";
+import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function SampleDetails() {
   const { t } = useTranslation();
