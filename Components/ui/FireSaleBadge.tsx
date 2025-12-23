@@ -1,6 +1,6 @@
-import React from 'react';
-import { Badge } from "@/components/ui/badge";
-import { Flame } from 'lucide-react';
+import React from "react";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Flame } from "lucide-react";
 
 export default function FireSaleBadge() {
   return (

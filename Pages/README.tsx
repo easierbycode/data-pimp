@@ -1,10 +1,10 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { Button } from "@/components/ui/button";
-import { Box, Package, QrCode, ArrowRight, Scan, CheckCircle, Info } from 'lucide-react';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button.tsx";
+import { Box, Package, QrCode, ArrowRight, Scan, CheckCircle, Info } from "lucide-react";
 
 export default function README() {
   return (

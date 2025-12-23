@@ -1,12 +1,13 @@
-import React from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, Package } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import StatusBadge from '../ui/StatusBadge';
-import FireSaleBadge from '../ui/FireSaleBadge';
-import QRCodeDisplay from '../ui/QRCodeDisplay';
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { ExternalLink, Package } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import StatusBadge from "../ui/StatusBadge.tsx";
+import FireSaleBadge from "../ui/FireSaleBadge.tsx";
+import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
+import type { Sample } from "@/api/base44Client.ts";
 
 export default function SampleCard({ sample, compact = false }) {
   const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop';

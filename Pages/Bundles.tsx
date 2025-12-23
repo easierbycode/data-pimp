@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, Loader2, Package } from 'lucide-react';
-import BundleCard from '../components/bundles/BundleCard';
-import { useTranslation } from '../components/i18n/translations';
+import React, { useState, useMemo } from "react";
+import { base44 } from "@/api/base44Client.ts";
+import type { Bundle, Sample } from "@/api/base44Client.ts";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Plus, Search, Loader2, Package } from "lucide-react";
+import BundleCard from "../Components/bundles/BundleCard.tsx";
+import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function Bundles() {
   const { t } = useTranslation();

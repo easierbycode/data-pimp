@@ -1,6 +1,6 @@
-import React from 'react';
-import { Badge } from "@/components/ui/badge";
-import { useTranslation } from '../i18n/translations';
+import React from "react";
+import { Badge } from "@/components/ui/badge.tsx";
+import { useTranslation } from "../i18n/translations.tsx";
 
 const statusStyles = {
   available: 'bg-emerald-100 text-emerald-800 border-emerald-200',

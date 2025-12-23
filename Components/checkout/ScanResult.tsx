@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  Package, LogIn, LogOut, Bookmark, ExternalLink, 
-  MapPin, AlertCircle, CheckCircle, Loader2 
-} from 'lucide-react';
-import StatusBadge from '../ui/StatusBadge';
-import FireSaleBadge from '../ui/FireSaleBadge';
-import QRCodeDisplay from '../ui/QRCodeDisplay';
-import PriceDisplay from '../ui/PriceDisplay';
-import { useTranslation } from '../i18n/translations';
+import React, { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import {
+  Package, LogIn, LogOut, Bookmark, ExternalLink,
+  MapPin, AlertCircle, CheckCircle, Loader2
+} from "lucide-react";
+import StatusBadge from "../ui/StatusBadge.tsx";
+import FireSaleBadge from "../ui/FireSaleBadge.tsx";
+import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
+import PriceDisplay from "../ui/PriceDisplay.tsx";
+import { useTranslation } from "../i18n/translations.tsx";
+import type { Sample, Bundle } from "@/api/base44Client.ts";
 
 export default function ScanResult({ 
   type, // 'sample' | 'bundle' | 'not_found'

@@ -3,13 +3,31 @@
     "lib": [
       "deno.window",
       "deno.worker",
-      "dom"
-    ]
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "imports": {
+    "react": "npm:react@^18.2.0",
+    "react/": "npm:react@^18.2.0/",
+    "react-dom": "npm:react-dom@^18.2.0",
+    "react-dom/": "npm:react-dom@^18.2.0/",
+    "react-router-dom": "npm:react-router-dom@^6.20.0",
+    "@tanstack/react-query": "npm:@tanstack/react-query@^5.12.0",
+    "lucide-react": "npm:lucide-react@^0.294.0",
+    "@/": "./",
+    "@/api/": "./api/",
+    "@/components/": "./Components/",
+    "@/utils": "./utils.ts"
   },
   "tasks": {
     "start": "deno run -A main.ts",
-    "dev": "deno run -A --inspect-brk main.ts",
-    "dev:deno-db": "deno run --tunnel main.ts"
+    "dev": "deno run -A --watch main.ts",
+    "dev:deno-db": "deno run --tunnel main.ts",
+    "check": "deno check **/*.ts **/*.tsx"
   },
   "deploy": {
     "org": "easierbycode",

@@ -1,10 +1,11 @@
-import React from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Package, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import QRCodeDisplay from '../ui/QRCodeDisplay';
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Package, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
+import type { Bundle } from "@/api/base44Client.ts";
 
 export default function BundleCard({ bundle, sampleCount = 0 }) {
   return (

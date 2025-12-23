@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQueryClient } from '@tanstack/react-query';
-import { Card } from "@/components/ui/card";
-import { QrCode } from 'lucide-react';
-import ScannerInput from '../components/checkout/ScannerInput';
-import ScanResult from '../components/checkout/ScanResult';
-import RecentScans from '../components/checkout/RecentScans';
-import { useTranslation } from '../components/i18n/translations';
+import React, { useState, useCallback } from "react";
+import { base44 } from "@/api/base44Client.ts";
+import { useQueryClient } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card.tsx";
+import { QrCode } from "lucide-react";
+import ScannerInput from "../Components/checkout/ScannerInput.tsx";
+import ScanResult from "../Components/checkout/ScanResult.tsx";
+import RecentScans from "../Components/checkout/RecentScans.tsx";
+import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function Checkout() {
   const { t } = useTranslation();

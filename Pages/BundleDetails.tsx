@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client.ts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button.tsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import {
   ArrowLeft, Edit, Trash2, Package, MapPin, Plus, X,
   Loader2, AlertTriangle
-} from 'lucide-react';
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +20,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import QRCodeDisplay from '../components/ui/QRCodeDisplay';
-import SampleCard from '../components/samples/SampleCard';
-import { useTranslation } from '../components/i18n/translations';
+} from "@/components/ui/alert-dialog.tsx";
+import QRCodeDisplay from "../Components/ui/QRCodeDisplay.tsx";
+import SampleCard from "../Components/samples/SampleCard.tsx";
+import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function BundleDetails() {
   const { t } = useTranslation();

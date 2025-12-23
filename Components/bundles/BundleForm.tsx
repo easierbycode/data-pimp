@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from 'lucide-react';
-import { useTranslation } from '../i18n/translations';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Loader2 } from "lucide-react";
+import { useTranslation } from "../i18n/translations.tsx";
+import type { Bundle } from "@/api/base44Client.ts";
 
 export default function BundleForm({ bundle, onSave, onCancel }) {
   const { t } = useTranslation();

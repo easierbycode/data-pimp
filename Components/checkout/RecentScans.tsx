@@ -1,7 +1,7 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Package, Box, XCircle, CheckCircle, AlertCircle } from 'lucide-react';
-import { useTranslation } from '../i18n/translations';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Clock, Package, Box, XCircle, CheckCircle, AlertCircle } from "lucide-react";
+import { useTranslation } from "../i18n/translations.tsx";
 
 export default function RecentScans({ scans }) {
   const { t } = useTranslation();
