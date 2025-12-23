@@ -1,0 +1,43 @@
+{
+  "name": "InventoryTransaction",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "checkout",
+        "checkin",
+        "reserve",
+        "unreserve"
+      ],
+      "description": "Type of action performed"
+    },
+    "sample_id": {
+      "type": "string",
+      "description": "ID of the sample involved"
+    },
+    "bundle_id": {
+      "type": "string",
+      "description": "ID of the bundle involved (if any)"
+    },
+    "scanned_code": {
+      "type": "string",
+      "description": "The QR/barcode that was scanned"
+    },
+    "operator": {
+      "type": "string",
+      "description": "Person performing the action"
+    },
+    "checked_out_to": {
+      "type": "string",
+      "description": "Person/entity receiving the sample"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "action",
+    "scanned_code"
+  ]
+}

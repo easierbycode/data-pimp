@@ -1,0 +1,86 @@
+{
+  "name": "Sample",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Product name/title"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Brand name"
+    },
+    "location": {
+      "type": "string",
+      "description": "Storage location"
+    },
+    "qr_code": {
+      "type": "string",
+      "description": "Unique QR/barcode value"
+    },
+    "picture_url": {
+      "type": "string",
+      "description": "Product image URL"
+    },
+    "tiktok_affiliate_link": {
+      "type": "string",
+      "description": "TikTok affiliate URL"
+    },
+    "fire_sale": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fire sale flag"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "checked_out",
+        "reserved",
+        "discontinued"
+      ],
+      "default": "available"
+    },
+    "current_price": {
+      "type": "number",
+      "description": "Current price"
+    },
+    "best_price": {
+      "type": "number",
+      "description": "Best known price"
+    },
+    "best_price_source": {
+      "type": "string",
+      "description": "Source/URL of best price"
+    },
+    "last_price_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bundle_id": {
+      "type": "string",
+      "description": "ID of bundle this sample belongs to"
+    },
+    "checked_out_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "checked_in_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "checked_out_to": {
+      "type": "string",
+      "description": "Person/entity sample is checked out to"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "brand",
+    "qr_code",
+    "status"
+  ]
+}

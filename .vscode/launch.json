@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Deno Worker App",
+      "type": "node",               // Use Node debugger (V8 inspector) for Deno
+      "request": "launch",
+      "program": "${workspaceFolder}/main.ts",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [
+        "run",
+        "--inspect-brk",
+        "-A"
+      ],
+      "cwd": "${workspaceFolder}",
+      "outputCapture": "std"
+    }
+  ]
+}

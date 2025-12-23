@@ -1,0 +1,25 @@
+{
+  "name": "Bundle",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Bundle name"
+    },
+    "location": {
+      "type": "string",
+      "description": "Storage location"
+    },
+    "qr_code": {
+      "type": "string",
+      "description": "Unique QR/barcode value for the bundle"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "qr_code"
+  ]
+}
