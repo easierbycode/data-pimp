@@ -28,7 +28,8 @@
     "dev": "deno run -A --watch main.ts",
     "dev:deno-db": "deno run --tunnel main.ts",
     "check": "deno check **/*.ts **/*.tsx",
-    "seed:deploy": "deno run -A scripts/seed-data.ts"
+    "seed:deploy": "deno run -A scripts/seed-data.ts",
+    "seed:production": "deno run -A scripts/seed-production.ts"
   },
   "deploy": {
     "org": "easierbycode",

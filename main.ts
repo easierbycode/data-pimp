@@ -1,6 +1,14 @@
 // main.ts - Deno Deploy compatible server
 // Serves React SPA for inventory management + fetch demo
 
+import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
+
+// Initialize database on startup
+await initializeDatabase().catch((err) => {
+  console.error("Failed to initialize database:", err);
+  console.log("Will continue without database - may fail on API calls");
+});
+
 const CHARACTER_URL = "https://spritehub-c3a33-default-rtdb.firebaseio.com/characters/dukeNukem.json";
 const GRAYLOG_ENDPOINT = "http://graylog-server.thirsty.store:12201/gelf";
 const MAX_GELF_MESSAGE_SIZE = 8000; // Max size for UDP GELF
@@ -155,125 +163,90 @@ function renderSPAShell(): Response {
       },
     });
 
-    // Base44 API Configuration
-    const BASE44_API_URL = '${Deno.env.get("BASE44_API_URL") || "https://thirsty.store"}';
-    const BASE44_API_KEY = '${Deno.env.get("BASE44_API_KEY") || ""}';
-
-    // Base44 API client - calls the real API
+    // Local API client - calls our own REST API
     const api = {
       entities: {
         Sample: {
           list: async (orderBy) => {
-            const url = new URL(\`\${BASE44_API_URL}/entities/Sample\`);
+            const url = new URL('/api/samples', window.location.origin);
             if (orderBy) url.searchParams.set('order_by', orderBy);
-            const res = await fetch(url, {
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            const res = await fetch(url);
             return res.ok ? res.json() : [];
           },
           filter: async (filters, orderBy, limit) => {
-            const url = new URL(\`\${BASE44_API_URL}/entities/Sample\`);
-            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(\`filters[\${key}]\`, value));
+            const url = new URL('/api/samples', window.location.origin);
+            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
             if (orderBy) url.searchParams.set('order_by', orderBy);
             if (limit) url.searchParams.set('limit', limit);
-            const res = await fetch(url, {
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            const res = await fetch(url);
             return res.ok ? res.json() : [];
           },
           create: async (data) => {
-            const res = await fetch(\`\${BASE44_API_URL}/entities/Sample\`, {
+            const res = await fetch('/api/samples', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${BASE44_API_KEY}\`
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
             return res.json();
           },
           update: async (id, data) => {
-            const res = await fetch(\`\${BASE44_API_URL}/entities/Sample/\${id}\`, {
+            const res = await fetch(\`/api/samples/\${id}\`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${BASE44_API_KEY}\`
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
             return res.json();
           },
           delete: async (id) => {
-            await fetch(\`\${BASE44_API_URL}/entities/Sample/\${id}\`, {
-              method: 'DELETE',
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            await fetch(\`/api/samples/\${id}\`, { method: 'DELETE' });
           }
         },
         Bundle: {
           list: async (orderBy) => {
-            const url = new URL(\`\${BASE44_API_URL}/entities/Bundle\`);
+            const url = new URL('/api/bundles', window.location.origin);
             if (orderBy) url.searchParams.set('order_by', orderBy);
-            const res = await fetch(url, {
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            const res = await fetch(url);
             return res.ok ? res.json() : [];
           },
           filter: async (filters) => {
-            const url = new URL(\`\${BASE44_API_URL}/entities/Bundle\`);
-            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(\`filters[\${key}]\`, value));
-            const res = await fetch(url, {
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            const url = new URL('/api/bundles', window.location.origin);
+            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
+            const res = await fetch(url);
             return res.ok ? res.json() : [];
           },
           create: async (data) => {
-            const res = await fetch(\`\${BASE44_API_URL}/entities/Bundle\`, {
+            const res = await fetch('/api/bundles', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${BASE44_API_KEY}\`
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
             return res.json();
           },
           update: async (id, data) => {
-            const res = await fetch(\`\${BASE44_API_URL}/entities/Bundle/\${id}\`, {
+            const res = await fetch(\`/api/bundles/\${id}\`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${BASE44_API_KEY}\`
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
             return res.json();
           },
           delete: async (id) => {
-            await fetch(\`\${BASE44_API_URL}/entities/Bundle/\${id}\`, {
-              method: 'DELETE',
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            await fetch(\`/api/bundles/\${id}\`, { method: 'DELETE' });
           }
         },
         InventoryTransaction: {
           filter: async (filters, orderBy, limit) => {
-            const url = new URL(\`\${BASE44_API_URL}/entities/InventoryTransaction\`);
-            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(\`filters[\${key}]\`, value));
+            const url = new URL('/api/transactions', window.location.origin);
+            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
             if (orderBy) url.searchParams.set('order_by', orderBy);
             if (limit) url.searchParams.set('limit', limit);
-            const res = await fetch(url, {
-              headers: { 'Authorization': \`Bearer \${BASE44_API_KEY}\` }
-            });
+            const res = await fetch(url);
             return res.ok ? res.json() : [];
           },
           create: async (data) => {
-            const res = await fetch(\`\${BASE44_API_URL}/entities/InventoryTransaction\`, {
+            const res = await fetch('/api/transactions', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${BASE44_API_KEY}\`
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
             return res.json();
@@ -550,6 +523,136 @@ Deno.serve(async (req) => {
   // Fetch demo page (moved from "/" to "/fetch-demo")
   if (pathname === "/fetch-demo") {
     return await handleFetchDemo();
+  }
+
+  // API Routes
+  if (pathname.startsWith("/api/")) {
+    try {
+      // Samples API
+      if (pathname === "/api/samples") {
+        if (req.method === "GET") {
+          const orderBy = url.searchParams.get("order_by") || "-created_date";
+          const filters: any = {};
+          for (const [key, value] of url.searchParams.entries()) {
+            if (key !== "order_by" && key !== "limit") {
+              filters[key] = value;
+            }
+          }
+          const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!) : undefined;
+
+          const data = Object.keys(filters).length > 0
+            ? await Samples.filter(filters, orderBy, limit)
+            : await Samples.list(orderBy);
+
+          return new Response(JSON.stringify(data), {
+            headers: { "content-type": "application/json" },
+          });
+        } else if (req.method === "POST") {
+          const data = await req.json();
+          const newSample = await Samples.create(data);
+          return new Response(JSON.stringify(newSample), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        }
+      }
+
+      const sampleMatch = pathname.match(/^\/api\/samples\/([^/]+)$/);
+      if (sampleMatch) {
+        const id = sampleMatch[1];
+        if (req.method === "PATCH") {
+          const data = await req.json();
+          const updated = await Samples.update(id, data);
+          return new Response(JSON.stringify(updated), {
+            headers: { "content-type": "application/json" },
+          });
+        } else if (req.method === "DELETE") {
+          await Samples.delete(id);
+          return new Response(null, { status: 204 });
+        }
+      }
+
+      // Bundles API
+      if (pathname === "/api/bundles") {
+        if (req.method === "GET") {
+          const orderBy = url.searchParams.get("order_by") || "-created_date";
+          const filters: any = {};
+          for (const [key, value] of url.searchParams.entries()) {
+            if (key !== "order_by") {
+              filters[key] = value;
+            }
+          }
+
+          const data = Object.keys(filters).length > 0
+            ? await Bundles.filter(filters)
+            : await Bundles.list(orderBy);
+
+          return new Response(JSON.stringify(data), {
+            headers: { "content-type": "application/json" },
+          });
+        } else if (req.method === "POST") {
+          const data = await req.json();
+          const newBundle = await Bundles.create(data);
+          return new Response(JSON.stringify(newBundle), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        }
+      }
+
+      const bundleMatch = pathname.match(/^\/api\/bundles\/([^/]+)$/);
+      if (bundleMatch) {
+        const id = bundleMatch[1];
+        if (req.method === "PATCH") {
+          const data = await req.json();
+          const updated = await Bundles.update(id, data);
+          return new Response(JSON.stringify(updated), {
+            headers: { "content-type": "application/json" },
+          });
+        } else if (req.method === "DELETE") {
+          await Bundles.delete(id);
+          return new Response(null, { status: 204 });
+        }
+      }
+
+      // Inventory Transactions API
+      if (pathname === "/api/transactions") {
+        if (req.method === "GET") {
+          const orderBy = url.searchParams.get("order_by") || "-created_date";
+          const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!) : undefined;
+          const filters: any = {};
+          for (const [key, value] of url.searchParams.entries()) {
+            if (key !== "order_by" && key !== "limit") {
+              filters[key] = value;
+            }
+          }
+
+          const data = await InventoryTransactions.filter(filters, orderBy, limit);
+          return new Response(JSON.stringify(data), {
+            headers: { "content-type": "application/json" },
+          });
+        } else if (req.method === "POST") {
+          const data = await req.json();
+          const newTransaction = await InventoryTransactions.create(data);
+          return new Response(JSON.stringify(newTransaction), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        }
+      }
+
+      // API route not found
+      return new Response(JSON.stringify({ error: "API endpoint not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    } catch (error) {
+      console.error("API error:", error);
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
   }
 
   // Check if it's a known SPA route or root
