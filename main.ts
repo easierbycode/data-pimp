@@ -1,7 +1,13 @@
 // main.ts - Deno Deploy compatible server
 // Serves React SPA for inventory management + fetch demo
 
+import { Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
+
+const pool = new Pool({
+  connectionString: Deno.env.get("DATABASE_URL"),
+  max: 1,
+});
 
 // Initialize database on startup
 await initializeDatabase().catch((err) => {
@@ -537,6 +543,36 @@ function redactedDbUrl() {
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
+
+  // DB DEBUG
+  if (url.pathname === "/__dbdebug") {
+    const client = await pool.connect();
+    try {
+      const meta = await client.query(`
+        select
+          current_database() as db,
+          current_user as user,
+          current_schema() as schema,
+          current_setting('search_path') as search_path
+      `);
+
+      const tables = await client.query(`
+        select table_schema, table_name
+        from information_schema.tables
+        where table_type='BASE TABLE'
+          and table_schema not in ('pg_catalog','information_schema')
+        order by table_schema, table_name
+        limit 25
+      `);
+
+      return Response.json(
+        { meta: meta.rows[0], tables: tables.rows },
+        { headers: { "cache-control": "no-store" } },
+      );
+    } finally {
+      client.release();
+    }
+  }
 
   // DEBUG
   if (url.pathname === "/__debug") {
