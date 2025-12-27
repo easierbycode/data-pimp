@@ -1,14 +1,8 @@
 // main.ts - Deno Deploy compatible server
-// Serves React SPA for inventory management + fetch demo
-// IMPORTANT: React app is served as /app.js to avoid inline-script template issues.
+// Serves React SPA (shell + /app.js) + API + DB debug endpoints
 
 import { Pool } from "npm:pg";
-import {
-  initializeDatabase,
-  Samples,
-  Bundles,
-  InventoryTransactions,
-} from "./db.ts";
+import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
 
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
@@ -86,13 +80,12 @@ async function logToGraylog(data: unknown) {
     let fullMessage = JSON.stringify(data);
     if (fullMessage.length > MAX_GELF_MESSAGE_SIZE) {
       fullMessage =
-        fullMessage.substring(0, MAX_GELF_MESSAGE_SIZE - 25) +
-        "... [TRUNCATED]";
+        fullMessage.substring(0, MAX_GELF_MESSAGE_SIZE - 25) + "... [TRUNCATED]";
     }
     const gelfMessage = {
       version: "1.1",
       host: "deno-app",
-      short_message: "Fetched data from " + CHARACTER_URL,
+      short_message: `Fetched data from ${CHARACTER_URL}`,
       full_message: fullMessage,
       timestamp: Date.now() / 1000,
       _source: "fetchHandler",
@@ -136,7 +129,6 @@ async function handleFetchDemo(): Promise<Response> {
   });
 }
 
-// Serve the React app shell (loads /app.js)
 function renderSPAShell(): Response {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -145,6 +137,7 @@ function renderSPAShell(): Response {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Inventory Manager - Data Pimp</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
   <script type="importmap">
   {
     "imports": {
@@ -154,14 +147,29 @@ function renderSPAShell(): Response {
       "react-dom/": "https://esm.sh/react-dom@18.2.0/",
       "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
       "react-router-dom": "https://esm.sh/react-router-dom@6.20.0?deps=react@18.2.0",
-      "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@5.12.0?deps=react@18.2.0"
+      "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@5.12.0?deps=react@18.2.0",
+      "lucide-react": "https://esm.sh/lucide-react@0.294.0?deps=react@18.2.0"
     }
   }
   </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+  </style>
 </head>
-<body class="bg-slate-50">
+<body>
   <div id="root">
-    <div class="min-h-screen flex items-center justify-center text-slate-600">Loading…</div>
+    <div class="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="w-16 h-16 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-slate-600">Loading Inventory Manager...</p>
+      </div>
+    </div>
   </div>
   <script type="module" src="/app.js"></script>
 </body>
@@ -173,168 +181,26 @@ function renderSPAShell(): Response {
   });
 }
 
-// IMPORTANT: no template literals inside this JS (no backticks, no ${}).
-const APP_JS = `
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+// Serve /app.js from local file (cache in-memory)
+const APP_JS_URL = new URL("./app.js", import.meta.url);
+let appJsCache: string | null = null;
 
-const h = React.createElement;
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 1000 * 60 * 5, refetchOnWindowFocus: false, retry: 1 }
-  }
-});
-
-async function fetchJson(input, init) {
-  const res = await fetch(input, init);
-  if (!res.ok) {
-    let text = '';
-    try { text = await res.text(); } catch (_) {}
-    const msg = String(res.status) + ' ' + res.statusText + (text ? (': ' + text) : '');
-    throw new Error(msg);
-  }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.indexOf('application/json') === -1) return null;
-  return res.json();
+async function serveAppJs() {
+  if (!appJsCache) appJsCache = await Deno.readTextFile(APP_JS_URL);
+  return new Response(appJsCache, {
+    status: 200,
+    headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" },
+  });
 }
 
-function makeUrl(path, params) {
-  const url = new URL(path, window.location.origin);
-  if (params) {
-    Object.entries(params).forEach(function (kv) {
-      const k = kv[0];
-      const v = kv[1];
-      if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
-    });
-  }
-  return url;
-}
-
-const api = {
-  samplesList: function () {
-    return fetchJson(makeUrl('/api/samples', { order_by: '-id' }));
-  },
-  bundlesList: function () {
-    return fetchJson(makeUrl('/api/bundles', { order_by: '-id' }));
-  }
-};
-
-function TopNav() {
-  return h('div', { className: 'bg-white border-b border-slate-200 sticky top-0 z-10' },
-    h('div', { className: 'max-w-7xl mx-auto px-4 h-16 flex items-center justify-between' },
-      h(Link, { to: '/', className: 'font-bold text-slate-900' }, 'Inventory Manager'),
-      h('div', { className: 'flex gap-2' },
-        h(Link, { to: '/samples', className: 'text-slate-700 hover:text-slate-900' }, 'Samples'),
-        h(Link, { to: '/bundles', className: 'text-slate-700 hover:text-slate-900' }, 'Bundles')
-      )
-    )
-  );
-}
-
-function ErrorBox(props) {
-  const msg = props && props.error && props.error.message ? props.error.message : String(props && props.error ? props.error : '');
-  return h('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
-    h('div', { className: 'rounded-lg border border-red-200 bg-red-50 p-4' },
-      h('div', { className: 'font-semibold text-red-800 mb-2' }, 'API Error'),
-      h('pre', { className: 'text-xs whitespace-pre-wrap text-red-900' }, msg),
-      h('div', { className: 'text-xs text-red-700 mt-2' }, 'Open DevTools → Network and click the failing /api/* request.')
-    )
-  );
-}
-
-function ListCard(title, subtitle) {
-  return h('div', { className: 'rounded-lg border border-slate-200 bg-white shadow-sm p-4' },
-    h('div', { className: 'font-semibold text-slate-900' }, title || '(no title)'),
-    subtitle ? h('div', { className: 'text-sm text-slate-500 mt-1' }, subtitle) : null
-  );
-}
-
-function SamplesPage() {
-  const q = useQuery({ queryKey: ['samples'], queryFn: api.samplesList });
-  if (q.isLoading) return h('div', { className: 'p-6 text-slate-600' }, 'Loading samples…');
-  if (q.error) return h(ErrorBox, { error: q.error });
-
-  const samples = q.data || [];
-  return h('div', null,
-    h('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
-      h('div', { className: 'flex items-baseline justify-between mb-4' },
-        h('h1', { className: 'text-2xl font-bold text-slate-900' }, 'Samples'),
-        h('div', { className: 'text-sm text-slate-500' }, String(samples.length) + ' rows')
-      ),
-      samples.length === 0
-        ? h('div', { className: 'text-slate-600' }, 'No samples returned.')
-        : h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' },
-            samples.map(function (s) {
-              return ListCard(s.name, s.brand);
-            })
-          )
-    )
-  );
-}
-
-function BundlesPage() {
-  const q = useQuery({ queryKey: ['bundles'], queryFn: api.bundlesList });
-  if (q.isLoading) return h('div', { className: 'p-6 text-slate-600' }, 'Loading bundles…');
-  if (q.error) return h(ErrorBox, { error: q.error });
-
-  const bundles = q.data || [];
-  return h('div', null,
-    h('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
-      h('div', { className: 'flex items-baseline justify-between mb-4' },
-        h('h1', { className: 'text-2xl font-bold text-slate-900' }, 'Bundles'),
-        h('div', { className: 'text-sm text-slate-500' }, String(bundles.length) + ' rows')
-      ),
-      bundles.length === 0
-        ? h('div', { className: 'text-slate-600' }, 'No bundles returned.')
-        : h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' },
-            bundles.map(function (b) {
-              return ListCard(b.name, b.location || b.qr_code);
-            })
-          )
-    )
-  );
-}
-
-function App() {
-  return h(QueryClientProvider, { client: queryClient },
-    h(BrowserRouter, null,
-      h('div', null,
-        h(TopNav, null),
-        h(Routes, null,
-          h(Route, { path: '/', element: h(SamplesPage, null) }),
-          h(Route, { path: '/samples', element: h(SamplesPage, null) }),
-          h(Route, { path: '/bundles', element: h(BundlesPage, null) }),
-          h(Route, { path: '*', element: h('div', { className: 'p-6 text-slate-600' }, 'Not found') })
-        )
-      )
-    )
-  );
-}
-
-const root = createRoot(document.getElementById('root'));
-root.render(h(App, null));
-`;
-
-// Main request handler
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
-  // Serve /app.js (client)
-  if (pathname === "/app.js") {
-    return new Response(APP_JS, {
-      status: 200,
-      headers: {
-        "content-type": "text/javascript; charset=utf-8",
-        "cache-control": "no-store",
-      },
-    });
-  }
+  // Client app
+  if (pathname === "/app.js") return await serveAppJs();
 
-  // DEBUG
+  // Debug
   if (pathname === "/__debug") {
     return json({
       host: req.headers.get("host"),
@@ -345,7 +211,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  // DB DEBUG
+  // DB debug
   if (pathname === "/__dbdebug") {
     const client = await pool.connect();
     try {
@@ -372,13 +238,11 @@ Deno.serve(async (req) => {
     }
   }
 
-  // DB COUNTS (token protected)
+  // Token-protected counts
   if (pathname === "/__counts") {
     const token = url.searchParams.get("token");
     const expected = Deno.env.get("DEBUG_TOKEN");
-    if (!expected || !token || token !== expected) {
-      return new Response("forbidden", { status: 403 });
-    }
+    if (!expected || !token || token !== expected) return new Response("forbidden", { status: 403 });
 
     const client = await pool.connect();
     try {
@@ -396,9 +260,7 @@ Deno.serve(async (req) => {
   }
 
   // Fetch demo
-  if (pathname === "/fetch-demo") {
-    return await handleFetchDemo();
-  }
+  if (pathname === "/fetch-demo") return await handleFetchDemo();
 
   // API
   if (pathname.startsWith("/api/")) {
@@ -406,7 +268,7 @@ Deno.serve(async (req) => {
       // Samples
       if (pathname === "/api/samples") {
         if (req.method === "GET") {
-          const orderBy = url.searchParams.get("order_by") || "-id";
+          const orderBy = url.searchParams.get("order_by") || "-created_date";
           const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by" && key !== "limit") filters[key] = value;
@@ -421,18 +283,31 @@ Deno.serve(async (req) => {
 
           return json(data);
         }
-
         if (req.method === "POST") {
-          const data = await req.json();
-          const created = await Samples.create(data);
+          const body = await req.json();
+          const created = await Samples.create(body);
           return json(created, 201);
+        }
+      }
+
+      const sampleMatch = pathname.match(/^\/api\/samples\/([^/]+)$/);
+      if (sampleMatch) {
+        const id = sampleMatch[1];
+        if (req.method === "PATCH") {
+          const body = await req.json();
+          const updated = await Samples.update(id, body);
+          return json(updated);
+        }
+        if (req.method === "DELETE") {
+          await Samples.delete(id);
+          return new Response(null, { status: 204 });
         }
       }
 
       // Bundles
       if (pathname === "/api/bundles") {
         if (req.method === "GET") {
-          const orderBy = url.searchParams.get("order_by") || "-id";
+          const orderBy = url.searchParams.get("order_by") || "-created_date";
           const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by") filters[key] = value;
@@ -444,21 +319,35 @@ Deno.serve(async (req) => {
 
           return json(data);
         }
-
         if (req.method === "POST") {
-          const data = await req.json();
-          const created = await Bundles.create(data);
+          const body = await req.json();
+          const created = await Bundles.create(body);
           return json(created, 201);
+        }
+      }
+
+      const bundleMatch = pathname.match(/^\/api\/bundles\/([^/]+)$/);
+      if (bundleMatch) {
+        const id = bundleMatch[1];
+        if (req.method === "PATCH") {
+          const body = await req.json();
+          const updated = await Bundles.update(id, body);
+          return json(updated);
+        }
+        if (req.method === "DELETE") {
+          await Bundles.delete(id);
+          return new Response(null, { status: 204 });
         }
       }
 
       // Transactions
       if (pathname === "/api/transactions") {
         if (req.method === "GET") {
-          const orderBy = url.searchParams.get("order_by") || "-id";
+          const orderBy = url.searchParams.get("order_by") || "-created_date";
           const limit = url.searchParams.get("limit")
             ? parseInt(url.searchParams.get("limit")!, 10)
             : undefined;
+
           const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by" && key !== "limit") filters[key] = value;
@@ -467,10 +356,9 @@ Deno.serve(async (req) => {
           const data = await InventoryTransactions.filter(filters, orderBy, limit);
           return json(data);
         }
-
         if (req.method === "POST") {
-          const data = await req.json();
-          const created = await InventoryTransactions.create(data);
+          const body = await req.json();
+          const created = await InventoryTransactions.create(body);
           return json(created, 201);
         }
       }
@@ -483,12 +371,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  // SPA routes
-  const isSPARoute = SPA_ROUTES.some((route) =>
-    pathname === route || pathname === route + "/"
-  );
+  // SPA routing
+  const isSPARoute = SPA_ROUTES.some((r) => pathname === r || pathname === r + "/");
   if (isSPARoute || pathname === "/") return renderSPAShell();
 
-  // Default SPA fallback
   return renderSPAShell();
 });
