@@ -515,6 +515,24 @@ function renderSPAShell(): Response {
   });
 }
 
+function redactedDbUrl() {
+  const raw = Deno.env.get("DATABASE_URL");
+  if (!raw) return null;
+
+  try {
+    const u = new URL(raw);
+    return {
+      host: u.hostname,
+      database: u.pathname.replace(/^\//, ""),
+      user: u.username || null,
+      hasPassword: Boolean(u.password),
+      // don't ever return the raw URL or password
+    };
+  } catch {
+    return { parseError: true };
+  }
+}
+
 // Main request handler
 Deno.serve(async (req) => {
   const url = new URL(req.url);
@@ -522,12 +540,16 @@ Deno.serve(async (req) => {
 
   // DEBUG
   if (url.pathname === "/__debug") {
-    return Response.json({
-      host: req.headers.get("host"),
-      app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
-      deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
-      buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
-    });
+    return Response.json(
+      {
+        host: req.headers.get("host"),
+        app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
+        deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
+        buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
+        db: redactedDbUrl(),
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
   }
 
   // Fetch demo page (moved from "/" to "/fetch-demo")
