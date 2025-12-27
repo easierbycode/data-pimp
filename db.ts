@@ -1,353 +1,222 @@
-// db.ts - PostgreSQL database connection for Deno Deploy
-import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
+// db.ts - npm:pg version (Deno Deploy friendly)
+// Fixes: created_date missing -> safe fallback to id, and removes deno.land/x/postgres usage
 
-// Connection pool
-let pool: Pool | null = null;
+import { Pool } from "npm:pg";
 
-export function getPool(): Pool {
-  if (!pool) {
-    const databaseUrl = Deno.env.get("DATABASE_URL");
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL environment variable is required");
-    }
+const pool = new Pool({
+  connectionString: Deno.env.get("DATABASE_URL"),
+  max: 1,
+});
 
-    pool = new Pool(databaseUrl, 3, true);
-  }
-  return pool;
-}
+// Cache table columns so we can validate filters + order_by
+const columnCache = new Map<string, Set<string>>();
 
-// Initialize database tables
-export async function initializeDatabase() {
-  const client = await getPool().connect();
+async function getColumns(table: string): Promise<Set<string>> {
+  const cached = columnCache.get(table);
+  if (cached) return cached;
 
+  const client = await pool.connect();
   try {
-    // Create samples table
-    await client.queryObject`
-      CREATE TABLE IF NOT EXISTS samples (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-        name TEXT NOT NULL,
-        brand TEXT NOT NULL,
-        qr_code TEXT NOT NULL UNIQUE,
-        location TEXT,
-        picture_url TEXT,
-        tiktok_affiliate_link TEXT,
-        fire_sale BOOLEAN DEFAULT false,
-        current_price NUMERIC(10, 2),
-        best_price NUMERIC(10, 2),
-        best_price_source TEXT,
-        last_price_checked_at TIMESTAMPTZ,
-        bundle_id TEXT,
-        status TEXT DEFAULT 'available',
-        checked_out_at TIMESTAMPTZ,
-        checked_in_at TIMESTAMPTZ,
-        checked_out_to TEXT,
-        notes TEXT,
-        created_date TIMESTAMPTZ DEFAULT NOW(),
-        updated_date TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-
-    // Create bundles table
-    await client.queryObject`
-      CREATE TABLE IF NOT EXISTS bundles (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-        name TEXT NOT NULL,
-        qr_code TEXT NOT NULL UNIQUE,
-        location TEXT,
-        notes TEXT,
-        created_date TIMESTAMPTZ DEFAULT NOW(),
-        updated_date TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-
-    // Create inventory_transactions table
-    await client.queryObject`
-      CREATE TABLE IF NOT EXISTS inventory_transactions (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-        action TEXT NOT NULL,
-        scanned_code TEXT NOT NULL,
-        sample_id TEXT,
-        bundle_id TEXT,
-        operator TEXT,
-        checked_out_to TEXT,
-        notes TEXT,
-        created_date TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-
-    // Create indexes
-    await client.queryObject`CREATE INDEX IF NOT EXISTS idx_samples_qr_code ON samples(qr_code)`;
-    await client.queryObject`CREATE INDEX IF NOT EXISTS idx_samples_bundle_id ON samples(bundle_id)`;
-    await client.queryObject`CREATE INDEX IF NOT EXISTS idx_bundles_qr_code ON bundles(qr_code)`;
-    await client.queryObject`CREATE INDEX IF NOT EXISTS idx_transactions_sample_id ON inventory_transactions(sample_id)`;
-
-    console.log("Database tables initialized successfully");
+    const r = await client.query(
+      `select column_name
+       from information_schema.columns
+       where table_schema = 'public' and table_name = $1
+       order by ordinal_position`,
+      [table],
+    );
+    const cols = new Set<string>(r.rows.map((row: any) => row.column_name));
+    columnCache.set(table, cols);
+    return cols;
   } finally {
     client.release();
   }
 }
 
-// Helper to convert row to camelCase
-function toCamelCase(obj: any): any {
-  if (!obj) return obj;
-  const result: any = {};
-  for (const key in obj) {
-    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-    result[camelKey] = obj[key];
-  }
-  return result;
+function safeIdent(col: string): string {
+  // Quote an identifier safely (we only call this after validating against known columns)
+  return `"${col.replace(/"/g, '""')}"`;
 }
 
-// Helper to convert camelCase to snake_case
-function toSnakeCase(obj: any): any {
-  if (!obj) return obj;
-  const result: any = {};
-  for (const key in obj) {
-    const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-    result[snakeKey] = obj[key];
-  }
-  return result;
+function pickFallbackColumn(cols: Set<string>): string {
+  // Prefer common created columns if present, otherwise id
+  if (cols.has("created_at")) return "created_at";
+  if (cols.has("created_on")) return "created_on";
+  if (cols.has("created")) return "created";
+  if (cols.has("id")) return "id";
+  // last resort: first column
+  return Array.from(cols)[0] || "id";
 }
 
-// Database operations for Samples
+function parseOrderBy(orderBy: string | null | undefined, cols: Set<string>): string {
+  const raw = (orderBy || "").trim();
+  if (!raw) {
+    const fb = pickFallbackColumn(cols);
+    return `${safeIdent(fb)} DESC`;
+  }
+
+  const desc = raw.startsWith("-");
+  const requested = (desc ? raw.slice(1) : raw).trim();
+
+  // common legacy alias: created_date -> created_at (if present)
+  let col = requested;
+  if (col === "created_date" && !cols.has("created_date") && cols.has("created_at")) {
+    col = "created_at";
+  }
+
+  if (!cols.has(col)) {
+    // fallback if bad column requested
+    col = pickFallbackColumn(cols);
+  }
+
+  return `${safeIdent(col)} ${desc ? "DESC" : "ASC"}`;
+}
+
+function buildWhere(
+  filters: Record<string, unknown> | null | undefined,
+  cols: Set<string>,
+) {
+  const values: unknown[] = [];
+  const parts: string[] = [];
+
+  if (filters) {
+    for (const [k, v] of Object.entries(filters)) {
+      if (v === undefined || v === null) continue;
+      if (!cols.has(k)) continue; // ignore unknown filter keys (prevents SQLi)
+      values.push(v);
+      parts.push(`${safeIdent(k)} = $${values.length}`);
+    }
+  }
+
+  const clause = parts.length ? `where ${parts.join(" and ")}` : "";
+  return { clause, values };
+}
+
+function safeLimit(limit?: number) {
+  if (limit === undefined) return undefined;
+  if (!Number.isFinite(limit)) return undefined;
+  const n = Math.max(1, Math.min(500, Math.trunc(limit)));
+  return n;
+}
+
+async function run<T = any>(fn: (client: any) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    return await fn(client);
+  } finally {
+    client.release();
+  }
+}
+
+export async function initializeDatabase() {
+  // No-op initializer, but warm the column cache so bad order_by gets caught early
+  await Promise.all([
+    getColumns("samples"),
+    getColumns("bundles"),
+    getColumns("inventory_transactions"),
+  ]).catch((e) => {
+    console.error("initializeDatabase column warmup failed:", e);
+  });
+}
+
+// ---------- Generic helpers for CRUD ----------
+
+async function listTable(table: string, orderBy?: string) {
+  const cols = await getColumns(table);
+  const orderSql = parseOrderBy(orderBy || null, cols);
+
+  return await run(async (client) => {
+    const r = await client.query(`select * from public.${table} order by ${orderSql}`);
+    return r.rows;
+  });
+}
+
+async function filterTable(
+  table: string,
+  filters: Record<string, unknown>,
+  orderBy?: string,
+  limit?: number,
+) {
+  const cols = await getColumns(table);
+  const orderSql = parseOrderBy(orderBy || null, cols);
+  const { clause, values } = buildWhere(filters, cols);
+  const lim = safeLimit(limit);
+
+  return await run(async (client) => {
+    const sql =
+      `select * from public.${table} ${clause} order by ${orderSql}` +
+      (lim ? ` limit ${lim}` : "");
+    const r = await client.query(sql, values);
+    return r.rows;
+  });
+}
+
+async function insertRow(table: string, data: Record<string, unknown>) {
+  const cols = await getColumns(table);
+
+  const keys = Object.keys(data).filter((k) => cols.has(k) && k !== "id");
+  if (keys.length === 0) throw new Error(`No insertable fields for ${table}`);
+
+  const values = keys.map((k) => data[k]);
+  const colSql = keys.map(safeIdent).join(", ");
+  const valSql = keys.map((_, i) => `$${i + 1}`).join(", ");
+
+  return await run(async (client) => {
+    const r = await client.query(
+      `insert into public.${table} (${colSql}) values (${valSql}) returning *`,
+      values,
+    );
+    return r.rows[0];
+  });
+}
+
+async function updateRow(table: string, id: string, data: Record<string, unknown>) {
+  const cols = await getColumns(table);
+
+  const keys = Object.keys(data).filter((k) => cols.has(k) && k !== "id");
+  if (keys.length === 0) throw new Error(`No updatable fields for ${table}`);
+
+  const values = keys.map((k) => data[k]);
+  values.push(id);
+
+  const setSql = keys.map((k, i) => `${safeIdent(k)} = $${i + 1}`).join(", ");
+
+  return await run(async (client) => {
+    const r = await client.query(
+      `update public.${table} set ${setSql} where ${safeIdent("id")} = $${values.length} returning *`,
+      values,
+    );
+    return r.rows[0];
+  });
+}
+
+async function deleteRow(table: string, id: string) {
+  return await run(async (client) => {
+    await client.query(`delete from public.${table} where ${safeIdent("id")} = $1`, [id]);
+  });
+}
+
+// ---------- Exports matching your main.ts calls ----------
+
 export const Samples = {
-  async list(orderBy = "-created_date") {
-    const client = await getPool().connect();
-    try {
-      const order = orderBy.startsWith("-") ? "DESC" : "ASC";
-      const field = orderBy.replace(/^-/, "");
-      const result = await client.queryObject(
-        `SELECT * FROM samples ORDER BY ${field} ${order}`
-      );
-      return result.rows.map(toCamelCase);
-    } finally {
-      client.release();
-    }
-  },
-
-  async filter(filters: any, orderBy = "-created_date", limit?: number) {
-    const client = await getPool().connect();
-    try {
-      const where: string[] = [];
-      const values: any[] = [];
-      let paramIndex = 1;
-
-      for (const [key, value] of Object.entries(filters)) {
-        const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-        where.push(`${snakeKey} = $${paramIndex}`);
-        values.push(value);
-        paramIndex++;
-      }
-
-      const order = orderBy.startsWith("-") ? "DESC" : "ASC";
-      const field = orderBy.replace(/^-/, "");
-
-      let query = `SELECT * FROM samples`;
-      if (where.length > 0) {
-        query += ` WHERE ${where.join(" AND ")}`;
-      }
-      query += ` ORDER BY ${field} ${order}`;
-      if (limit) {
-        query += ` LIMIT ${limit}`;
-      }
-
-      const result = await client.queryObject(query, values);
-      return result.rows.map(toCamelCase);
-    } finally {
-      client.release();
-    }
-  },
-
-  async create(data: any) {
-    const client = await getPool().connect();
-    try {
-      const snakeData = toSnakeCase(data);
-      const keys = Object.keys(snakeData);
-      const values = Object.values(snakeData);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
-
-      const result = await client.queryObject(
-        `INSERT INTO samples (${keys.join(", ")})
-         VALUES (${placeholders})
-         RETURNING *`,
-        values
-      );
-      return toCamelCase(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  },
-
-  async update(id: string, data: any) {
-    const client = await getPool().connect();
-    try {
-      const snakeData = toSnakeCase(data);
-      const keys = Object.keys(snakeData);
-      const values = Object.values(snakeData);
-      const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(", ");
-
-      const result = await client.queryObject(
-        `UPDATE samples SET ${setClause}, updated_date = NOW() WHERE id = $1 RETURNING *`,
-        [id, ...values]
-      );
-      return toCamelCase(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  },
-
-  async delete(id: string) {
-    const client = await getPool().connect();
-    try {
-      await client.queryObject(`DELETE FROM samples WHERE id = $1`, [id]);
-    } finally {
-      client.release();
-    }
-  },
+  list: (orderBy?: string) => listTable("samples", orderBy),
+  filter: (filters: Record<string, unknown>, orderBy?: string, limit?: number) =>
+    filterTable("samples", filters, orderBy, limit),
+  create: (data: Record<string, unknown>) => insertRow("samples", data),
+  update: (id: string, data: Record<string, unknown>) => updateRow("samples", id, data),
+  delete: (id: string) => deleteRow("samples", id),
 };
 
-// Database operations for Bundles
 export const Bundles = {
-  async list(orderBy = "-created_date") {
-    const client = await getPool().connect();
-    try {
-      const order = orderBy.startsWith("-") ? "DESC" : "ASC";
-      const field = orderBy.replace(/^-/, "");
-      const result = await client.queryObject(
-        `SELECT * FROM bundles ORDER BY ${field} ${order}`
-      );
-      return result.rows.map(toCamelCase);
-    } finally {
-      client.release();
-    }
-  },
-
-  async filter(filters: any) {
-    const client = await getPool().connect();
-    try {
-      const where: string[] = [];
-      const values: any[] = [];
-      let paramIndex = 1;
-
-      for (const [key, value] of Object.entries(filters)) {
-        const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-        where.push(`${snakeKey} = $${paramIndex}`);
-        values.push(value);
-        paramIndex++;
-      }
-
-      let query = `SELECT * FROM bundles`;
-      if (where.length > 0) {
-        query += ` WHERE ${where.join(" AND ")}`;
-      }
-
-      const result = await client.queryObject(query, values);
-      return result.rows.map(toCamelCase);
-    } finally {
-      client.release();
-    }
-  },
-
-  async create(data: any) {
-    const client = await getPool().connect();
-    try {
-      const snakeData = toSnakeCase(data);
-      const keys = Object.keys(snakeData);
-      const values = Object.values(snakeData);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
-
-      const result = await client.queryObject(
-        `INSERT INTO bundles (${keys.join(", ")})
-         VALUES (${placeholders})
-         RETURNING *`,
-        values
-      );
-      return toCamelCase(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  },
-
-  async update(id: string, data: any) {
-    const client = await getPool().connect();
-    try {
-      const snakeData = toSnakeCase(data);
-      const keys = Object.keys(snakeData);
-      const values = Object.values(snakeData);
-      const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(", ");
-
-      const result = await client.queryObject(
-        `UPDATE bundles SET ${setClause}, updated_date = NOW() WHERE id = $1 RETURNING *`,
-        [id, ...values]
-      );
-      return toCamelCase(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  },
-
-  async delete(id: string) {
-    const client = await getPool().connect();
-    try {
-      await client.queryObject(`DELETE FROM bundles WHERE id = $1`, [id]);
-    } finally {
-      client.release();
-    }
-  },
+  list: (orderBy?: string) => listTable("bundles", orderBy),
+  filter: (filters: Record<string, unknown>, orderBy?: string, limit?: number) =>
+    filterTable("bundles", filters, orderBy, limit),
+  create: (data: Record<string, unknown>) => insertRow("bundles", data),
+  update: (id: string, data: Record<string, unknown>) => updateRow("bundles", id, data),
+  delete: (id: string) => deleteRow("bundles", id),
 };
 
-// Database operations for Inventory Transactions
 export const InventoryTransactions = {
-  async filter(filters: any, orderBy = "-created_date", limit?: number) {
-    const client = await getPool().connect();
-    try {
-      const where: string[] = [];
-      const values: any[] = [];
-      let paramIndex = 1;
-
-      for (const [key, value] of Object.entries(filters)) {
-        const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-        where.push(`${snakeKey} = $${paramIndex}`);
-        values.push(value);
-        paramIndex++;
-      }
-
-      const order = orderBy.startsWith("-") ? "DESC" : "ASC";
-      const field = orderBy.replace(/^-/, "");
-
-      let query = `SELECT * FROM inventory_transactions`;
-      if (where.length > 0) {
-        query += ` WHERE ${where.join(" AND ")}`;
-      }
-      query += ` ORDER BY ${field} ${order}`;
-      if (limit) {
-        query += ` LIMIT ${limit}`;
-      }
-
-      const result = await client.queryObject(query, values);
-      return result.rows.map(toCamelCase);
-    } finally {
-      client.release();
-    }
-  },
-
-  async create(data: any) {
-    const client = await getPool().connect();
-    try {
-      const snakeData = toSnakeCase(data);
-      const keys = Object.keys(snakeData);
-      const values = Object.values(snakeData);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
-
-      const result = await client.queryObject(
-        `INSERT INTO inventory_transactions (${keys.join(", ")})
-         VALUES (${placeholders})
-         RETURNING *`,
-        values
-      );
-      return toCamelCase(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  },
+  filter: (filters: Record<string, unknown>, orderBy?: string, limit?: number) =>
+    filterTable("inventory_transactions", filters, orderBy, limit),
+  create: (data: Record<string, unknown>) => insertRow("inventory_transactions", data),
 };
