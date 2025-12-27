@@ -2,12 +2,7 @@
 // Serves React SPA for inventory management + fetch demo
 
 import { Pool } from "npm:pg";
-import {
-  initializeDatabase,
-  Samples,
-  Bundles,
-  InventoryTransactions,
-} from "./db.ts";
+import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
 
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
@@ -23,7 +18,7 @@ await initializeDatabase().catch((err) => {
 const CHARACTER_URL =
   "https://spritehub-c3a33-default-rtdb.firebaseio.com/characters/dukeNukem.json";
 const GRAYLOG_ENDPOINT = "http://graylog-server.thirsty.store:12201/gelf";
-const MAX_GELF_MESSAGE_SIZE = 8000;
+const MAX_GELF_MESSAGE_SIZE = 8000; // Max size for UDP GELF
 
 // Page routes that should serve the React SPA
 const SPA_ROUTES = [
@@ -39,36 +34,6 @@ const SPA_ROUTES = [
   "/checkout",
   "/readme",
 ];
-
-const TABLES = ["bundles", "inventory_transactions", "samples"] as const;
-
-function json(data: unknown, status = 200, extraHeaders: HeadersInit = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      ...extraHeaders,
-    },
-  });
-}
-
-function redactedDbUrl() {
-  const raw = Deno.env.get("DATABASE_URL");
-  if (!raw) return null;
-
-  try {
-    const u = new URL(raw);
-    return {
-      host: u.hostname,
-      database: u.pathname.replace(/^\//, ""),
-      user: u.username || null,
-      hasPassword: Boolean(u.password),
-    };
-  } catch {
-    return { parseError: true };
-  }
-}
 
 async function fetchCharacter() {
   try {
@@ -94,7 +59,7 @@ async function logToGraylog(data: unknown) {
     const gelfMessage = {
       version: "1.1",
       host: "deno-app",
-      short_message: "Fetched data from " + CHARACTER_URL,
+      short_message: `Fetched data from ${CHARACTER_URL}`,
       full_message: fullMessage,
       timestamp: Date.now() / 1000,
       _source: "fetchHandler",
@@ -109,7 +74,7 @@ async function logToGraylog(data: unknown) {
   }
 }
 
-// Fetch demo page
+// Fetch demo page (moved from "/" to "/fetch-demo")
 async function handleFetchDemo(): Promise<Response> {
   const { data, error } = await fetchCharacter();
   if (error) {
@@ -144,7 +109,7 @@ async function handleFetchDemo(): Promise<Response> {
   });
 }
 
-// React SPA shell
+// React SPA shell - serves the inventory management app
 function renderSPAShell(): Response {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -168,10 +133,13 @@ function renderSPAShell(): Response {
   }
   </script>
   <style>
+    /* Custom scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Loading animation */
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin { animation: spin 1s linear infinite; }
   </style>
@@ -189,52 +157,59 @@ function renderSPAShell(): Response {
   <script type="module">
     import React from 'react';
     import { createRoot } from 'react-dom/client';
-    import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-    import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+    import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+    import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
     import * as LucideIcons from 'lucide-react';
 
+    // Create React Query client
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
           staleTime: 1000 * 60 * 5,
           refetchOnWindowFocus: false,
-          retry: 1,
         },
       },
     });
 
-    // ===== IMPORTANT CHANGE: throw on non-OK so you SEE the real error =====
+    // ===== NEW: helpers that THROW on non-OK so we don't silently show empty lists =====
     async function fetchJson(input, init) {
       const res = await fetch(input, init);
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
+        let text = '';
+        try { text = await res.text(); } catch {}
         const msg = String(res.status) + ' ' + res.statusText + (text ? (': ' + text) : '');
         throw new Error(msg);
       }
+      // if a handler returns 204 or non-json, just return null
       const ct = res.headers.get('content-type') || '';
-      if (ct.indexOf('application/json') !== -1) return res.json();
-      return null;
+      if (ct.indexOf('application/json') === -1) return null;
+      return res.json();
     }
 
-    function makeUrl(path, params) {
-      const url = new URL(path, window.location.origin);
-      if (params) {
-        Object.entries(params).forEach(([k, v]) => {
-          if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
-        });
+    async function fetchOk(input, init) {
+      const res = await fetch(input, init);
+      if (!res.ok) {
+        let text = '';
+        try { text = await res.text(); } catch {}
+        const msg = String(res.status) + ' ' + res.statusText + (text ? (': ' + text) : '');
+        throw new Error(msg);
       }
-      return url;
     }
 
+    // Local API client - calls our own REST API
     const api = {
       entities: {
         Sample: {
           list: async (orderBy) => {
-            const url = makeUrl('/api/samples', orderBy ? { order_by: orderBy } : undefined);
+            const url = new URL('/api/samples', window.location.origin);
+            if (orderBy) url.searchParams.set('order_by', orderBy);
             return fetchJson(url);
           },
           filter: async (filters, orderBy, limit) => {
-            const url = makeUrl('/api/samples', Object.assign({}, filters || {}, orderBy ? { order_by: orderBy } : {}, limit ? { limit: limit } : {}));
+            const url = new URL('/api/samples', window.location.origin);
+            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
+            if (orderBy) url.searchParams.set('order_by', orderBy);
+            if (limit) url.searchParams.set('limit', limit);
             return fetchJson(url);
           },
           create: async (data) => {
@@ -252,16 +227,18 @@ function renderSPAShell(): Response {
             });
           },
           delete: async (id) => {
-            return fetchJson('/api/samples/' + id, { method: 'DELETE' });
+            return fetchOk('/api/samples/' + id, { method: 'DELETE' });
           }
         },
         Bundle: {
           list: async (orderBy) => {
-            const url = makeUrl('/api/bundles', orderBy ? { order_by: orderBy } : undefined);
+            const url = new URL('/api/bundles', window.location.origin);
+            if (orderBy) url.searchParams.set('order_by', orderBy);
             return fetchJson(url);
           },
           filter: async (filters) => {
-            const url = makeUrl('/api/bundles', filters || undefined);
+            const url = new URL('/api/bundles', window.location.origin);
+            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
             return fetchJson(url);
           },
           create: async (data) => {
@@ -279,12 +256,15 @@ function renderSPAShell(): Response {
             });
           },
           delete: async (id) => {
-            return fetchJson('/api/bundles/' + id, { method: 'DELETE' });
+            return fetchOk('/api/bundles/' + id, { method: 'DELETE' });
           }
         },
         InventoryTransaction: {
           filter: async (filters, orderBy, limit) => {
-            const url = makeUrl('/api/transactions', Object.assign({}, filters || {}, orderBy ? { order_by: orderBy } : {}, limit ? { limit: limit } : {}));
+            const url = new URL('/api/transactions', window.location.origin);
+            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
+            if (orderBy) url.searchParams.set('order_by', orderBy);
+            if (limit) url.searchParams.set('limit', limit);
             return fetchJson(url);
           },
           create: async (data) => {
@@ -298,6 +278,19 @@ function renderSPAShell(): Response {
       }
     };
 
+    // ===== NEW: Simple error banner =====
+    const ApiError = ({ error }) => {
+      const msg = error && error.message ? error.message : String(error || '');
+      return React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+        React.createElement('div', { className: 'rounded-lg border border-red-200 bg-red-50 p-4' },
+          React.createElement('div', { className: 'font-semibold text-red-800 mb-2' }, 'API Error'),
+          React.createElement('pre', { className: 'text-xs whitespace-pre-wrap text-red-900' }, msg),
+          React.createElement('div', { className: 'text-xs text-red-700 mt-2' }, 'Open DevTools → Network to see which /api/* request failed.')
+        )
+      );
+    };
+
+    // Translations
     const translations = {
       nav: { samples: 'Samples', bundles: 'Bundles', checkout: 'Checkout', inventory: 'Inventory Manager' },
       sample: { titlePlural: 'Samples', createNew: 'New Sample', notFound: 'Sample not found',
@@ -313,17 +306,10 @@ function renderSPAShell(): Response {
                  checkout: 'Check Out', checkin: 'Check In', reserve: 'Reserve', unreserve: 'Unreserve' },
       messages: { noResults: 'No results found', required: 'Required' }
     };
+    const useTranslation = () => ({ t: (key) => key.split('.').reduce((o, k) => o?.[k], translations) || key });
+    const createPageUrl = (page) => page.includes('?') ? \`/\${page.split('?')[0].toLowerCase()}?\${page.split('?')[1]}\` : \`/\${page.toLowerCase()}\`;
 
-    const useTranslation = () => ({ t: (key) => key.split('.').reduce((o, k) => o && o[k], translations) || key });
-
-    const createPageUrl = (page) => {
-      if (page.indexOf('?') !== -1) {
-        const parts = page.split('?');
-        return '/' + parts[0].toLowerCase() + '?' + parts[1];
-      }
-      return '/' + page.toLowerCase();
-    };
-
+    // UI Components
     const Button = ({ children, variant = 'default', size = 'default', className = '', ...props }) => {
       const variants = {
         default: 'bg-slate-900 text-white hover:bg-slate-800',
@@ -334,23 +320,24 @@ function renderSPAShell(): Response {
       };
       const sizes = { default: 'h-10 px-4 py-2', sm: 'h-9 px-3', lg: 'h-11 px-8', icon: 'h-10 w-10' };
       return React.createElement('button', {
-        className: 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:opacity-50 ' + variants[variant] + ' ' + sizes[size] + ' ' + className,
+        className: \`inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:opacity-50 \${variants[variant]} \${sizes[size]} \${className}\`,
         ...props
       }, children);
     };
 
     const Card = ({ children, className = '', ...props }) =>
-      React.createElement('div', { className: 'rounded-lg border border-slate-200 bg-white shadow-sm ' + className, ...props }, children);
-    const CardHeader = ({ children, className = '' }) => React.createElement('div', { className: 'p-6 ' + className }, children);
-    const CardTitle = ({ children, className = '' }) => React.createElement('h3', { className: 'text-2xl font-semibold ' + className }, children);
-    const CardContent = ({ children, className = '' }) => React.createElement('div', { className: 'p-6 pt-0 ' + className }, children);
+      React.createElement('div', { className: \`rounded-lg border border-slate-200 bg-white shadow-sm \${className}\`, ...props }, children);
+    const CardHeader = ({ children, className = '' }) => React.createElement('div', { className: \`p-6 \${className}\` }, children);
+    const CardTitle = ({ children, className = '' }) => React.createElement('h3', { className: \`text-2xl font-semibold \${className}\` }, children);
+    const CardContent = ({ children, className = '' }) => React.createElement('div', { className: \`p-6 pt-0 \${className}\` }, children);
 
     const Input = React.forwardRef(({ className = '', ...props }, ref) =>
-      React.createElement('input', { ref, className: 'flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ' + className, ...props }));
+      React.createElement('input', { ref, className: \`flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm \${className}\`, ...props }));
 
     const Badge = ({ children, className = '' }) =>
-      React.createElement('span', { className: 'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ' + className }, children);
+      React.createElement('span', { className: \`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold \${className}\` }, children);
 
+    // Status Badge Component
     const StatusBadge = ({ status }) => {
       const styles = {
         available: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -359,20 +346,10 @@ function renderSPAShell(): Response {
         discontinued: 'bg-slate-100 text-slate-800 border-slate-200'
       };
       const { t } = useTranslation();
-      return React.createElement(Badge, { className: styles[status] || styles.available }, t('status.' + status));
+      return React.createElement(Badge, { className: styles[status] || styles.available }, t(\`status.\${status}\`));
     };
 
-    const ErrorBox = ({ error }) => {
-      const msg = (error && error.message) ? error.message : String(error || '');
-      return React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
-        React.createElement(Card, { className: 'border-red-200 bg-red-50' },
-          React.createElement(CardHeader, null,
-            React.createElement(CardTitle, { className: 'text-red-800 text-lg' }, 'API Error')),
-          React.createElement(CardContent, null,
-            React.createElement('pre', { className: 'text-xs whitespace-pre-wrap text-red-900' }, msg),
-            React.createElement('p', { className: 'text-xs text-red-700 mt-2' }, 'DevTools → Network will show the failing /api/* request.'))));
-    };
-
+    // Layout Component
     const Layout = ({ children }) => {
       const { t } = useTranslation();
       const { Box, Package, QrCode } = LucideIcons;
@@ -398,27 +375,26 @@ function renderSPAShell(): Response {
                   React.createElement(Link, { key: item.page, to: createPageUrl(item.page) },
                     React.createElement(Button, { variant: 'ghost', className: 'gap-2' },
                       React.createElement(item.icon, { className: 'w-4 h-4' }),
-                      t('nav.' + item.name)))))))),
+                      t(\`nav.\${item.name}\`)))))))) ,
         React.createElement('main', null, children));
     };
 
+    // Home/Samples Page
     const SamplesPage = () => {
       const { t } = useTranslation();
       const [search, setSearch] = React.useState('');
       const { Plus, Search, Loader2, Filter } = LucideIcons;
 
-      const q = useQuery({
+      const { data: samples = [], isLoading, error } = useQuery({
         queryKey: ['samples'],
         queryFn: () => api.entities.Sample.list('-created_date')
       });
 
-      const samples = q.data || [];
-      if (q.error) return React.createElement(ErrorBox, { error: q.error });
+      // ===== NEW: show real error instead of "0 samples" =====
+      if (error) return React.createElement(ApiError, { error });
 
       const filteredSamples = samples.filter(s =>
-        !search ||
-        (s.name && s.name.toLowerCase().includes(search.toLowerCase())) ||
-        (s.brand && s.brand.toLowerCase().includes(search.toLowerCase()))
+        !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.brand?.toLowerCase().includes(search.toLowerCase())
       );
 
       return React.createElement('div', { className: 'min-h-screen bg-slate-50' },
@@ -427,50 +403,49 @@ function renderSPAShell(): Response {
             React.createElement('div', { className: 'flex items-center justify-between' },
               React.createElement('div', null,
                 React.createElement('h1', { className: 'text-2xl font-bold text-slate-900' }, t('sample.titlePlural')),
-                React.createElement('p', { className: 'text-sm text-slate-500' }, String(filteredSamples.length) + ' samples')),
+                React.createElement('p', { className: 'text-sm text-slate-500' }, \`\${filteredSamples.length} samples\`)),
               React.createElement(Link, { to: '/samplecreate' },
                 React.createElement(Button, null,
-                  React.createElement(Plus, { className: 'w-4 h-4 mr-2' }), t('sample.createNew')))))),
-
+                  React.createElement(Plus, { className: 'w-4 h-4 mr-2' }), t('sample.createNew')))))) ,
         React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
           React.createElement('div', { className: 'bg-white rounded-xl shadow-sm border p-4 mb-6' },
             React.createElement('div', { className: 'relative' },
               React.createElement(Search, { className: 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400' }),
-              React.createElement(Input, { value: search, onChange: e => setSearch(e.target.value), placeholder: t('filters.searchPlaceholder'), className: 'pl-10' }))),
-
-          q.isLoading
+              React.createElement(Input, { value: search, onChange: e => setSearch(e.target.value), placeholder: t('filters.searchPlaceholder'), className: 'pl-10' })) ),
+          isLoading
             ? React.createElement('div', { className: 'flex justify-center py-20' }, React.createElement(Loader2, { className: 'w-8 h-8 animate-spin text-slate-400' }))
             : filteredSamples.length === 0
               ? React.createElement('div', { className: 'text-center py-20' },
                   React.createElement(Filter, { className: 'w-12 h-12 text-slate-300 mx-auto mb-4' }),
-                  React.createElement('p', { className: 'text-slate-500' }, t('messages.noResults')))
+                  React.createElement('p', { className: 'text-slate-500' }, t('messages.noResults')) )
               : React.createElement('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' },
                   filteredSamples.map(sample =>
-                    React.createElement(Link, { key: sample.id, to: '/sampledetails?id=' + sample.id },
+                    React.createElement(Link, { key: sample.id, to: \`/sampledetails?id=\${sample.id}\` },
                       React.createElement(Card, { className: 'overflow-hidden hover:shadow-lg transition-shadow' },
                         React.createElement('div', { className: 'aspect-square bg-slate-100 relative' },
                           React.createElement('img', { src: sample.picture_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200', alt: sample.name, className: 'w-full h-full object-cover' }),
-                          React.createElement('div', { className: 'absolute top-3 left-3' }, React.createElement(StatusBadge, { status: sample.status }))),
+                          React.createElement('div', { className: 'absolute top-3 left-3' }, React.createElement(StatusBadge, { status: sample.status })) ),
                         React.createElement(CardContent, { className: 'p-4' },
                           React.createElement('h3', { className: 'font-semibold truncate' }, sample.name),
                           React.createElement('p', { className: 'text-sm text-slate-500' }, sample.brand),
-                          sample.current_price && React.createElement('p', { className: 'font-bold mt-2' }, '$' + Number(sample.current_price).toFixed(2))))))))));
+                          sample.current_price && React.createElement('p', { className: 'font-bold mt-2' }, \`$\${sample.current_price.toFixed(2)}\`) ))))))));
     };
 
+    // Bundles Page
     const BundlesPage = () => {
       const { t } = useTranslation();
       const { Package, Plus, Search, Loader2 } = LucideIcons;
       const [search, setSearch] = React.useState('');
 
-      const q = useQuery({
+      const { data: bundles = [], isLoading, error } = useQuery({
         queryKey: ['bundles'],
         queryFn: () => api.entities.Bundle.list('-created_date')
       });
 
-      const bundles = q.data || [];
-      if (q.error) return React.createElement(ErrorBox, { error: q.error });
+      // ===== NEW: show real error instead of blank =====
+      if (error) return React.createElement(ApiError, { error });
 
-      const filteredBundles = bundles.filter(b => !search || (b.name && b.name.toLowerCase().includes(search.toLowerCase())));
+      const filteredBundles = bundles.filter(b => !search || b.name?.toLowerCase().includes(search.toLowerCase()));
 
       return React.createElement('div', { className: 'min-h-screen bg-slate-50' },
         React.createElement('div', { className: 'bg-white border-b border-slate-200' },
@@ -478,53 +453,52 @@ function renderSPAShell(): Response {
             React.createElement('div', { className: 'flex items-center justify-between' },
               React.createElement('h1', { className: 'text-2xl font-bold' }, t('bundle.titlePlural')),
               React.createElement(Link, { to: '/bundlecreate' },
-                React.createElement(Button, null, React.createElement(Plus, { className: 'w-4 h-4 mr-2' }), t('bundle.createNew')))))),
-
+                React.createElement(Button, null, React.createElement(Plus, { className: 'w-4 h-4 mr-2' }), t('bundle.createNew')))))) ,
         React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
           React.createElement('div', { className: 'bg-white rounded-xl shadow-sm border p-4 mb-6' },
             React.createElement('div', { className: 'relative max-w-md' },
               React.createElement(Search, { className: 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400' }),
-              React.createElement(Input, { value: search, onChange: e => setSearch(e.target.value), placeholder: 'Search bundles...', className: 'pl-10' }))),
-
-          q.isLoading
+              React.createElement(Input, { value: search, onChange: e => setSearch(e.target.value), placeholder: 'Search bundles...', className: 'pl-10' })) ),
+          isLoading
             ? React.createElement('div', { className: 'flex justify-center py-20' }, React.createElement(Loader2, { className: 'w-8 h-8 animate-spin' }))
             : React.createElement('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' },
                 filteredBundles.map(bundle =>
-                  React.createElement(Link, { key: bundle.id, to: '/bundledetails?id=' + bundle.id },
+                  React.createElement(Link, { key: bundle.id, to: \`/bundledetails?id=\${bundle.id}\` },
                     React.createElement(Card, { className: 'p-6 hover:shadow-lg transition-shadow' },
                       React.createElement('div', { className: 'flex items-center gap-3 mb-4' },
                         React.createElement('div', { className: 'w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center' },
-                          React.createElement(Package, { className: 'w-6 h-6 text-white' })),
+                          React.createElement(Package, { className: 'w-6 h-6 text-white' }) ),
                         React.createElement('div', null,
                           React.createElement('h3', { className: 'font-semibold' }, bundle.name),
-                          bundle.location && React.createElement('p', { className: 'text-sm text-slate-500' }, bundle.location))),
+                          bundle.location && React.createElement('p', { className: 'text-sm text-slate-500' }, bundle.location) )),
                       React.createElement('code', { className: 'text-sm bg-slate-100 px-2 py-1 rounded' }, bundle.qr_code)))))));
     };
 
+    // Checkout Page
     const CheckoutPage = () => {
       const { t } = useTranslation();
       const { QrCode } = LucideIcons;
       const [code, setCode] = React.useState('');
       const [result, setResult] = React.useState(null);
-      const [error, setError] = React.useState(null);
+      const [apiError, setApiError] = React.useState(null);
 
       const handleScan = async () => {
-        setError(null);
+        setApiError(null);
         if (!code.trim()) return;
         try {
           const samples = await api.entities.Sample.filter({ qr_code: code });
-          if (samples && samples.length > 0) {
+          if (samples.length > 0) {
             setResult({ type: 'sample', data: samples[0] });
           } else {
             const bundles = await api.entities.Bundle.filter({ qr_code: code });
-            if (bundles && bundles.length > 0) {
+            if (bundles.length > 0) {
               setResult({ type: 'bundle', data: bundles[0] });
             } else {
               setResult({ type: 'not_found' });
             }
           }
         } catch (e) {
-          setError(e);
+          setApiError(e);
         }
       };
 
@@ -532,12 +506,11 @@ function renderSPAShell(): Response {
         React.createElement('div', { className: 'bg-white border-b' },
           React.createElement('div', { className: 'max-w-4xl mx-auto px-4 py-6 text-center' },
             React.createElement('div', { className: 'w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4' },
-              React.createElement(QrCode, { className: 'w-8 h-8 text-white' })),
+              React.createElement(QrCode, { className: 'w-8 h-8 text-white' }) ),
             React.createElement('h1', { className: 'text-3xl font-bold' }, t('checkout.title')),
-            React.createElement('p', { className: 'text-slate-500 mt-2' }, t('checkout.scanPrompt')))),
-
+            React.createElement('p', { className: 'text-slate-500 mt-2' }, t('checkout.scanPrompt')))) ,
         React.createElement('div', { className: 'max-w-4xl mx-auto px-4 py-8' },
-          error && React.createElement(ErrorBox, { error: error }),
+          apiError && React.createElement(ApiError, { error: apiError }),
           React.createElement(Card, { className: 'p-6 mb-6' },
             React.createElement('div', { className: 'flex gap-4' },
               React.createElement(Input, { value: code, onChange: e => setCode(e.target.value), onKeyDown: e => e.key === 'Enter' && handleScan(), placeholder: 'Scan or enter code...', className: 'flex-1 text-lg h-14' }),
@@ -547,15 +520,17 @@ function renderSPAShell(): Response {
               ? React.createElement('p', { className: 'text-red-600 text-center' }, t('checkout.notFound'))
               : React.createElement('div', null,
                   React.createElement('h2', { className: 'text-xl font-bold mb-2' }, result.data.name),
-                  React.createElement(StatusBadge, { status: result.data.status || 'available' })))));
+                  React.createElement(StatusBadge, { status: result.data.status || 'available' })))) );
     };
 
+    // Simple placeholder pages
     const PlaceholderPage = ({ title }) =>
       React.createElement('div', { className: 'max-w-4xl mx-auto px-4 py-8' },
         React.createElement(Card, { className: 'p-8 text-center' },
           React.createElement('h1', { className: 'text-2xl font-bold mb-4' }, title),
           React.createElement('p', { className: 'text-slate-500' }, 'This page is under construction.')));
 
+    // App Component
     const App = () => {
       return React.createElement(QueryClientProvider, { client: queryClient },
         React.createElement(BrowserRouter, null,
@@ -572,9 +547,10 @@ function renderSPAShell(): Response {
               React.createElement(Route, { path: '/bundleedit', element: React.createElement(PlaceholderPage, { title: 'Edit Bundle' }) }),
               React.createElement(Route, { path: '/checkout', element: React.createElement(CheckoutPage) }),
               React.createElement(Route, { path: '/readme', element: React.createElement(PlaceholderPage, { title: 'README' }) }),
-              React.createElement(Route, { path: '*', element: React.createElement(PlaceholderPage, { title: 'Page Not Found' }) })))));
+              React.createElement(Route, { path: '*', element: React.createElement(PlaceholderPage, { title: 'Page Not Found' }) })) )));
     };
 
+    // Mount the app
     const root = createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
   </script>
@@ -587,23 +563,78 @@ function renderSPAShell(): Response {
   });
 }
 
+function redactedDbUrl() {
+  const raw = Deno.env.get("DATABASE_URL");
+  if (!raw) return null;
+
+  try {
+    const u = new URL(raw);
+    return {
+      host: u.hostname,
+      database: u.pathname.replace(/^\//, ""),
+      user: u.username || null,
+      hasPassword: Boolean(u.password),
+      // don't ever return the raw URL or password
+    };
+  } catch {
+    return { parseError: true };
+  }
+}
+
+// (Optional) keep this safe if you ever use it later
+async function countTable(client: any, table: string) {
+  const allowed = new Set(["bundles", "inventory_transactions", "samples"]);
+  if (!allowed.has(table)) throw new Error("Table not allowed");
+  const q = `select count(*)::bigint as count from public.${table}`;
+  const r = await client.query(q);
+  return Number.parseInt(r.rows[0]?.count ?? "0", 10);
+}
+
+const TABLES = ["bundles", "inventory_transactions", "samples"] as const;
+
 // Main request handler
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
-  // ===== DEBUG =====
-  if (pathname === "/__debug") {
-    return json({
-      host: req.headers.get("host"),
-      app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
-      deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
-      buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
-      db: redactedDbUrl(),
-    });
+  // DB COUNTS
+  if (url.pathname === "/__counts") {
+    const token = url.searchParams.get("token");
+    const expected = Deno.env.get("DEBUG_TOKEN");
+
+    if (!expected || !token || token !== expected) {
+      return new Response("forbidden", { status: 403 });
+    }
+
+    try {
+      const client = await pool.connect();
+      try {
+        const counts: Record<string, number> = {};
+
+        for (const t of TABLES) {
+          const r = await client.query(
+            `select count(*)::bigint as count from public.${t}`,
+          );
+          counts[t] = Number.parseInt(r.rows[0].count, 10);
+        }
+
+        return Response.json(
+          { counts },
+          { headers: { "cache-control": "no-store" } },
+        );
+      } finally {
+        client.release();
+      }
+    } catch (e) {
+      return Response.json(
+        { error: e instanceof Error ? e.message : String(e) },
+        { status: 500, headers: { "cache-control": "no-store" } },
+      );
+    }
   }
 
-  if (pathname === "/__dbdebug") {
+  // DB DEBUG
+  if (url.pathname === "/__dbdebug") {
     const client = await pool.connect();
     try {
       const meta = await client.query(`
@@ -623,79 +654,71 @@ Deno.serve(async (req) => {
         limit 25
       `);
 
-      return json({ meta: meta.rows[0], tables: tables.rows });
+      return Response.json(
+        { meta: meta.rows[0], tables: tables.rows },
+        { headers: { "cache-control": "no-store" } },
+      );
     } finally {
       client.release();
     }
   }
 
-  if (pathname === "/__counts") {
-    const token = url.searchParams.get("token");
-    const expected = Deno.env.get("DEBUG_TOKEN");
-    if (!expected || !token || token !== expected) {
-      return new Response("forbidden", { status: 403 });
-    }
-
-    const client = await pool.connect();
-    try {
-      const counts: Record<string, number> = {};
-      for (const t of TABLES) {
-        const r = await client.query(`select count(*)::bigint as count from public.${t}`);
-        counts[t] = Number.parseInt(r.rows[0].count, 10);
-      }
-      return json({ counts });
-    } finally {
-      client.release();
-    }
+  // DEBUG
+  if (url.pathname === "/__debug") {
+    return Response.json(
+      {
+        host: req.headers.get("host"),
+        app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
+        deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
+        buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
+        db: redactedDbUrl(),
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
   }
 
-  // Bypass db.ts, proves rows can be fetched
-  if (pathname === "/__peek") {
-    const token = url.searchParams.get("token");
-    const expected = Deno.env.get("DEBUG_TOKEN");
-    if (!expected || !token || token !== expected) {
-      return new Response("forbidden", { status: 403 });
-    }
-
-    const client = await pool.connect();
-    try {
-      const bundles = await client.query("select * from public.bundles order by 1 desc limit 3");
-      const samples = await client.query("select * from public.samples order by 1 desc limit 3");
-      return json({ bundles: bundles.rows, samples: samples.rows });
-    } finally {
-      client.release();
-    }
-  }
-
-  // Fetch demo
+  // Fetch demo page (moved from "/" to "/fetch-demo")
   if (pathname === "/fetch-demo") {
     return await handleFetchDemo();
   }
 
-  // ===== API =====
+  // API Routes
   if (pathname.startsWith("/api/")) {
     try {
       // Samples API
       if (pathname === "/api/samples") {
         if (req.method === "GET") {
           const orderBy = url.searchParams.get("order_by") || "-created_date";
-          const filters: Record<string, string> = {};
+          const filters: any = {};
           for (const [key, value] of url.searchParams.entries()) {
-            if (key !== "order_by" && key !== "limit") filters[key] = value;
+            if (key !== "order_by" && key !== "limit") {
+              filters[key] = value;
+            }
           }
           const limit = url.searchParams.get("limit")
-            ? parseInt(url.searchParams.get("limit")!, 10)
+            ? parseInt(url.searchParams.get("limit")!)
             : undefined;
 
           const data = Object.keys(filters).length > 0
             ? await Samples.filter(filters, orderBy, limit)
             : await Samples.list(orderBy);
 
-          return json(data);
+          return new Response(JSON.stringify(data), {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         } else if (req.method === "POST") {
           const data = await req.json();
           const newSample = await Samples.create(data);
-          return json(newSample, 201);
+          return new Response(JSON.stringify(newSample), {
+            status: 201,
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         }
       }
 
@@ -705,7 +728,12 @@ Deno.serve(async (req) => {
         if (req.method === "PATCH") {
           const data = await req.json();
           const updated = await Samples.update(id, data);
-          return json(updated);
+          return new Response(JSON.stringify(updated), {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         } else if (req.method === "DELETE") {
           await Samples.delete(id);
           return new Response(null, { status: 204 });
@@ -716,20 +744,33 @@ Deno.serve(async (req) => {
       if (pathname === "/api/bundles") {
         if (req.method === "GET") {
           const orderBy = url.searchParams.get("order_by") || "-created_date";
-          const filters: Record<string, string> = {};
+          const filters: any = {};
           for (const [key, value] of url.searchParams.entries()) {
-            if (key !== "order_by") filters[key] = value;
+            if (key !== "order_by") {
+              filters[key] = value;
+            }
           }
 
           const data = Object.keys(filters).length > 0
             ? await Bundles.filter(filters)
             : await Bundles.list(orderBy);
 
-          return json(data);
+          return new Response(JSON.stringify(data), {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         } else if (req.method === "POST") {
           const data = await req.json();
           const newBundle = await Bundles.create(data);
-          return json(newBundle, 201);
+          return new Response(JSON.stringify(newBundle), {
+            status: 201,
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         }
       }
 
@@ -739,7 +780,12 @@ Deno.serve(async (req) => {
         if (req.method === "PATCH") {
           const data = await req.json();
           const updated = await Bundles.update(id, data);
-          return json(updated);
+          return new Response(JSON.stringify(updated), {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         } else if (req.method === "DELETE") {
           await Bundles.delete(id);
           return new Response(null, { status: 204 });
@@ -751,35 +797,70 @@ Deno.serve(async (req) => {
         if (req.method === "GET") {
           const orderBy = url.searchParams.get("order_by") || "-created_date";
           const limit = url.searchParams.get("limit")
-            ? parseInt(url.searchParams.get("limit")!, 10)
+            ? parseInt(url.searchParams.get("limit")!)
             : undefined;
-          const filters: Record<string, string> = {};
+          const filters: any = {};
           for (const [key, value] of url.searchParams.entries()) {
-            if (key !== "order_by" && key !== "limit") filters[key] = value;
+            if (key !== "order_by" && key !== "limit") {
+              filters[key] = value;
+            }
           }
 
           const data = await InventoryTransactions.filter(filters, orderBy, limit);
-          return json(data);
+          return new Response(JSON.stringify(data), {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         } else if (req.method === "POST") {
           const data = await req.json();
           const newTransaction = await InventoryTransactions.create(data);
-          return json(newTransaction, 201);
+          return new Response(JSON.stringify(newTransaction), {
+            status: 201,
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          });
         }
       }
 
-      return json({ error: "API endpoint not found" }, 404);
+      // API route not found
+      return new Response(JSON.stringify({ error: "API endpoint not found" }), {
+        status: 404,
+        headers: {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        },
+      });
     } catch (error) {
       console.error("API error:", error);
-      const msg = error instanceof Error ? (error.stack || error.message) : String(error);
-      return json({ error: msg }, 500);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? (error.stack || error.message) : String(error),
+        }),
+        {
+          status: 500,
+          headers: {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+          },
+        },
+      );
     }
   }
 
-  // ===== SPA =====
+  // Check if it's a known SPA route or root
   const isSPARoute = SPA_ROUTES.some((route) =>
     pathname === route || pathname === route + "/"
   );
 
-  if (isSPARoute || pathname === "/") return renderSPAShell();
+  // Serve SPA for all page routes
+  if (isSPARoute || pathname === "/") {
+    return renderSPAShell();
+  }
+
+  // For any other routes, also serve the SPA (client-side routing will handle 404s)
   return renderSPAShell();
 });
