@@ -1,8 +1,19 @@
 // main.ts - Deno Deploy compatible server
 // Serves React SPA for inventory management + fetch demo
+// CHANGES:
+// 1) Frontend API client now THROWS on non-OK responses (so you see real errors instead of silent [])
+// 2) React Query pages render the error message when API fails
+// 3) API responses include cache-control: no-store while debugging
+// 4) Added /__peek endpoint (guarded by DEBUG_TOKEN) to bypass db.ts and prove DB rows come back
+// 5) Removed/updated any lingering queryObject usage (npm:pg uses client.query)
 
 import { Pool } from "npm:pg";
-import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
+import {
+  initializeDatabase,
+  Samples,
+  Bundles,
+  InventoryTransactions,
+} from "./db.ts";
 
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
@@ -15,7 +26,8 @@ await initializeDatabase().catch((err) => {
   console.log("Will continue without database - may fail on API calls");
 });
 
-const CHARACTER_URL = "https://spritehub-c3a33-default-rtdb.firebaseio.com/characters/dukeNukem.json";
+const CHARACTER_URL =
+  "https://spritehub-c3a33-default-rtdb.firebaseio.com/characters/dukeNukem.json";
 const GRAYLOG_ENDPOINT = "http://graylog-server.thirsty.store:12201/gelf";
 const MAX_GELF_MESSAGE_SIZE = 8000; // Max size for UDP GELF
 
@@ -33,6 +45,38 @@ const SPA_ROUTES = [
   "/checkout",
   "/readme",
 ];
+
+// Small helpers
+function json(
+  data: unknown,
+  opts: { status?: number; headers?: HeadersInit } = {},
+): Response {
+  const status = opts.status ?? 200;
+  const headers: HeadersInit = {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    ...(opts.headers ?? {}),
+  };
+  return new Response(JSON.stringify(data), { status, headers });
+}
+
+function redactedDbUrl() {
+  const raw = Deno.env.get("DATABASE_URL");
+  if (!raw) return null;
+
+  try {
+    const u = new URL(raw);
+    return {
+      host: u.hostname,
+      database: u.pathname.replace(/^\//, ""),
+      user: u.username || null,
+      hasPassword: Boolean(u.password),
+      // don't ever return the raw URL or password
+    };
+  } catch {
+    return { parseError: true };
+  }
+}
 
 async function fetchCharacter() {
   try {
@@ -52,7 +96,8 @@ async function logToGraylog(data: unknown) {
   try {
     let fullMessage = JSON.stringify(data);
     if (fullMessage.length > MAX_GELF_MESSAGE_SIZE) {
-      fullMessage = fullMessage.substring(0, MAX_GELF_MESSAGE_SIZE - 25) + "... [TRUNCATED]";
+      fullMessage = fullMessage.substring(0, MAX_GELF_MESSAGE_SIZE - 25) +
+        "... [TRUNCATED]";
     }
     const gelfMessage = {
       version: "1.1",
@@ -155,8 +200,8 @@ function renderSPAShell(): Response {
   <script type="module">
     import React from 'react';
     import { createRoot } from 'react-dom/client';
-    import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-    import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+    import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+    import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
     import * as LucideIcons from 'lucide-react';
 
     // Create React Query client
@@ -165,97 +210,102 @@ function renderSPAShell(): Response {
         queries: {
           staleTime: 1000 * 60 * 5,
           refetchOnWindowFocus: false,
+          retry: 1
         },
       },
     });
+
+    // ====== CHANGED: fail loudly on API errors (don't silently return []) ======
+    async function fetchJson(input, init) {
+      const res = await fetch(input, init);
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(\`\${res.status} \${res.statusText} - \${text}\`);
+      }
+      // handle empty 204, etc.
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) return null;
+      return res.json();
+    }
+
+    function apiUrl(path, params) {
+      const url = new URL(path, window.location.origin);
+      if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
+        });
+      }
+      return url;
+    }
 
     // Local API client - calls our own REST API
     const api = {
       entities: {
         Sample: {
           list: async (orderBy) => {
-            const url = new URL('/api/samples', window.location.origin);
-            if (orderBy) url.searchParams.set('order_by', orderBy);
-            const res = await fetch(url);
-            return res.ok ? res.json() : [];
+            const url = apiUrl('/api/samples', orderBy ? { order_by: orderBy } : undefined);
+            return fetchJson(url);
           },
           filter: async (filters, orderBy, limit) => {
-            const url = new URL('/api/samples', window.location.origin);
-            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
-            if (orderBy) url.searchParams.set('order_by', orderBy);
-            if (limit) url.searchParams.set('limit', limit);
-            const res = await fetch(url);
-            return res.ok ? res.json() : [];
+            const url = apiUrl('/api/samples', { ...(filters || {}), order_by: orderBy, limit });
+            return fetchJson(url);
           },
           create: async (data) => {
-            const res = await fetch('/api/samples', {
+            return fetchJson('/api/samples', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
-            return res.json();
           },
           update: async (id, data) => {
-            const res = await fetch(\`/api/samples/\${id}\`, {
+            return fetchJson(\`/api/samples/\${id}\`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
-            return res.json();
           },
           delete: async (id) => {
-            await fetch(\`/api/samples/\${id}\`, { method: 'DELETE' });
+            return fetchJson(\`/api/samples/\${id}\`, { method: 'DELETE' });
           }
         },
         Bundle: {
           list: async (orderBy) => {
-            const url = new URL('/api/bundles', window.location.origin);
-            if (orderBy) url.searchParams.set('order_by', orderBy);
-            const res = await fetch(url);
-            return res.ok ? res.json() : [];
+            const url = apiUrl('/api/bundles', orderBy ? { order_by: orderBy } : undefined);
+            return fetchJson(url);
           },
           filter: async (filters) => {
-            const url = new URL('/api/bundles', window.location.origin);
-            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
-            const res = await fetch(url);
-            return res.ok ? res.json() : [];
+            const url = apiUrl('/api/bundles', filters || undefined);
+            return fetchJson(url);
           },
           create: async (data) => {
-            const res = await fetch('/api/bundles', {
+            return fetchJson('/api/bundles', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
-            return res.json();
           },
           update: async (id, data) => {
-            const res = await fetch(\`/api/bundles/\${id}\`, {
+            return fetchJson(\`/api/bundles/\${id}\`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
-            return res.json();
           },
           delete: async (id) => {
-            await fetch(\`/api/bundles/\${id}\`, { method: 'DELETE' });
+            return fetchJson(\`/api/bundles/\${id}\`, { method: 'DELETE' });
           }
         },
         InventoryTransaction: {
           filter: async (filters, orderBy, limit) => {
-            const url = new URL('/api/transactions', window.location.origin);
-            Object.entries(filters).forEach(([key, value]) => url.searchParams.set(key, value));
-            if (orderBy) url.searchParams.set('order_by', orderBy);
-            if (limit) url.searchParams.set('limit', limit);
-            const res = await fetch(url);
-            return res.ok ? res.json() : [];
+            const url = apiUrl('/api/transactions', { ...(filters || {}), order_by: orderBy, limit });
+            return fetchJson(url);
           },
           create: async (data) => {
-            const res = await fetch('/api/transactions', {
+            return fetchJson('/api/transactions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
-            return res.json();
           }
         }
       }
@@ -320,6 +370,17 @@ function renderSPAShell(): Response {
       return React.createElement(Badge, { className: styles[status] || styles.available }, t(\`status.\${status}\`));
     };
 
+    const ErrorBox = ({ error }) => {
+      const msg = error?.message || String(error || '');
+      return React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+        React.createElement(Card, { className: 'border-red-200 bg-red-50' },
+          React.createElement(CardHeader, null,
+            React.createElement(CardTitle, { className: 'text-red-800 text-lg' }, 'API Error')),
+          React.createElement(CardContent, null,
+            React.createElement('pre', { className: 'text-xs whitespace-pre-wrap text-red-900' }, msg),
+            React.createElement('p', { className: 'text-xs text-red-700 mt-2' }, 'Open DevTools → Network to see which /api/* request failed.'))));
+    };
+
     // Layout Component
     const Layout = ({ children }) => {
       const { t } = useTranslation();
@@ -346,7 +407,7 @@ function renderSPAShell(): Response {
                   React.createElement(Link, { key: item.page, to: createPageUrl(item.page) },
                     React.createElement(Button, { variant: 'ghost', className: 'gap-2' },
                       React.createElement(item.icon, { className: 'w-4 h-4' }),
-                      t(\`nav.\${item.name}\`)))))))),
+                      t(\`nav.\${item.name}\`))))))))),
         React.createElement('main', null, children));
     };
 
@@ -354,12 +415,14 @@ function renderSPAShell(): Response {
     const SamplesPage = () => {
       const { t } = useTranslation();
       const [search, setSearch] = React.useState('');
-      const { Box, Plus, Search, Loader2, Filter } = LucideIcons;
+      const { Plus, Search, Loader2, Filter } = LucideIcons;
 
-      const { data: samples = [], isLoading } = useQuery({
+      const { data: samples = [], isLoading, error } = useQuery({
         queryKey: ['samples'],
         queryFn: () => api.entities.Sample.list('-created_date')
       });
+
+      if (error) return React.createElement(ErrorBox, { error });
 
       const filteredSamples = samples.filter(s =>
         !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.brand?.toLowerCase().includes(search.toLowerCase())
@@ -374,7 +437,7 @@ function renderSPAShell(): Response {
                 React.createElement('p', { className: 'text-sm text-slate-500' }, \`\${filteredSamples.length} samples\`)),
               React.createElement(Link, { to: '/samplecreate' },
                 React.createElement(Button, null,
-                  React.createElement(Plus, { className: 'w-4 h-4 mr-2' }), t('sample.createNew')))))),
+                  React.createElement(Plus, { className: 'w-4 h-4 mr-2' }), t('sample.createNew'))))))),
         React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
           React.createElement('div', { className: 'bg-white rounded-xl shadow-sm border p-4 mb-6' },
             React.createElement('div', { className: 'relative' },
@@ -405,10 +468,12 @@ function renderSPAShell(): Response {
       const { Package, Plus, Search, Loader2 } = LucideIcons;
       const [search, setSearch] = React.useState('');
 
-      const { data: bundles = [], isLoading } = useQuery({
+      const { data: bundles = [], isLoading, error } = useQuery({
         queryKey: ['bundles'],
         queryFn: () => api.entities.Bundle.list('-created_date')
       });
+
+      if (error) return React.createElement(ErrorBox, { error });
 
       const filteredBundles = bundles.filter(b => !search || b.name?.toLowerCase().includes(search.toLowerCase()));
 
@@ -445,19 +510,25 @@ function renderSPAShell(): Response {
       const { QrCode } = LucideIcons;
       const [code, setCode] = React.useState('');
       const [result, setResult] = React.useState(null);
+      const [error, setError] = React.useState(null);
 
       const handleScan = async () => {
+        setError(null);
         if (!code.trim()) return;
-        const samples = await api.entities.Sample.filter({ qr_code: code });
-        if (samples.length > 0) {
-          setResult({ type: 'sample', data: samples[0] });
-        } else {
-          const bundles = await api.entities.Bundle.filter({ qr_code: code });
-          if (bundles.length > 0) {
-            setResult({ type: 'bundle', data: bundles[0] });
+        try {
+          const samples = await api.entities.Sample.filter({ qr_code: code });
+          if (samples?.length > 0) {
+            setResult({ type: 'sample', data: samples[0] });
           } else {
-            setResult({ type: 'not_found' });
+            const bundles = await api.entities.Bundle.filter({ qr_code: code });
+            if (bundles?.length > 0) {
+              setResult({ type: 'bundle', data: bundles[0] });
+            } else {
+              setResult({ type: 'not_found' });
+            }
           }
+        } catch (e) {
+          setError(e);
         }
       };
 
@@ -469,6 +540,7 @@ function renderSPAShell(): Response {
             React.createElement('h1', { className: 'text-3xl font-bold' }, t('checkout.title')),
             React.createElement('p', { className: 'text-slate-500 mt-2' }, t('checkout.scanPrompt')))),
         React.createElement('div', { className: 'max-w-4xl mx-auto px-4 py-8' },
+          error && React.createElement(ErrorBox, { error }),
           React.createElement(Card, { className: 'p-6 mb-6' },
             React.createElement('div', { className: 'flex gap-4' },
               React.createElement(Input, { value: code, onChange: e => setCode(e.target.value), onKeyDown: e => e.key === 'Enter' && handleScan(), placeholder: 'Scan or enter code...', className: 'flex-1 text-lg h-14' }),
@@ -521,34 +593,7 @@ function renderSPAShell(): Response {
   });
 }
 
-function redactedDbUrl() {
-  const raw = Deno.env.get("DATABASE_URL");
-  if (!raw) return null;
-
-  try {
-    const u = new URL(raw);
-    return {
-      host: u.hostname,
-      database: u.pathname.replace(/^\//, ""),
-      user: u.username || null,
-      hasPassword: Boolean(u.password),
-      // don't ever return the raw URL or password
-    };
-  } catch {
-    return { parseError: true };
-  }
-}
-
-async function countTable(client: any, table: string) {
-  // table name is controlled by us here; still keep it strict
-  const allowed = new Set(["bundles", "inventory_transactions", "samples"]);
-  if (!allowed.has(table)) throw new Error("Table not allowed");
-
-  const q = `select count(*)::int as count from public.${table}`;
-  const r = await client.queryObject<{ count: number }>(q);
-  return r.rows[0]?.count ?? 0;
-}
-
+// Debug tables
 const TABLES = ["bundles", "inventory_transactions", "samples"] as const;
 
 // Main request handler
@@ -556,8 +601,10 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
+  // ===== Debug helpers (guarded where sensitive) =====
+
   // DB COUNTS
-  if (url.pathname === "/__counts") {
+  if (pathname === "/__counts") {
     const token = url.searchParams.get("token");
     const expected = Deno.env.get("DEBUG_TOKEN");
 
@@ -569,31 +616,48 @@ Deno.serve(async (req) => {
       const client = await pool.connect();
       try {
         const counts: Record<string, number> = {};
-
         for (const t of TABLES) {
-          // table names are hardcoded above, so this is safe
-          const r = await client.query(`select count(*)::bigint as count from public.${t}`);
-          // pg returns bigint as string
+          const r = await client.query(
+            `select count(*)::bigint as count from public.${t}`,
+          );
           counts[t] = Number.parseInt(r.rows[0].count, 10);
         }
-
-        return Response.json(
-          { counts },
-          { headers: { "cache-control": "no-store" } },
-        );
+        return json({ counts });
       } finally {
         client.release();
       }
     } catch (e) {
-      return Response.json(
+      return json(
         { error: e instanceof Error ? e.message : String(e) },
-        { status: 500, headers: { "cache-control": "no-store" } },
+        { status: 500 },
       );
     }
   }
 
+  // DB PEEK (bypasses db.ts; proves rows are readable)
+  if (pathname === "/__peek") {
+    const token = url.searchParams.get("token");
+    const expected = Deno.env.get("DEBUG_TOKEN");
+    if (!expected || !token || token !== expected) {
+      return new Response("forbidden", { status: 403 });
+    }
+
+    const client = await pool.connect();
+    try {
+      const bundles = await client.query(
+        "select * from public.bundles order by 1 desc limit 3",
+      );
+      const samples = await client.query(
+        "select * from public.samples order by 1 desc limit 3",
+      );
+      return json({ bundles: bundles.rows, samples: samples.rows });
+    } finally {
+      client.release();
+    }
+  }
+
   // DB DEBUG
-  if (url.pathname === "/__dbdebug") {
+  if (pathname === "/__dbdebug") {
     const client = await pool.connect();
     try {
       const meta = await client.query(`
@@ -613,27 +677,21 @@ Deno.serve(async (req) => {
         limit 25
       `);
 
-      return Response.json(
-        { meta: meta.rows[0], tables: tables.rows },
-        { headers: { "cache-control": "no-store" } },
-      );
+      return json({ meta: meta.rows[0], tables: tables.rows });
     } finally {
       client.release();
     }
   }
 
   // DEBUG
-  if (url.pathname === "/__debug") {
-    return Response.json(
-      {
-        host: req.headers.get("host"),
-        app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
-        deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
-        buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
-        db: redactedDbUrl(),
-      },
-      { headers: { "cache-control": "no-store" } },
-    );
+  if (pathname === "/__debug") {
+    return json({
+      host: req.headers.get("host"),
+      app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
+      deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
+      buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
+      db: redactedDbUrl(),
+    });
   }
 
   // Fetch demo page (moved from "/" to "/fetch-demo")
@@ -641,35 +699,32 @@ Deno.serve(async (req) => {
     return await handleFetchDemo();
   }
 
-  // API Routes
+  // ===== API Routes =====
   if (pathname.startsWith("/api/")) {
     try {
       // Samples API
       if (pathname === "/api/samples") {
         if (req.method === "GET") {
           const orderBy = url.searchParams.get("order_by") || "-created_date";
-          const filters: any = {};
+          const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by" && key !== "limit") {
               filters[key] = value;
             }
           }
-          const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!) : undefined;
+          const limit = url.searchParams.get("limit")
+            ? parseInt(url.searchParams.get("limit")!, 10)
+            : undefined;
 
           const data = Object.keys(filters).length > 0
             ? await Samples.filter(filters, orderBy, limit)
             : await Samples.list(orderBy);
 
-          return new Response(JSON.stringify(data), {
-            headers: { "content-type": "application/json" },
-          });
+          return json(data);
         } else if (req.method === "POST") {
           const data = await req.json();
           const newSample = await Samples.create(data);
-          return new Response(JSON.stringify(newSample), {
-            status: 201,
-            headers: { "content-type": "application/json" },
-          });
+          return json(newSample, { status: 201 });
         }
       }
 
@@ -679,9 +734,7 @@ Deno.serve(async (req) => {
         if (req.method === "PATCH") {
           const data = await req.json();
           const updated = await Samples.update(id, data);
-          return new Response(JSON.stringify(updated), {
-            headers: { "content-type": "application/json" },
-          });
+          return json(updated);
         } else if (req.method === "DELETE") {
           await Samples.delete(id);
           return new Response(null, { status: 204 });
@@ -692,7 +745,7 @@ Deno.serve(async (req) => {
       if (pathname === "/api/bundles") {
         if (req.method === "GET") {
           const orderBy = url.searchParams.get("order_by") || "-created_date";
-          const filters: any = {};
+          const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by") {
               filters[key] = value;
@@ -703,16 +756,11 @@ Deno.serve(async (req) => {
             ? await Bundles.filter(filters)
             : await Bundles.list(orderBy);
 
-          return new Response(JSON.stringify(data), {
-            headers: { "content-type": "application/json" },
-          });
+          return json(data);
         } else if (req.method === "POST") {
           const data = await req.json();
           const newBundle = await Bundles.create(data);
-          return new Response(JSON.stringify(newBundle), {
-            status: 201,
-            headers: { "content-type": "application/json" },
-          });
+          return json(newBundle, { status: 201 });
         }
       }
 
@@ -722,9 +770,7 @@ Deno.serve(async (req) => {
         if (req.method === "PATCH") {
           const data = await req.json();
           const updated = await Bundles.update(id, data);
-          return new Response(JSON.stringify(updated), {
-            headers: { "content-type": "application/json" },
-          });
+          return json(updated);
         } else if (req.method === "DELETE") {
           await Bundles.delete(id);
           return new Response(null, { status: 204 });
@@ -735,8 +781,10 @@ Deno.serve(async (req) => {
       if (pathname === "/api/transactions") {
         if (req.method === "GET") {
           const orderBy = url.searchParams.get("order_by") || "-created_date";
-          const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!) : undefined;
-          const filters: any = {};
+          const limit = url.searchParams.get("limit")
+            ? parseInt(url.searchParams.get("limit")!, 10)
+            : undefined;
+          const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by" && key !== "limit") {
               filters[key] = value;
@@ -744,37 +792,29 @@ Deno.serve(async (req) => {
           }
 
           const data = await InventoryTransactions.filter(filters, orderBy, limit);
-          return new Response(JSON.stringify(data), {
-            headers: { "content-type": "application/json" },
-          });
+          return json(data);
         } else if (req.method === "POST") {
           const data = await req.json();
           const newTransaction = await InventoryTransactions.create(data);
-          return new Response(JSON.stringify(newTransaction), {
-            status: 201,
-            headers: { "content-type": "application/json" },
-          });
+          return json(newTransaction, { status: 201 });
         }
       }
 
       // API route not found
-      return new Response(JSON.stringify({ error: "API endpoint not found" }), {
-        status: 404,
-        headers: { "content-type": "application/json" },
-      });
+      return json({ error: "API endpoint not found" }, { status: 404 });
     } catch (error) {
       console.error("API error:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      });
+      // Keep it explicit so the frontend shows the real error
+      const message = error instanceof Error ? (error.stack || error.message) : String(error);
+      return json({ error: message }, { status: 500 });
     }
   }
 
-  // Check if it's a known SPA route or root
-  const isSPARoute = SPA_ROUTES.some((route) => pathname === route || pathname === route + "/");
+  // ===== SPA routing =====
+  const isSPARoute = SPA_ROUTES.some((route) =>
+    pathname === route || pathname === route + "/"
+  );
 
-  // Serve SPA for all page routes
   if (isSPARoute || pathname === "/") {
     return renderSPAShell();
   }
