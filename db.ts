@@ -1,5 +1,5 @@
 // db.ts - npm:pg version (Deno Deploy friendly)
-// Fixes: created_date missing -> safe fallback to id, and removes deno.land/x/postgres usage
+// Fixes: created_date missing -> safe fallback, validates order_by + filters.
 
 import { Pool } from "npm:pg";
 
@@ -33,17 +33,14 @@ async function getColumns(table: string): Promise<Set<string>> {
 }
 
 function safeIdent(col: string): string {
-  // Quote an identifier safely (we only call this after validating against known columns)
   return `"${col.replace(/"/g, '""')}"`;
 }
 
 function pickFallbackColumn(cols: Set<string>): string {
-  // Prefer common created columns if present, otherwise id
   if (cols.has("created_at")) return "created_at";
   if (cols.has("created_on")) return "created_on";
   if (cols.has("created")) return "created";
   if (cols.has("id")) return "id";
-  // last resort: first column
   return Array.from(cols)[0] || "id";
 }
 
@@ -57,31 +54,24 @@ function parseOrderBy(orderBy: string | null | undefined, cols: Set<string>): st
   const desc = raw.startsWith("-");
   const requested = (desc ? raw.slice(1) : raw).trim();
 
-  // common legacy alias: created_date -> created_at (if present)
+  // legacy alias: created_date -> created_at (if present)
   let col = requested;
   if (col === "created_date" && !cols.has("created_date") && cols.has("created_at")) {
     col = "created_at";
   }
 
-  if (!cols.has(col)) {
-    // fallback if bad column requested
-    col = pickFallbackColumn(cols);
-  }
-
+  if (!cols.has(col)) col = pickFallbackColumn(cols);
   return `${safeIdent(col)} ${desc ? "DESC" : "ASC"}`;
 }
 
-function buildWhere(
-  filters: Record<string, unknown> | null | undefined,
-  cols: Set<string>,
-) {
+function buildWhere(filters: Record<string, unknown> | null | undefined, cols: Set<string>) {
   const values: unknown[] = [];
   const parts: string[] = [];
 
   if (filters) {
     for (const [k, v] of Object.entries(filters)) {
       if (v === undefined || v === null) continue;
-      if (!cols.has(k)) continue; // ignore unknown filter keys (prevents SQLi)
+      if (!cols.has(k)) continue; // ignore unknown keys (prevents SQLi)
       values.push(v);
       parts.push(`${safeIdent(k)} = $${values.length}`);
     }
@@ -108,17 +98,12 @@ async function run<T = any>(fn: (client: any) => Promise<T>): Promise<T> {
 }
 
 export async function initializeDatabase() {
-  // No-op initializer, but warm the column cache so bad order_by gets caught early
   await Promise.all([
     getColumns("samples"),
     getColumns("bundles"),
     getColumns("inventory_transactions"),
-  ]).catch((e) => {
-    console.error("initializeDatabase column warmup failed:", e);
-  });
+  ]).catch((e) => console.error("initializeDatabase warmup failed:", e));
 }
-
-// ---------- Generic helpers for CRUD ----------
 
 async function listTable(table: string, orderBy?: string) {
   const cols = await getColumns(table);
@@ -194,8 +179,6 @@ async function deleteRow(table: string, id: string) {
     await client.query(`delete from public.${table} where ${safeIdent("id")} = $1`, [id]);
   });
 }
-
-// ---------- Exports matching your main.ts calls ----------
 
 export const Samples = {
   list: (orderBy?: string) => listTable("samples", orderBy),
