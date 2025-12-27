@@ -215,10 +215,10 @@ function makeUrl(path, params) {
 
 const api = {
   samplesList: function () {
-    return fetchJson(makeUrl('/api/samples', { order_by: '-created_date' }));
+    return fetchJson(makeUrl('/api/samples', { order_by: '-id' }));
   },
   bundlesList: function () {
-    return fetchJson(makeUrl('/api/bundles', { order_by: '-created_date' }));
+    return fetchJson(makeUrl('/api/bundles', { order_by: '-id' }));
   }
 };
 
@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
       // Samples
       if (pathname === "/api/samples") {
         if (req.method === "GET") {
-          const orderBy = url.searchParams.get("order_by") || "-created_date";
+          const orderBy = url.searchParams.get("order_by") || "-id";
           const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by" && key !== "limit") filters[key] = value;
@@ -432,7 +432,7 @@ Deno.serve(async (req) => {
       // Bundles
       if (pathname === "/api/bundles") {
         if (req.method === "GET") {
-          const orderBy = url.searchParams.get("order_by") || "-created_date";
+          const orderBy = url.searchParams.get("order_by") || "-id";
           const filters: Record<string, string> = {};
           for (const [key, value] of url.searchParams.entries()) {
             if (key !== "order_by") filters[key] = value;
@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
       // Transactions
       if (pathname === "/api/transactions") {
         if (req.method === "GET") {
-          const orderBy = url.searchParams.get("order_by") || "-created_date";
+          const orderBy = url.searchParams.get("order_by") || "-id";
           const limit = url.searchParams.get("limit")
             ? parseInt(url.searchParams.get("limit")!, 10)
             : undefined;
