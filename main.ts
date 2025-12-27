@@ -549,6 +549,8 @@ async function countTable(client: any, table: string) {
   return r.rows[0]?.count ?? 0;
 }
 
+const TABLES = ["bundles", "inventory_transactions", "samples"] as const;
+
 // Main request handler
 Deno.serve(async (req) => {
   const url = new URL(req.url);
@@ -556,33 +558,37 @@ Deno.serve(async (req) => {
 
   // DB COUNTS
   if (url.pathname === "/__counts") {
-    const client = await pool.connect();
+    const token = url.searchParams.get("token");
+    const expected = Deno.env.get("DEBUG_TOKEN");
+
+    if (!expected || !token || token !== expected) {
+      return new Response("forbidden", { status: 403 });
+    }
+
     try {
-      const meta = await client.queryObject<{
-        db: string;
-        user: string;
-        schema: string;
-        search_path: string;
-      }>(`
-        select
-          current_database() as db,
-          current_user as user,
-          current_schema() as schema,
-          current_setting('search_path') as search_path
-      `);
+      const client = await pool.connect();
+      try {
+        const counts: Record<string, number> = {};
 
-      const counts = {
-        bundles: await countTable(client, "bundles"),
-        inventory_transactions: await countTable(client, "inventory_transactions"),
-        samples: await countTable(client, "samples"),
-      };
+        for (const t of TABLES) {
+          // table names are hardcoded above, so this is safe
+          const r = await client.query(`select count(*)::bigint as count from public.${t}`);
+          // pg returns bigint as string
+          counts[t] = Number.parseInt(r.rows[0].count, 10);
+        }
 
+        return Response.json(
+          { counts },
+          { headers: { "cache-control": "no-store" } },
+        );
+      } finally {
+        client.release();
+      }
+    } catch (e) {
       return Response.json(
-        { meta: meta.rows[0], counts },
-        { headers: { "cache-control": "no-store" } },
+        { error: e instanceof Error ? e.message : String(e) },
+        { status: 500, headers: { "cache-control": "no-store" } },
       );
-    } finally {
-      client.release();
     }
   }
 
