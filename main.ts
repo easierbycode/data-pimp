@@ -539,10 +539,52 @@ function redactedDbUrl() {
   }
 }
 
+async function countTable(client: any, table: string) {
+  // table name is controlled by us here; still keep it strict
+  const allowed = new Set(["bundles", "inventory_transactions", "samples"]);
+  if (!allowed.has(table)) throw new Error("Table not allowed");
+
+  const q = `select count(*)::int as count from public.${table}`;
+  const r = await client.queryObject<{ count: number }>(q);
+  return r.rows[0]?.count ?? 0;
+}
+
 // Main request handler
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
+
+  // DB COUNTS
+  if (url.pathname === "/__counts") {
+    const client = await pool.connect();
+    try {
+      const meta = await client.queryObject<{
+        db: string;
+        user: string;
+        schema: string;
+        search_path: string;
+      }>(`
+        select
+          current_database() as db,
+          current_user as user,
+          current_schema() as schema,
+          current_setting('search_path') as search_path
+      `);
+
+      const counts = {
+        bundles: await countTable(client, "bundles"),
+        inventory_transactions: await countTable(client, "inventory_transactions"),
+        samples: await countTable(client, "samples"),
+      };
+
+      return Response.json(
+        { meta: meta.rows[0], counts },
+        { headers: { "cache-control": "no-store" } },
+      );
+    } finally {
+      client.release();
+    }
+  }
 
   // DB DEBUG
   if (url.pathname === "/__dbdebug") {
