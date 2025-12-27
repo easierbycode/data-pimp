@@ -1,5 +1,4 @@
 #!/usr/bin/env -S deno run -A
-
 /**
  * Seed script to load mock data into production database
  * Usage: deno run -A scripts/seed-production.ts
@@ -24,7 +23,7 @@ const brands = [
   "Velvet Touch",
   "Crystal Clear",
   "Bloom Botanicals",
-  "Silk & Honey"
+  "Silk & Honey",
 ];
 
 // Product categories and types
@@ -32,7 +31,7 @@ const productTypes = [
   { category: "Skincare", items: ["Serum", "Moisturizer", "Cleanser", "Toner", "Eye Cream", "Face Mask", "Exfoliator", "Essence", "Sunscreen", "Night Cream"] },
   { category: "Makeup", items: ["Foundation", "Concealer", "Blush", "Bronzer", "Highlighter", "Lipstick", "Lip Gloss", "Mascara", "Eyeliner", "Eyeshadow Palette"] },
   { category: "Haircare", items: ["Shampoo", "Conditioner", "Hair Mask", "Hair Oil", "Leave-in Treatment", "Heat Protectant", "Dry Shampoo", "Styling Cream", "Hair Serum", "Scalp Treatment"] },
-  { category: "Body", items: ["Body Lotion", "Body Oil", "Body Scrub", "Hand Cream", "Shower Gel", "Body Butter", "Deodorant", "Body Mist", "Foot Cream", "Massage Oil"] }
+  { category: "Body", items: ["Body Lotion", "Body Oil", "Body Scrub", "Hand Cream", "Shower Gel", "Body Butter", "Deodorant", "Body Mist", "Foot Cream", "Massage Oil"] },
 ];
 
 // Locations
@@ -43,7 +42,7 @@ const locations = [
   "Storage Room 1", "Storage Room 2",
   "Display Case 1", "Display Case 2",
   "Checkout Counter", "Back Office",
-  "Window Display"
+  "Window Display",
 ];
 
 // Bundle definitions
@@ -62,29 +61,37 @@ const bundleDefinitions = [
   { name: "Men's Grooming Set", code: "BND-MENS-012", location: "Shelf A-3" },
   { name: "Teen Skincare Basics", code: "BND-TEEN-013", location: "Shelf B-3" },
   { name: "Luxury Collection", code: "BND-LUXURY-014", location: "Display Case 1" },
-  { name: "Budget Beauty Bundle", code: "BND-BUDGET-015", location: "Checkout Counter" }
+  { name: "Budget Beauty Bundle", code: "BND-BUDGET-015", location: "Checkout Counter" },
 ];
 
+function picsumImage(seed: string) {
+  // Always returns an image; deterministic per product
+  const safe = encodeURIComponent(seed);
+  return `https://picsum.photos/seed/${safe}/400/400`;
+}
+
 console.log("\nCreating bundles...");
-const createdBundles = [];
+const createdBundles: any[] = [];
+
 for (const bundle of bundleDefinitions) {
   try {
     const created = await Bundles.create({
+      // write both variants; db layer will keep whichever columns exist
       name: bundle.name,
+      qr_code: bundle.code,
       qrCode: bundle.code,
       location: bundle.location,
-      notes: `Demo bundle: ${bundle.name}`
+      notes: `Demo bundle: ${bundle.name}`,
     });
     createdBundles.push(created);
     console.log(`✓ Created bundle: ${bundle.name}`);
   } catch (error) {
-    console.error(`✗ Failed to create bundle ${bundle.name}:`, error.message);
+    console.error(`✗ Failed to create bundle ${bundle.name}:`, error?.message ?? error);
   }
 }
 
 console.log(`\nCreated ${createdBundles.length} bundles`);
 
-// Generate 100+ sample products
 console.log("\nCreating sample products...");
 const statuses = ["available", "available", "available", "available", "checked_out", "reserved", "discontinued"];
 let sampleCount = 0;
@@ -97,36 +104,51 @@ for (let i = 0; i < 120; i++) {
   const status = statuses[Math.floor(Math.random() * statuses.length)];
   const currentPrice = 15 + Math.random() * 85; // $15-100
   const bestPrice = currentPrice * (0.7 + Math.random() * 0.2); // 70-90% of current
-  const fireSale = Math.random() < 0.15; // 15% chance
+  const fireSale = Math.random() < 0.15;
 
-  // 30% chance to be in a bundle
   const bundleId = Math.random() < 0.3 && createdBundles.length > 0
     ? createdBundles[Math.floor(Math.random() * createdBundles.length)].id
     : null;
 
-  const qrCode = `PRD-${category.category.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(4, '0')}`;
+  const qrCode = `PRD-${category.category.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(4, "0")}`;
+  const imageUrl = picsumImage(qrCode);
 
   try {
     await Samples.create({
+      // Common fields
       name: `${brand} ${item}`,
       brand,
-      qrCode,
       location,
       status,
-      currentPrice: parseFloat(currentPrice.toFixed(2)),
-      bestPrice: parseFloat(bestPrice.toFixed(2)),
-      bestPriceSource: "https://example.com/deals",
-      fireSale,
-      bundleId,
-      pictureUrl: `https://images.unsplash.com/photo-${1500000000000 + i}?w=400&h=400&fit=crop`,
       notes: fireSale ? "🔥 Fire sale item! Limited time offer." : null,
+
+      // Both key styles (snake + camel) so it works with either schema
+      qr_code: qrCode,
+      qrCode,
+
+      current_price: Number(currentPrice.toFixed(2)),
+      currentPrice: Number(currentPrice.toFixed(2)),
+
+      best_price: Number(bestPrice.toFixed(2)),
+      bestPrice: Number(bestPrice.toFixed(2)),
+
+      best_price_source: "https://example.com/deals",
+      bestPriceSource: "https://example.com/deals",
+
+      fire_sale: fireSale,
+      fireSale,
+
+      bundle_id: bundleId,
+      bundleId,
+
+      picture_url: imageUrl,
+      pictureUrl: imageUrl,
     });
+
     sampleCount++;
-    if (sampleCount % 20 === 0) {
-      console.log(`Created ${sampleCount} samples...`);
-    }
+    if (sampleCount % 20 === 0) console.log(`Created ${sampleCount} samples...`);
   } catch (error) {
-    console.error(`✗ Failed to create sample ${qrCode}:`, error.message);
+    console.error(`✗ Failed to create sample ${qrCode}:`, error?.message ?? error);
   }
 }
 
