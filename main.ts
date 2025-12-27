@@ -520,6 +520,16 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
+  // DEBUG
+  if (url.pathname === "/__debug") {
+    return Response.json({
+      host: req.headers.get("host"),
+      app: Deno.env.get("DENO_DEPLOY_APP_SLUG"),
+      deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID"),
+      buildId: Deno.env.get("DENO_DEPLOY_BUILD_ID"),
+    });
+  }
+
   // Fetch demo page (moved from "/" to "/fetch-demo")
   if (pathname === "/fetch-demo") {
     return await handleFetchDemo();
