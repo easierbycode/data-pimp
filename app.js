@@ -1510,6 +1510,57 @@ const SampleDetails = () => {
   );
 };
 
+// Sample Create Page
+const SampleCreate = () => {
+  const { t } = useTranslation();
+  const { ArrowLeft } = LucideIcons;
+
+  const { data: bundles = [] } = useQuery({
+    queryKey: ["bundles"],
+    queryFn: () => api.entities.Bundle.list(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => api.entities.Sample.create(data),
+    onSuccess: (newSample) => {
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+      window.location.href = createPageUrl(`SampleDetails?id=${newSample.id}`);
+    },
+  });
+
+  return React.createElement(
+    "div",
+    { className: "min-h-screen bg-slate-50" },
+    React.createElement(
+      "div",
+      { className: "bg-white border-b border-slate-200" },
+      React.createElement(
+        "div",
+        { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+        React.createElement(
+          Link,
+          {
+            to: createPageUrl("Samples"),
+            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+          },
+          React.createElement(ArrowLeft, { className: "w-4 h-4" }),
+          React.createElement("span", null, t("sample.titlePlural")),
+        ),
+        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("sample.createNew")),
+      ),
+    ),
+    React.createElement(
+      "div",
+      { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+      React.createElement(SampleForm, {
+        bundles,
+        onSave: (data) => createMutation.mutate(data),
+        onCancel: () => (window.location.href = createPageUrl("Samples")),
+      }),
+    ),
+  );
+};
+
 // Sample Edit Page
 const SampleEdit = () => {
   const { t } = useTranslation();
@@ -1630,7 +1681,7 @@ const App = () =>
           React.createElement(Route, { path: "/", element: React.createElement(SamplesPage) }),
           React.createElement(Route, { path: "/samples", element: React.createElement(SamplesPage) }),
           React.createElement(Route, { path: "/sampledetails", element: React.createElement(SampleDetails) }),
-          React.createElement(Route, { path: "/samplecreate", element: React.createElement(PlaceholderPage, { title: "Create Sample" }) }),
+          React.createElement(Route, { path: "/samplecreate", element: React.createElement(SampleCreate) }),
           React.createElement(Route, { path: "/sampleedit", element: React.createElement(SampleEdit) }),
           React.createElement(Route, { path: "/bundles", element: React.createElement(BundlesPage) }),
           React.createElement(Route, { path: "/bundledetails", element: React.createElement(PlaceholderPage, { title: "Bundle Details" }) }),
