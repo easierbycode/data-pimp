@@ -9,63 +9,107 @@
 import { Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles } from "../db.ts";
 
-// ---- Ensure samples.id auto-increments (handles int4 OR accidental text ids) ----
-async function ensureSamplesIdAutoIncrement() {
+// ---- Ensure {samples,bundles,inventory_transactions}.id auto-increments + PK ----
+async function ensureIdAutoIncrement(table: string) {
   const connectionString = Deno.env.get("DATABASE_URL");
   if (!connectionString) throw new Error("DATABASE_URL is not set");
 
   const pool = new Pool({ connectionString, max: 1 });
   const client = await pool.connect();
 
-  try {
-    // 1) Ensure sequence exists
-    await client.query(`create sequence if not exists public.samples_id_seq;`);
+  const reg = `public.${table}`;
+  const seq = `public.${table}_id_seq`;
 
-    // 2) Set sequence to max existing id, safely.
-    //    If table is empty => setval(..., 1, false) so nextval() returns 1.
+  try {
+    // Table exists?
+    const exists = await client.query(`select to_regclass($1) as r`, [reg]);
+    if (!exists.rows?.[0]?.r) {
+      console.warn(`Skipping ${reg}: table not found`);
+      return;
+    }
+
+    // Column type for id
+    const col = await client.query(
+      `
+      select data_type, udt_name
+      from information_schema.columns
+      where table_schema='public' and table_name=$1 and column_name='id'
+      limit 1
+      `,
+      [table],
+    );
+
+    if (!col.rows?.length) {
+      console.warn(`Skipping ${reg}: no id column`);
+      return;
+    }
+
+    const dataType = String(col.rows[0].data_type || "").toLowerCase();
+    const udtName = String(col.rows[0].udt_name || "").toLowerCase();
+
+    const isIntLike =
+      dataType.includes("integer") ||
+      dataType.includes("bigint") ||
+      dataType.includes("smallint") ||
+      udtName === "int2" ||
+      udtName === "int4" ||
+      udtName === "int8";
+
+    const isTextLike = dataType.includes("text") || dataType.includes("character");
+
+    if (!isIntLike && !isTextLike) {
+      console.warn(
+        `Skipping ${reg}: id type not supported for auto-increment (data_type=${dataType}, udt_name=${udtName})`,
+      );
+      return;
+    }
+
+    // 1) Ensure sequence exists
+    await client.query(`create sequence if not exists ${seq};`);
+
+    // 2) Set sequence to max numeric-looking id, safely.
+    //    If empty => set to 1 with is_called=false so nextval() returns 1.
     await client.query(`
       with m as (
         select max(case
           when id::text ~ '^[0-9]+$' then (id::text)::bigint
           else null
         end) as max_id
-        from public.samples
+        from ${reg}
       )
       select setval(
-        'public.samples_id_seq'::regclass,
+        '${seq}'::regclass,
         greatest(1, coalesce(max_id, 1)),
         coalesce(max_id, 0) >= 1
       )
       from m;
     `);
 
-    // 3) Make sequence owned by the column (nice cleanup; not required)
-    await client.query(`
-      alter sequence public.samples_id_seq
-      owned by public.samples.id;
-    `);
+    // 3) Make sequence owned by the column
+    await client.query(`alter sequence ${seq} owned by ${reg}.id;`);
 
-    // 4) Backfill any null ids (if table ever had nulls)
+    // 4) Backfill any null ids
+    const nextExpr = isTextLike ? `nextval('${seq}')::text` : `nextval('${seq}')`;
     await client.query(`
-      update public.samples
-      set id = nextval('public.samples_id_seq')
+      update ${reg}
+      set id = ${nextExpr}
       where id is null;
     `);
 
     // 5) Set default so inserts that omit id succeed
+    const defaultExpr = isTextLike ? `nextval('${seq}')::text` : `nextval('${seq}')`;
     await client.query(`
-      alter table public.samples
-      alter column id set default nextval('public.samples_id_seq');
+      alter table ${reg}
+      alter column id set default ${defaultExpr};
     `);
 
-    // 6) Enforce NOT NULL
+    // 6) Enforce NOT NULL (now that we backfilled)
     await client.query(`
-      alter table public.samples
+      alter table ${reg}
       alter column id set not null;
     `);
 
-    // 7) Ensure primary key (if possible)
-    //    If duplicates exist, this will fail; we warn and continue so seed can still run.
+    // 7) Ensure a primary key exists (don’t care about the constraint name)
     try {
       await client.query(`
         do $$
@@ -73,19 +117,26 @@ async function ensureSamplesIdAutoIncrement() {
           if not exists (
             select 1
             from pg_constraint
-            where conname = 'samples_pkey'
-              and conrelid = 'public.samples'::regclass
+            where contype = 'p'
+              and conrelid = '${reg}'::regclass
           ) then
-            alter table public.samples
-            add constraint samples_pkey primary key (id);
+            alter table ${reg}
+            add constraint ${table}_pkey primary key (id);
           end if;
         end $$;
       `);
     } catch (e) {
       console.warn(
-        "Note: could not add samples_pkey (duplicates or incompatible type?). Continuing.",
+        `Note: could not add primary key on ${reg} (duplicates or incompatible type?). Continuing.`,
         e?.message ?? e,
       );
+    }
+
+    // 8) Sanity: verify no null ids remain
+    const check = await client.query(`select count(*)::int as c from ${reg} where id is null;`);
+    const nulls = Number(check.rows?.[0]?.c ?? 0);
+    if (nulls > 0) {
+      throw new Error(`${reg}.id still has ${nulls} null values after fix`);
     }
   } finally {
     client.release();
@@ -97,9 +148,11 @@ async function ensureSamplesIdAutoIncrement() {
 console.log("Initializing database...");
 await initializeDatabase();
 
-// Make sure samples.id is fixed BEFORE inserting
-console.log("Ensuring samples.id is auto-incrementing...");
-await ensureSamplesIdAutoIncrement();
+// Fix ids BEFORE inserting anything
+console.log("Ensuring samples.id / bundles.id / inventory_transactions.id are auto-incrementing...");
+await ensureIdAutoIncrement("samples");
+await ensureIdAutoIncrement("bundles");
+await ensureIdAutoIncrement("inventory_transactions");
 
 // Beauty brands for demo data
 const brands = [
@@ -237,7 +290,7 @@ for (const bundle of bundleDefinitions) {
       notes: `Demo bundle: ${bundle.name}`,
     });
     createdBundles.push(created);
-    console.log(`✓ Created bundle: ${bundle.name}`);
+    console.log(`✓ Created bundle: ${bundle.name} (id=${created?.id ?? "?"})`);
   } catch (error) {
     console.error(`✗ Failed to create bundle ${bundle.name}:`, error?.message ?? error);
   }
@@ -259,8 +312,10 @@ for (let i = 0; i < 120; i++) {
   const bestPrice = currentPrice * (0.7 + Math.random() * 0.2);
   const fireSale = Math.random() < 0.15;
 
-  const bundleId = Math.random() < 0.3 && createdBundles.length > 0
-    ? createdBundles[Math.floor(Math.random() * createdBundles.length)]?.id ?? null
+  // only choose bundles that actually have an id
+  const bundlesWithId = createdBundles.filter((b) => b?.id != null);
+  const bundleId = Math.random() < 0.3 && bundlesWithId.length > 0
+    ? bundlesWithId[Math.floor(Math.random() * bundlesWithId.length)]?.id ?? null
     : null;
 
   const qrCode = `PRD-${category.category.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(4, "0")}`;
@@ -268,14 +323,12 @@ for (let i = 0; i < 120; i++) {
 
   try {
     await Samples.create({
-      // Common fields
       name: `${brand} ${item}`,
       brand,
       location,
       status,
       notes: fireSale ? "🔥 Fire sale item! Limited time offer." : null,
 
-      // Both key styles (snake + camel) so it works with either schema
       qr_code: qrCode,
       qrCode,
 
