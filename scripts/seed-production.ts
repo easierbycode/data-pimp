@@ -4,10 +4,17 @@
  * Usage: deno run -A scripts/seed-production.ts
  *
  * Requires DATABASE_URL environment variable to be set
+ * Set RUN_SEED=true to enable seeding (prevents automatic execution on deploy)
  */
 
 import { Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles } from "../db.ts";
+
+// Only run if explicitly enabled via environment variable
+if (Deno.env.get("RUN_SEED") !== "true") {
+  console.log("⏭️  Seed script skipped. Set RUN_SEED=true to run seed script.");
+  Deno.exit(0);
+}
 
 // ---- Ensure {samples,bundles,inventory_transactions}.id auto-increments + PK ----
 async function ensureIdAutoIncrement(table: string) {
