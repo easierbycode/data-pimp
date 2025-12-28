@@ -5,25 +5,33 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import {
   Package, LogIn, LogOut, Bookmark, ExternalLink,
-  MapPin, AlertCircle, CheckCircle, Loader2
+  MapPin, AlertCircle, CheckCircle, Loader2, ShoppingCart
 } from "lucide-react";
 import StatusBadge from "../ui/StatusBadge.tsx";
 import FireSaleBadge from "../ui/FireSaleBadge.tsx";
+import LowestPriceOnlineBadge from "../ui/LowestPriceOnlineBadge.tsx";
 import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
 import PriceDisplay from "../ui/PriceDisplay.tsx";
 import { useTranslation } from "../i18n/translations.tsx";
 import type { Sample, Bundle } from "@/api/base44Client.ts";
 
-export default function ScanResult({ 
+export default function ScanResult({
   type, // 'sample' | 'bundle' | 'not_found'
   data, // sample or { bundle, samples }
   onCheckout,
   onCheckin,
   onReserve,
+  onAddToCart,
   processing = false
 }) {
   const { t } = useTranslation();
   const [checkoutTo, setCheckoutTo] = useState('');
+
+  // Helper to check if item has lowest price online
+  const hasLowestPrice = (item) => {
+    if (!item.current_price || !item.best_price) return false;
+    return item.current_price < item.best_price;
+  };
   
   const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
 
@@ -72,7 +80,10 @@ export default function ScanResult({
                   <h2 className="text-2xl font-bold text-slate-900">{sample.name}</h2>
                   <p className="text-lg text-slate-500">{sample.brand}</p>
                 </div>
-                {sample.fire_sale && <FireSaleBadge />}
+                <div className="flex flex-col gap-2">
+                  {sample.fire_sale && <FireSaleBadge />}
+                  {hasLowestPrice(sample) && <LowestPriceOnlineBadge />}
+                </div>
               </div>
               
               <div className="flex flex-wrap gap-4 mb-4">
@@ -116,6 +127,21 @@ export default function ScanResult({
           
           {/* Checkout Actions */}
           <div className="mt-6 pt-6 border-t">
+            {/* Add to Cart Button */}
+            {onAddToCart && (
+              <div className="mb-4">
+                <Button
+                  size="lg"
+                  onClick={() => onAddToCart({ type: 'sample', data: sample })}
+                  disabled={processing}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Add to Cart
+                </Button>
+              </div>
+            )}
+
             {(canCheckout || canCheckin) && (
               <div className="mb-4">
                 <Label htmlFor="checkout_to" className="text-sm text-slate-600">
@@ -130,10 +156,10 @@ export default function ScanResult({
                 />
               </div>
             )}
-            
+
             <div className="flex flex-wrap gap-3">
               {canCheckout && (
-                <Button 
+                <Button
                   size="lg"
                   onClick={() => onCheckout(sample, checkoutTo)}
                   disabled={processing}
@@ -143,9 +169,9 @@ export default function ScanResult({
                   {t('actions.checkout')}
                 </Button>
               )}
-              
+
               {canCheckin && (
-                <Button 
+                <Button
                   size="lg"
                   onClick={() => onCheckin(sample, checkoutTo)}
                   disabled={processing}
@@ -155,9 +181,9 @@ export default function ScanResult({
                   {t('actions.checkin')}
                 </Button>
               )}
-              
+
               {canReserve && (
-                <Button 
+                <Button
                   size="lg"
                   variant="outline"
                   onClick={() => onReserve(sample, 'reserve', checkoutTo)}
@@ -167,9 +193,9 @@ export default function ScanResult({
                   {t('actions.reserve')}
                 </Button>
               )}
-              
+
               {canUnreserve && (
-                <Button 
+                <Button
                   size="lg"
                   variant="outline"
                   onClick={() => onReserve(sample, 'unreserve', checkoutTo)}
@@ -226,6 +252,21 @@ export default function ScanResult({
           
           {/* Bundle Checkout Actions */}
           <div className="mb-6 pt-4 border-t">
+            {/* Add to Cart Button */}
+            {onAddToCart && (
+              <div className="mb-4">
+                <Button
+                  size="lg"
+                  onClick={() => onAddToCart({ type: 'bundle', data: bundle, samples })}
+                  disabled={processing}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Add Bundle to Cart
+                </Button>
+              </div>
+            )}
+
             <div className="mb-4">
               <Label htmlFor="bundle_checkout_to" className="text-sm text-slate-600">
                 {t('checkout.checkoutTo')}
@@ -238,10 +279,10 @@ export default function ScanResult({
                 className="mt-1 max-w-md"
               />
             </div>
-            
+
             <div className="flex flex-wrap gap-3">
               {availableSamples.length > 0 && (
-                <Button 
+                <Button
                   size="lg"
                   onClick={() => onCheckout(bundle, checkoutTo, availableSamples)}
                   disabled={processing}
@@ -251,9 +292,9 @@ export default function ScanResult({
                   Check Out {availableSamples.length} Samples
                 </Button>
               )}
-              
+
               {checkedOutSamples.length > 0 && (
-                <Button 
+                <Button
                   size="lg"
                   onClick={() => onCheckin(bundle, checkoutTo, checkedOutSamples)}
                   disabled={processing}
@@ -284,8 +325,11 @@ export default function ScanResult({
                     <p className="font-medium text-slate-900 truncate">{sample.name}</p>
                     <p className="text-sm text-slate-500">{sample.brand}</p>
                   </div>
-                  <StatusBadge status={sample.status} />
-                  {sample.fire_sale && <FireSaleBadge />}
+                  <div className="flex flex-wrap gap-1">
+                    <StatusBadge status={sample.status} />
+                    {sample.fire_sale && <FireSaleBadge />}
+                    {hasLowestPrice(sample) && <LowestPriceOnlineBadge />}
+                  </div>
                 </div>
               ))}
             </div>

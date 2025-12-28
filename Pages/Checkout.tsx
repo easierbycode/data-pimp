@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { base44 } from "@/api/base44Client.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card.tsx";
@@ -6,6 +6,8 @@ import { QrCode } from "lucide-react";
 import ScannerInput from "../Components/checkout/ScannerInput.tsx";
 import ScanResult from "../Components/checkout/ScanResult.tsx";
 import RecentScans from "../Components/checkout/RecentScans.tsx";
+import CartDisplay from "../Components/checkout/CartDisplay.tsx";
+import Confetti from "../Components/ui/Confetti.tsx";
 import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function Checkout() {
@@ -14,10 +16,105 @@ export default function Checkout() {
   const [scanResult, setScanResult] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [recentScans, setRecentScans] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const addRecentScan = (scan) => {
     setRecentScans(prev => [scan, ...prev].slice(0, 10));
   };
+
+  // Helper to check if item has lowest price online
+  const hasLowestPrice = (item) => {
+    if (!item.current_price || !item.best_price) return false;
+    return item.current_price < item.best_price;
+  };
+
+  // Add item to cart
+  const handleAddToCart = useCallback((cartItem) => {
+    setCart(prev => [...prev, cartItem]);
+
+    // Check if the added item has savings
+    let hasSavings = false;
+    if (cartItem.type === 'sample') {
+      hasSavings = hasLowestPrice(cartItem.data);
+    } else if (cartItem.type === 'bundle' && cartItem.samples) {
+      hasSavings = cartItem.samples.some(s => hasLowestPrice(s));
+    }
+
+    // Trigger confetti if there are savings
+    if (hasSavings) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3500);
+    }
+  }, []);
+
+  // Remove item from cart
+  const handleRemoveFromCart = useCallback((index) => {
+    setCart(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Clear cart
+  const handleClearCart = useCallback(() => {
+    setCart([]);
+  }, []);
+
+  // Cart checkout
+  const handleCartCheckout = useCallback(async () => {
+    if (cart.length === 0) return;
+
+    setProcessing(true);
+    const now = new Date().toISOString();
+
+    try {
+      // Process each cart item
+      for (const cartItem of cart) {
+        if (cartItem.type === 'sample') {
+          const sample = cartItem.data;
+          await base44.entities.Sample.update(sample.id, {
+            status: 'checked_out',
+            checked_out_at: now,
+            checked_out_to: null
+          });
+          await base44.entities.InventoryTransaction.create({
+            action: 'checkout',
+            sample_id: sample.id,
+            scanned_code: sample.qr_code,
+            operator: null,
+            checked_out_to: null
+          });
+        } else if (cartItem.type === 'bundle' && cartItem.samples) {
+          const bundle = cartItem.data;
+          for (const sample of cartItem.samples) {
+            await base44.entities.Sample.update(sample.id, {
+              status: 'checked_out',
+              checked_out_at: now,
+              checked_out_to: null
+            });
+            await base44.entities.InventoryTransaction.create({
+              action: 'checkout',
+              sample_id: sample.id,
+              bundle_id: bundle.id,
+              scanned_code: bundle.qr_code,
+              operator: null,
+              checked_out_to: null
+            });
+          }
+        }
+      }
+
+      // Clear cart and refresh
+      setCart([]);
+      setScanResult(null);
+      queryClient.invalidateQueries({ queryKey: ['samples'] });
+
+      // Show success (could add a toast notification here)
+      console.log('Cart checkout successful!');
+    } catch (error) {
+      console.error('Cart checkout error:', error);
+    }
+
+    setProcessing(false);
+  }, [cart, queryClient]);
 
   const handleScan = useCallback(async (code) => {
     setProcessing(true);
@@ -256,7 +353,10 @@ export default function Checkout() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Confetti Animation */}
+        <Confetti active={showConfetti} />
+
         {/* Scanner */}
         <Card className="p-6 mb-6 bg-white/80 backdrop-blur-sm">
           <ScannerInput onScan={handleScan} disabled={processing} />
@@ -272,10 +372,11 @@ export default function Checkout() {
                 onCheckout={handleCheckout}
                 onCheckin={handleCheckin}
                 onReserve={handleReserve}
+                onAddToCart={handleAddToCart}
                 processing={processing}
               />
             )}
-            
+
             {!scanResult && !processing && (
               <Card className="p-12 text-center bg-white/50">
                 <QrCode className="w-16 h-16 text-slate-300 mx-auto mb-4" />
@@ -284,8 +385,17 @@ export default function Checkout() {
             )}
           </div>
 
-          {/* Recent Scans */}
-          <div>
+          {/* Cart and Recent Scans */}
+          <div className="space-y-6">
+            {/* Cart */}
+            <CartDisplay
+              items={cart}
+              onRemoveItem={handleRemoveFromCart}
+              onCheckout={handleCartCheckout}
+              onClearCart={handleClearCart}
+            />
+
+            {/* Recent Scans */}
             <RecentScans scans={recentScans} />
           </div>
         </div>

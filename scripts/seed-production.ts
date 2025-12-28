@@ -308,8 +308,21 @@ for (let i = 0; i < 120; i++) {
   const brand = brands[Math.floor(Math.random() * brands.length)];
   const location = locations[Math.floor(Math.random() * locations.length)];
   const status = statuses[Math.floor(Math.random() * statuses.length)];
-  const currentPrice = 15 + Math.random() * 85;
-  const bestPrice = currentPrice * (0.7 + Math.random() * 0.2);
+
+  // Determine if this sample should have "Lowest Price Online" (35% chance)
+  const hasLowestPriceOnline = Math.random() < 0.35;
+
+  let currentPrice, bestPrice;
+  if (hasLowestPriceOnline) {
+    // Current price is LOWER than best price online (we have the best deal!)
+    bestPrice = 20 + Math.random() * 80; // Online price ranges from $20-$100
+    currentPrice = bestPrice * (0.60 + Math.random() * 0.25); // Our price is 60-85% of online price
+  } else {
+    // Current price is HIGHER than best price online (normal case)
+    currentPrice = 15 + Math.random() * 85; // Our price ranges from $15-$100
+    bestPrice = currentPrice * (0.70 + Math.random() * 0.20); // Online price is 70-90% of our price
+  }
+
   const fireSale = Math.random() < 0.15;
 
   // only choose bundles that actually have an id
