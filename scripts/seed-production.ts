@@ -376,8 +376,8 @@ console.log(`✓ Successfully created ${createdBundles.length} bundles`);
 
 if (sampleCount === 0) {
   console.error("\n❌ No samples were created. Failing seed so Deploy fails the release.");
-  Deno.exit(1);
+  throw new Error("No samples were created - seed failed");
 }
 
 console.log("\n🎉 Database seeded successfully!");
-Deno.exit(0);
+// No need for explicit exit - let script finish naturally so connections can close properly
