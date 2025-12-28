@@ -572,6 +572,516 @@ const CheckoutPage = () => {
   );
 };
 
+// UI Helper Components
+const QRCodeDisplay = ({ code }) => {
+  const { Copy, Check, QrCode } = LucideIcons;
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!code) return null;
+
+  return React.createElement(
+    "div",
+    { className: "flex items-center gap-3" },
+    React.createElement(
+      "div",
+      { className: "flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 font-mono text-sm" },
+      React.createElement(QrCode, { className: "w-4 h-4 text-slate-400" }),
+      React.createElement("span", { className: "select-all" }, code),
+    ),
+    React.createElement(
+      Button,
+      { variant: "ghost", onClick: handleCopy, className: "h-8 w-8 p-0" },
+      copied
+        ? React.createElement(Check, { className: "w-4 h-4 text-emerald-500" })
+        : React.createElement(Copy, { className: "w-4 h-4 text-slate-400" }),
+    ),
+  );
+};
+
+const PriceDisplay = ({ currentPrice, bestPrice, bestPriceSource, lastChecked }) => {
+  const { ExternalLink } = LucideIcons;
+
+  const formatPrice = (price) => {
+    if (price === null || price === undefined) return "—";
+    return `$${Number(price).toFixed(2)}`;
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return null;
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  return React.createElement(
+    "div",
+    { className: "space-y-2" },
+    React.createElement(
+      "div",
+      { className: "flex items-baseline gap-4" },
+      React.createElement(
+        "div",
+        null,
+        React.createElement("span", { className: "text-sm text-slate-500" }, "Current: "),
+        React.createElement("span", { className: "font-semibold text-lg" }, formatPrice(currentPrice)),
+      ),
+      bestPrice
+        ? React.createElement(
+            "div",
+            null,
+            React.createElement("span", { className: "text-sm text-slate-500" }, "Best: "),
+            React.createElement("span", { className: "font-semibold text-emerald-600" }, formatPrice(bestPrice)),
+          )
+        : null,
+    ),
+    bestPriceSource
+      ? React.createElement(
+          "a",
+          {
+            href: bestPriceSource,
+            target: "_blank",
+            rel: "noopener noreferrer",
+            className: "inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800",
+          },
+          "View source ",
+          React.createElement(ExternalLink, { className: "w-3 h-3" }),
+        )
+      : null,
+    lastChecked
+      ? React.createElement("p", { className: "text-xs text-slate-400" }, `Last checked: ${formatDate(lastChecked)}`)
+      : null,
+  );
+};
+
+const FireSaleBadge = () => {
+  const { Flame } = LucideIcons;
+  return React.createElement(
+    Badge,
+    { className: "bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 gap-1" },
+    React.createElement(Flame, { className: "w-3 h-3" }),
+    "Fire Sale",
+  );
+};
+
+// Simple AlertDialog components
+const AlertDialog = ({ children, open, onOpenChange }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open !== undefined) setIsOpen(open);
+  }, [open]);
+
+  const handleOpenChange = (newOpen) => {
+    setIsOpen(newOpen);
+    if (onOpenChange) onOpenChange(newOpen);
+  };
+
+  return React.createElement(
+    React.Fragment,
+    null,
+    React.Children.map(children, (child) => {
+      if (child?.type === AlertDialogTrigger) {
+        return React.cloneElement(child, { onClick: () => handleOpenChange(true) });
+      }
+      if (child?.type === AlertDialogContent) {
+        return isOpen ? React.cloneElement(child, { onClose: () => handleOpenChange(false) }) : null;
+      }
+      return child;
+    }),
+  );
+};
+
+const AlertDialogTrigger = ({ children, asChild, onClick }) => {
+  if (asChild && React.Children.only(children)) {
+    return React.cloneElement(children, { onClick });
+  }
+  return React.createElement("button", { onClick }, children);
+};
+
+const AlertDialogContent = ({ children, onClose }) => {
+  return React.createElement(
+    "div",
+    { className: "fixed inset-0 z-50 flex items-center justify-center" },
+    React.createElement("div", { className: "fixed inset-0 bg-black/50", onClick: onClose }),
+    React.createElement(
+      "div",
+      { className: "relative bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6 space-y-4 z-10" },
+      children,
+    ),
+  );
+};
+
+const AlertDialogHeader = ({ children }) => React.createElement("div", { className: "space-y-2" }, children);
+const AlertDialogTitle = ({ children }) => React.createElement("h2", { className: "text-lg font-semibold" }, children);
+const AlertDialogDescription = ({ children }) => React.createElement("p", { className: "text-sm text-slate-500" }, children);
+const AlertDialogFooter = ({ children }) => React.createElement("div", { className: "flex gap-2 justify-end" }, children);
+const AlertDialogCancel = ({ children, onClick }) => React.createElement(Button, { variant: "outline", onClick }, children);
+const AlertDialogAction = ({ children, onClick, className }) => React.createElement(Button, { onClick, className }, children);
+
+// Sample Details Page
+const SampleDetails = () => {
+  const { t } = useTranslation();
+  const { ArrowLeft, Edit, Trash2, Package, MapPin, Calendar, User, ExternalLink, Loader2, AlertTriangle } = LucideIcons;
+  const queryClient = React.useMemo(() => new QueryClient(), []);
+  const urlParams = new URLSearchParams(window.location.search);
+  const sampleId = urlParams.get("id");
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+
+  const { data: sample, isLoading } = useQuery({
+    queryKey: ["sample", sampleId],
+    queryFn: async () => {
+      const samples = await api.entities.Sample.filter({ id: sampleId });
+      return samples[0];
+    },
+    enabled: !!sampleId,
+  });
+
+  const { data: bundle } = useQuery({
+    queryKey: ["bundle", sample?.bundle_id],
+    queryFn: async () => {
+      if (!sample?.bundle_id) return null;
+      const bundles = await api.entities.Bundle.filter({ id: sample.bundle_id });
+      return bundles[0];
+    },
+    enabled: !!sample?.bundle_id,
+  });
+
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["transactions", sampleId],
+    queryFn: () => api.entities.InventoryTransaction.filter({ sample_id: sampleId }, "-created_date", 10),
+    enabled: !!sampleId,
+  });
+
+  const handleDelete = async () => {
+    await api.entities.Sample.delete(sampleId);
+    window.location.href = "/samples";
+  };
+
+  const defaultImage = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop";
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  if (isLoading) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+    );
+  }
+
+  if (!sample) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(
+        "div",
+        { className: "text-center" },
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("sample.notFound")),
+        React.createElement(
+          Link,
+          { to: createPageUrl("Samples") },
+          React.createElement(Button, { variant: "outline" }, t("actions.back")),
+        ),
+      ),
+    );
+  }
+
+  return React.createElement(
+    "div",
+    { className: "min-h-screen bg-slate-50" },
+    // Header
+    React.createElement(
+      "div",
+      { className: "bg-white border-b border-slate-200" },
+      React.createElement(
+        "div",
+        { className: "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+        React.createElement(
+          "div",
+          { className: "flex items-center justify-between" },
+          React.createElement(
+            Link,
+            { to: createPageUrl("Samples"), className: "flex items-center gap-2 text-slate-600 hover:text-slate-900" },
+            React.createElement(ArrowLeft, { className: "w-4 h-4" }),
+            React.createElement("span", null, t("sample.titlePlural")),
+          ),
+          React.createElement(
+            "div",
+            { className: "flex items-center gap-2" },
+            React.createElement(
+              Link,
+              { to: createPageUrl(`SampleEdit?id=${sample.id}`) },
+              React.createElement(
+                Button,
+                { variant: "outline", size: "sm" },
+                React.createElement(Edit, { className: "w-4 h-4 mr-2" }),
+                t("actions.edit"),
+              ),
+            ),
+            React.createElement(
+              AlertDialog,
+              { open: showDeleteDialog, onOpenChange: setShowDeleteDialog },
+              React.createElement(
+                AlertDialogTrigger,
+                { asChild: true },
+                React.createElement(
+                  Button,
+                  { variant: "outline", size: "sm", className: "text-red-600 hover:text-red-700 hover:bg-red-50" },
+                  React.createElement(Trash2, { className: "w-4 h-4 mr-2" }),
+                  t("actions.delete"),
+                ),
+              ),
+              React.createElement(
+                AlertDialogContent,
+                { onClose: () => setShowDeleteDialog(false) },
+                React.createElement(
+                  AlertDialogHeader,
+                  null,
+                  React.createElement(AlertDialogTitle, null, t("sample.deleteSample")),
+                  React.createElement(AlertDialogDescription, null, t("sample.deleteConfirm")),
+                ),
+                React.createElement(
+                  AlertDialogFooter,
+                  null,
+                  React.createElement(AlertDialogCancel, { onClick: () => setShowDeleteDialog(false) }, t("actions.cancel")),
+                  React.createElement(
+                    AlertDialogAction,
+                    { onClick: handleDelete, className: "bg-red-600 hover:bg-red-700" },
+                    t("actions.delete"),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    // Main Content
+    React.createElement(
+      "div",
+      { className: "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+      React.createElement(
+        "div",
+        { className: "grid gap-6 lg:grid-cols-3" },
+        // Left Column
+        React.createElement(
+          "div",
+          { className: "lg:col-span-2 space-y-6" },
+          // Hero Card
+          React.createElement(
+            Card,
+            { className: "overflow-hidden" },
+            React.createElement(
+              "div",
+              { className: "md:flex" },
+              React.createElement(
+                "div",
+                { className: "md:w-1/3" },
+                React.createElement(
+                  "div",
+                  { className: "aspect-square relative" },
+                  React.createElement("img", {
+                    src: sample.picture_url || defaultImage,
+                    alt: sample.name,
+                    className: "w-full h-full object-cover",
+                  }),
+                  React.createElement(
+                    "div",
+                    { className: "absolute top-3 left-3 flex flex-wrap gap-2" },
+                    React.createElement(StatusBadge, { status: sample.status }),
+                    sample.fire_sale ? React.createElement(FireSaleBadge, null) : null,
+                  ),
+                ),
+              ),
+              React.createElement(
+                CardContent,
+                { className: "p-6 md:w-2/3" },
+                React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mb-1" }, sample.name),
+                React.createElement("p", { className: "text-lg text-slate-500 mb-4" }, sample.brand),
+                React.createElement("div", { className: "mb-4" }, React.createElement(QRCodeDisplay, { code: sample.qr_code })),
+                React.createElement(
+                  "div",
+                  { className: "flex flex-wrap gap-4 text-sm" },
+                  sample.location
+                    ? React.createElement(
+                        "div",
+                        { className: "flex items-center gap-1 text-slate-600" },
+                        React.createElement(MapPin, { className: "w-4 h-4" }),
+                        sample.location,
+                      )
+                    : null,
+                  bundle
+                    ? React.createElement(
+                        Link,
+                        {
+                          to: createPageUrl(`BundleDetails?id=${bundle.id}`),
+                          className: "flex items-center gap-1 text-indigo-600 hover:text-indigo-800",
+                        },
+                        React.createElement(Package, { className: "w-4 h-4" }),
+                        bundle.name,
+                      )
+                    : null,
+                ),
+              ),
+            ),
+          ),
+          // Pricing
+          React.createElement(
+            Card,
+            null,
+            React.createElement(CardHeader, null, React.createElement(CardTitle, null, "Pricing")),
+            React.createElement(
+              CardContent,
+              null,
+              React.createElement(PriceDisplay, {
+                currentPrice: sample.current_price,
+                bestPrice: sample.best_price,
+                bestPriceSource: sample.best_price_source,
+                lastChecked: sample.last_price_checked_at,
+              }),
+              sample.tiktok_affiliate_link
+                ? React.createElement(
+                    "a",
+                    {
+                      href: sample.tiktok_affiliate_link,
+                      target: "_blank",
+                      rel: "noopener noreferrer",
+                      className: "inline-flex items-center gap-2 mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors",
+                    },
+                    "TikTok Affiliate Link ",
+                    React.createElement(ExternalLink, { className: "w-4 h-4" }),
+                  )
+                : null,
+            ),
+          ),
+          // Notes
+          sample.notes
+            ? React.createElement(
+                Card,
+                null,
+                React.createElement(CardHeader, null, React.createElement(CardTitle, null, t("sample.notes"))),
+                React.createElement(
+                  CardContent,
+                  null,
+                  React.createElement("p", { className: "text-slate-600 whitespace-pre-wrap" }, sample.notes),
+                ),
+              )
+            : null,
+        ),
+        // Right Column - Sidebar
+        React.createElement(
+          "div",
+          { className: "space-y-6" },
+          // Checkout Status
+          React.createElement(
+            Card,
+            null,
+            React.createElement(CardHeader, null, React.createElement(CardTitle, null, "Checkout Status")),
+            React.createElement(
+              CardContent,
+              { className: "space-y-4" },
+              sample.checked_out_to
+                ? React.createElement(
+                    "div",
+                    { className: "flex items-center gap-3" },
+                    React.createElement(User, { className: "w-4 h-4 text-slate-400" }),
+                    React.createElement(
+                      "div",
+                      null,
+                      React.createElement("p", { className: "text-sm text-slate-500" }, t("sample.checkedOutTo")),
+                      React.createElement("p", { className: "font-medium" }, sample.checked_out_to),
+                    ),
+                  )
+                : null,
+              sample.checked_out_at
+                ? React.createElement(
+                    "div",
+                    { className: "flex items-center gap-3" },
+                    React.createElement(Calendar, { className: "w-4 h-4 text-slate-400" }),
+                    React.createElement(
+                      "div",
+                      null,
+                      React.createElement("p", { className: "text-sm text-slate-500" }, t("sample.checkedOutAt")),
+                      React.createElement("p", { className: "font-medium" }, formatDate(sample.checked_out_at)),
+                    ),
+                  )
+                : null,
+              sample.checked_in_at
+                ? React.createElement(
+                    "div",
+                    { className: "flex items-center gap-3" },
+                    React.createElement(Calendar, { className: "w-4 h-4 text-slate-400" }),
+                    React.createElement(
+                      "div",
+                      null,
+                      React.createElement("p", { className: "text-sm text-slate-500" }, t("sample.checkedInAt")),
+                      React.createElement("p", { className: "font-medium" }, formatDate(sample.checked_in_at)),
+                    ),
+                  )
+                : null,
+            ),
+          ),
+          // Recent Transactions
+          React.createElement(
+            Card,
+            null,
+            React.createElement(CardHeader, null, React.createElement(CardTitle, null, "Recent Activity")),
+            React.createElement(
+              CardContent,
+              null,
+              transactions.length === 0
+                ? React.createElement("p", { className: "text-sm text-slate-400 text-center py-4" }, "No activity yet")
+                : React.createElement(
+                    "div",
+                    { className: "space-y-3" },
+                    transactions.map((tx) =>
+                      React.createElement(
+                        "div",
+                        { key: tx.id, className: "flex items-start gap-3 text-sm" },
+                        React.createElement("div", {
+                          className: `w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                            tx.action === "checkout" ? "bg-amber-500" : tx.action === "checkin" ? "bg-emerald-500" : "bg-blue-500"
+                          }`,
+                        }),
+                        React.createElement(
+                          "div",
+                          null,
+                          React.createElement("p", { className: "font-medium capitalize" }, tx.action),
+                          React.createElement(
+                            "p",
+                            { className: "text-slate-500" },
+                            `${formatDate(tx.created_date)}${tx.operator ? ` by ${tx.operator}` : ""}`,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+};
+
 // Placeholder pages
 const PlaceholderPage = ({ title }) =>
   React.createElement(
@@ -601,7 +1111,7 @@ const App = () =>
           null,
           React.createElement(Route, { path: "/", element: React.createElement(SamplesPage) }),
           React.createElement(Route, { path: "/samples", element: React.createElement(SamplesPage) }),
-          React.createElement(Route, { path: "/sampledetails", element: React.createElement(PlaceholderPage, { title: "Sample Details" }) }),
+          React.createElement(Route, { path: "/sampledetails", element: React.createElement(SampleDetails) }),
           React.createElement(Route, { path: "/samplecreate", element: React.createElement(PlaceholderPage, { title: "Create Sample" }) }),
           React.createElement(Route, { path: "/sampleedit", element: React.createElement(PlaceholderPage, { title: "Edit Sample" }) }),
           React.createElement(Route, { path: "/bundles", element: React.createElement(BundlesPage) }),
