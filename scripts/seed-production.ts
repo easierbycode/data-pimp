@@ -21,18 +21,22 @@ async function ensureSamplesIdAutoIncrement() {
     // 1) Ensure sequence exists
     await client.query(`create sequence if not exists public.samples_id_seq;`);
 
-    // 2) Set sequence to max existing id, safely (casts to bigint even if id is text)
+    // 2) Set sequence to max existing id, safely.
+    //    If table is empty => setval(..., 1, false) so nextval() returns 1.
     await client.query(`
+      with m as (
+        select max(case
+          when id::text ~ '^[0-9]+$' then (id::text)::bigint
+          else null
+        end) as max_id
+        from public.samples
+      )
       select setval(
         'public.samples_id_seq'::regclass,
-        coalesce(
-          (select max(case
-            when id::text ~ '^[0-9]+$' then (id::text)::bigint
-            else null
-          end) from public.samples),
-          0::bigint
-        )
-      );
+        greatest(1, coalesce(max_id, 1)),
+        coalesce(max_id, 0) >= 1
+      )
+      from m;
     `);
 
     // 3) Make sequence owned by the column (nice cleanup; not required)
