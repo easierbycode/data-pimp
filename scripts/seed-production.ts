@@ -9,7 +9,7 @@
 import { Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles } from "../db.ts";
 
-// ---- Ensure samples.id auto-increments (int4) ----
+// ---- Ensure samples.id auto-increments (handles int4 OR accidental text ids) ----
 async function ensureSamplesIdAutoIncrement() {
   const connectionString = Deno.env.get("DATABASE_URL");
   if (!connectionString) throw new Error("DATABASE_URL is not set");
@@ -18,43 +18,50 @@ async function ensureSamplesIdAutoIncrement() {
   const client = await pool.connect();
 
   try {
-    // Create and attach a sequence
+    // 1) Ensure sequence exists
     await client.query(`create sequence if not exists public.samples_id_seq;`);
 
-    // If there are existing ids, continue after max(id)
+    // 2) Set sequence to max existing id, safely (casts to bigint even if id is text)
     await client.query(`
       select setval(
-        'public.samples_id_seq',
-        coalesce((select max(id) from public.samples), 0)
+        'public.samples_id_seq'::regclass,
+        coalesce(
+          (select max(case
+            when id::text ~ '^[0-9]+$' then (id::text)::bigint
+            else null
+          end) from public.samples),
+          0::bigint
+        )
       );
     `);
 
-    // Ensure sequence is "owned by" the column (nice housekeeping)
+    // 3) Make sequence owned by the column (nice cleanup; not required)
     await client.query(`
       alter sequence public.samples_id_seq
       owned by public.samples.id;
     `);
 
-    // Backfill any null ids (if any exist)
+    // 4) Backfill any null ids (if table ever had nulls)
     await client.query(`
       update public.samples
       set id = nextval('public.samples_id_seq')
       where id is null;
     `);
 
-    // Set DEFAULT so inserts that omit id work
+    // 5) Set default so inserts that omit id succeed
     await client.query(`
       alter table public.samples
       alter column id set default nextval('public.samples_id_seq');
     `);
 
-    // Keep NOT NULL (required for PK)
+    // 6) Enforce NOT NULL
     await client.query(`
       alter table public.samples
       alter column id set not null;
     `);
 
-    // Optional: try to ensure PK exists (won't stop seed if it fails)
+    // 7) Ensure primary key (if possible)
+    //    If duplicates exist, this will fail; we warn and continue so seed can still run.
     try {
       await client.query(`
         do $$
@@ -71,7 +78,10 @@ async function ensureSamplesIdAutoIncrement() {
         end $$;
       `);
     } catch (e) {
-      console.warn("Note: could not add samples_pkey (maybe duplicates?). Continuing.", e?.message ?? e);
+      console.warn(
+        "Note: could not add samples_pkey (duplicates or incompatible type?). Continuing.",
+        e?.message ?? e,
+      );
     }
   } finally {
     client.release();
@@ -79,7 +89,7 @@ async function ensureSamplesIdAutoIncrement() {
   }
 }
 
-// Initialize database
+// Initialize database (warms column cache in db.ts)
 console.log("Initializing database...");
 await initializeDatabase();
 
@@ -215,6 +225,7 @@ const createdBundles: any[] = [];
 for (const bundle of bundleDefinitions) {
   try {
     const created = await Bundles.create({
+      // write both variants; db layer will keep whichever columns exist
       name: bundle.name,
       qr_code: bundle.code,
       qrCode: bundle.code,
@@ -253,12 +264,14 @@ for (let i = 0; i < 120; i++) {
 
   try {
     await Samples.create({
+      // Common fields
       name: `${brand} ${item}`,
       brand,
       location,
       status,
       notes: fireSale ? "🔥 Fire sale item! Limited time offer." : null,
 
+      // Both key styles (snake + camel) so it works with either schema
       qr_code: qrCode,
       qrCode,
 
