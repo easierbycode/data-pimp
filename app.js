@@ -146,6 +146,13 @@ const translations = {
     samples: "Samples in Bundle",
     noSamples: "No samples in this bundle",
     addSample: "Add Sample",
+    name: "Bundle Name",
+    qrCode: "QR Code",
+    location: "Location",
+    notes: "Notes",
+    deleteBundle: "Delete Bundle",
+    deleteConfirm: "Are you sure you want to delete this bundle?",
+    editBundle: "Edit Bundle",
   },
   checkout: {
     title: "Checkout Station",
@@ -1154,6 +1161,120 @@ const SampleForm = ({ sample, bundles = [], onSave, onCancel }) => {
   );
 };
 
+// Bundle Form Component
+const BundleForm = ({ bundle, onSave, onCancel }) => {
+  const { t } = useTranslation();
+  const { Loader2 } = LucideIcons;
+  const [formData, setFormData] = React.useState({
+    name: bundle?.name || "",
+    location: bundle?.location || "",
+    qr_code: bundle?.qr_code || "",
+    notes: bundle?.notes || "",
+  });
+  const [saving, setSaving] = React.useState(false);
+  const [errors, setErrors] = React.useState({});
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = t("messages.required");
+    if (!formData.qr_code.trim()) newErrors.qr_code = t("messages.required");
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setSaving(true);
+    await onSave(formData);
+    setSaving(false);
+  };
+
+  return React.createElement(
+    "form",
+    { onSubmit: handleSubmit, className: "space-y-6" },
+    React.createElement(
+      Card,
+      null,
+      React.createElement(CardHeader, null, React.createElement(CardTitle, { className: "text-lg" }, "Bundle Information")),
+      React.createElement(
+        CardContent,
+        { className: "grid gap-4 md:grid-cols-2" },
+        // Name
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "name" }, t("bundle.name"), " *"),
+          React.createElement(Input, {
+            id: "name",
+            value: formData.name,
+            onChange: (e) => setFormData((prev) => ({ ...prev, name: e.target.value })),
+            className: errors.name ? "border-red-500" : "",
+            placeholder: "e.g., Summer Collection",
+          }),
+          errors.name && React.createElement("p", { className: "text-sm text-red-500" }, errors.name),
+        ),
+        // QR Code
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "qr_code" }, t("bundle.qrCode"), " *"),
+          React.createElement(Input, {
+            id: "qr_code",
+            value: formData.qr_code,
+            onChange: (e) => setFormData((prev) => ({ ...prev, qr_code: e.target.value })),
+            className: errors.qr_code ? "border-red-500" : "",
+            placeholder: "Enter unique bundle code",
+          }),
+          errors.qr_code && React.createElement("p", { className: "text-sm text-red-500" }, errors.qr_code),
+        ),
+        // Location
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "location" }, t("bundle.location")),
+          React.createElement(Input, {
+            id: "location",
+            value: formData.location,
+            onChange: (e) => setFormData((prev) => ({ ...prev, location: e.target.value })),
+            placeholder: "e.g., Storage Room B",
+          }),
+        ),
+        // Notes
+        React.createElement(
+          "div",
+          { className: "md:col-span-2 space-y-2" },
+          React.createElement(Label, { htmlFor: "notes" }, t("bundle.notes")),
+          React.createElement(Textarea, {
+            id: "notes",
+            value: formData.notes,
+            onChange: (e) => setFormData((prev) => ({ ...prev, notes: e.target.value })),
+            rows: 3,
+            placeholder: "Additional notes about this bundle...",
+          }),
+        ),
+      ),
+    ),
+    // Form Actions
+    React.createElement(
+      "div",
+      { className: "flex justify-end gap-3" },
+      React.createElement(
+        Button,
+        { type: "button", variant: "outline", onClick: onCancel, disabled: saving },
+        t("actions.cancel"),
+      ),
+      React.createElement(
+        Button,
+        { type: "submit", disabled: saving },
+        saving && React.createElement(Loader2, { className: "w-4 h-4 mr-2 animate-spin" }),
+        t("actions.save"),
+      ),
+    ),
+  );
+};
+
 // Sample Details Page
 const SampleDetails = () => {
   const { t } = useTranslation();
@@ -1651,6 +1772,483 @@ const SampleEdit = () => {
   );
 };
 
+// Bundle Create Page
+const BundleCreate = () => {
+  const { t } = useTranslation();
+  const { ArrowLeft } = LucideIcons;
+
+  const createMutation = useMutation({
+    mutationFn: (data) => api.entities.Bundle.create(data),
+    onSuccess: (newBundle) => {
+      queryClient.invalidateQueries({ queryKey: ["bundles"] });
+      window.location.href = createPageUrl(`BundleDetails?id=${newBundle.id}`);
+    },
+  });
+
+  return React.createElement(
+    "div",
+    { className: "min-h-screen bg-slate-50" },
+    React.createElement(
+      "div",
+      { className: "bg-white border-b border-slate-200" },
+      React.createElement(
+        "div",
+        { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+        React.createElement(
+          Link,
+          {
+            to: createPageUrl("Bundles"),
+            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+          },
+          React.createElement(ArrowLeft, { className: "w-4 h-4" }),
+          React.createElement("span", null, t("bundle.titlePlural")),
+        ),
+        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("bundle.createNew")),
+      ),
+    ),
+    React.createElement(
+      "div",
+      { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+      React.createElement(BundleForm, {
+        onSave: (data) => createMutation.mutate(data),
+        onCancel: () => (window.location.href = createPageUrl("Bundles")),
+      }),
+    ),
+  );
+};
+
+// Bundle Edit Page
+const BundleEdit = () => {
+  const { t } = useTranslation();
+  const { ArrowLeft, Loader2, AlertTriangle } = LucideIcons;
+  const urlParams = new URLSearchParams(window.location.search);
+  const bundleId = urlParams.get("id");
+
+  const { data: bundle, isLoading } = useQuery({
+    queryKey: ["bundle", bundleId],
+    queryFn: async () => {
+      const bundles = await api.entities.Bundle.filter({ id: bundleId });
+      return bundles[0];
+    },
+    enabled: !!bundleId,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data) => api.entities.Bundle.update(bundleId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bundles"] });
+      queryClient.invalidateQueries({ queryKey: ["bundle", bundleId] });
+      window.location.href = createPageUrl(`BundleDetails?id=${bundleId}`);
+    },
+  });
+
+  if (isLoading) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+    );
+  }
+
+  if (!bundle) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(
+        "div",
+        { className: "text-center" },
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("bundle.notFound")),
+        React.createElement(
+          Link,
+          { to: createPageUrl("Bundles") },
+          React.createElement(Button, { variant: "outline" }, t("actions.back")),
+        ),
+      ),
+    );
+  }
+
+  return React.createElement(
+    "div",
+    { className: "min-h-screen bg-slate-50" },
+    React.createElement(
+      "div",
+      { className: "bg-white border-b border-slate-200" },
+      React.createElement(
+        "div",
+        { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+        React.createElement(
+          Link,
+          {
+            to: createPageUrl(`BundleDetails?id=${bundleId}`),
+            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+          },
+          React.createElement(ArrowLeft, { className: "w-4 h-4" }),
+          React.createElement("span", null, "Back to Bundle"),
+        ),
+        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("bundle.editBundle")),
+      ),
+    ),
+    React.createElement(
+      "div",
+      { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+      React.createElement(BundleForm, {
+        bundle,
+        onSave: (data) => updateMutation.mutate(data),
+        onCancel: () => (window.location.href = createPageUrl(`BundleDetails?id=${bundleId}`)),
+      }),
+    ),
+  );
+};
+
+// Bundle Details Page
+const BundleDetails = () => {
+  const { t } = useTranslation();
+  const { ArrowLeft, Edit, Trash2, Package, MapPin, Plus, X, Loader2, AlertTriangle } = LucideIcons;
+  const urlParams = new URLSearchParams(window.location.search);
+  const bundleId = urlParams.get("id");
+  const [selectedSampleToAdd, setSelectedSampleToAdd] = React.useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+
+  const { data: bundle, isLoading } = useQuery({
+    queryKey: ["bundle", bundleId],
+    queryFn: async () => {
+      const bundles = await api.entities.Bundle.filter({ id: bundleId });
+      return bundles[0];
+    },
+    enabled: !!bundleId,
+  });
+
+  const { data: bundleSamples = [] } = useQuery({
+    queryKey: ["bundleSamples", bundleId],
+    queryFn: () => api.entities.Sample.filter({ bundle_id: bundleId }),
+    enabled: !!bundleId,
+  });
+
+  const { data: allSamples = [] } = useQuery({
+    queryKey: ["samples"],
+    queryFn: () => api.entities.Sample.list(),
+  });
+
+  // Samples not in this bundle
+  const availableSamples = allSamples.filter((s) => !s.bundle_id);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.entities.Bundle.delete(bundleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bundles"] });
+      window.location.href = createPageUrl("Bundles");
+    },
+  });
+
+  const addSampleMutation = useMutation({
+    mutationFn: (sampleId) =>
+      api.entities.Sample.update(sampleId, {
+        bundle_id: bundleId,
+        location: bundle.location,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bundleSamples", bundleId] });
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+      setSelectedSampleToAdd("");
+    },
+  });
+
+  const removeSampleMutation = useMutation({
+    mutationFn: (sampleId) => api.entities.Sample.update(sampleId, { bundle_id: null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bundleSamples", bundleId] });
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+    },
+  });
+
+  if (isLoading) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+    );
+  }
+
+  if (!bundle) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(
+        "div",
+        { className: "text-center" },
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("bundle.notFound")),
+        React.createElement(
+          Link,
+          { to: createPageUrl("Bundles") },
+          React.createElement(Button, { variant: "outline" }, t("actions.back")),
+        ),
+      ),
+    );
+  }
+
+  return React.createElement(
+    "div",
+    { className: "min-h-screen bg-slate-50" },
+    // Header
+    React.createElement(
+      "div",
+      { className: "bg-white border-b border-slate-200" },
+      React.createElement(
+        "div",
+        { className: "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+        React.createElement(
+          "div",
+          { className: "flex items-center justify-between" },
+          React.createElement(
+            Link,
+            {
+              to: createPageUrl("Bundles"),
+              className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+            },
+            React.createElement(ArrowLeft, { className: "w-4 h-4" }),
+            React.createElement("span", null, t("bundle.titlePlural")),
+          ),
+          React.createElement(
+            "div",
+            { className: "flex items-center gap-2" },
+            React.createElement(
+              Link,
+              { to: createPageUrl(`BundleEdit?id=${bundle.id}`) },
+              React.createElement(
+                Button,
+                { variant: "outline", size: "sm" },
+                React.createElement(Edit, { className: "w-4 h-4 mr-2" }),
+                t("actions.edit"),
+              ),
+            ),
+            React.createElement(
+              AlertDialog,
+              { open: showDeleteDialog, onOpenChange: setShowDeleteDialog },
+              React.createElement(
+                AlertDialogTrigger,
+                { asChild: true },
+                React.createElement(
+                  Button,
+                  {
+                    variant: "outline",
+                    size: "sm",
+                    className: "text-red-600 hover:text-red-700 hover:bg-red-50",
+                  },
+                  React.createElement(Trash2, { className: "w-4 h-4 mr-2" }),
+                  t("actions.delete"),
+                ),
+              ),
+              React.createElement(
+                AlertDialogContent,
+                { onClose: () => setShowDeleteDialog(false) },
+                React.createElement(
+                  AlertDialogHeader,
+                  null,
+                  React.createElement(AlertDialogTitle, null, t("bundle.deleteBundle")),
+                  React.createElement(
+                    AlertDialogDescription,
+                    null,
+                    t("bundle.deleteConfirm"),
+                    " This will remove all samples from this bundle but won't delete the samples themselves.",
+                  ),
+                ),
+                React.createElement(
+                  AlertDialogFooter,
+                  null,
+                  React.createElement(
+                    AlertDialogCancel,
+                    { onClick: () => setShowDeleteDialog(false) },
+                    t("actions.cancel"),
+                  ),
+                  React.createElement(
+                    AlertDialogAction,
+                    {
+                      onClick: () => deleteMutation.mutate(),
+                      className: "bg-red-600 hover:bg-red-700",
+                    },
+                    t("actions.delete"),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    // Main Content
+    React.createElement(
+      "div",
+      { className: "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+      // Bundle Info Card
+      React.createElement(
+        Card,
+        { className: "mb-6" },
+        React.createElement(
+          CardContent,
+          { className: "p-6" },
+          React.createElement(
+            "div",
+            { className: "flex items-start gap-6" },
+            React.createElement(
+              "div",
+              {
+                className:
+                  "w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0",
+              },
+              React.createElement(Package, { className: "w-10 h-10 text-white" }),
+            ),
+            React.createElement(
+              "div",
+              { className: "flex-1" },
+              React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mb-2" }, bundle.name),
+              React.createElement(
+                "div",
+                { className: "flex flex-wrap gap-4 mb-4" },
+                bundle.location &&
+                  React.createElement(
+                    "div",
+                    { className: "flex items-center gap-1 text-slate-600" },
+                    React.createElement(MapPin, { className: "w-4 h-4" }),
+                    bundle.location,
+                  ),
+                React.createElement(
+                  "span",
+                  { className: "text-slate-500" },
+                  `${bundleSamples.length} ${bundleSamples.length === 1 ? "sample" : "samples"}`,
+                ),
+              ),
+              React.createElement(QRCodeDisplay, { code: bundle.qr_code }),
+              bundle.notes &&
+                React.createElement(
+                  "p",
+                  { className: "mt-4 text-slate-600 p-4 bg-slate-50 rounded-lg" },
+                  bundle.notes,
+                ),
+            ),
+          ),
+        ),
+      ),
+      // Samples Management Card
+      React.createElement(
+        Card,
+        null,
+        React.createElement(
+          CardHeader,
+          { className: "flex flex-row items-center justify-between" },
+          React.createElement(CardTitle, null, t("bundle.samples")),
+          React.createElement(
+            "div",
+            { className: "flex items-center gap-2" },
+            React.createElement(
+              Select,
+              {
+                value: selectedSampleToAdd,
+                onValueChange: setSelectedSampleToAdd,
+              },
+              React.createElement(
+                SelectTrigger,
+                { className: "w-[200px]" },
+                React.createElement(SelectValue, { placeholder: "Select sample to add" }),
+              ),
+              React.createElement(
+                SelectContent,
+                null,
+                availableSamples.map((sample) =>
+                  React.createElement(
+                    SelectItem,
+                    { key: sample.id, value: sample.id },
+                    `${sample.name} (${sample.brand})`,
+                  ),
+                ),
+              ),
+            ),
+            React.createElement(
+              Button,
+              {
+                onClick: () => addSampleMutation.mutate(selectedSampleToAdd),
+                disabled: !selectedSampleToAdd || addSampleMutation.isPending,
+                size: "sm",
+              },
+              React.createElement(Plus, { className: "w-4 h-4 mr-1" }),
+              t("bundle.addSample"),
+            ),
+          ),
+        ),
+        React.createElement(
+          CardContent,
+          null,
+          bundleSamples.length === 0
+            ? React.createElement(
+                "div",
+                { className: "text-center py-12" },
+                React.createElement(Package, { className: "w-12 h-12 text-slate-300 mx-auto mb-4" }),
+                React.createElement("p", { className: "text-slate-500" }, t("bundle.noSamples")),
+                React.createElement(
+                  "p",
+                  { className: "text-sm text-slate-400 mt-1" },
+                  "Add samples using the dropdown above",
+                ),
+              )
+            : React.createElement(
+                "div",
+                { className: "space-y-3" },
+                bundleSamples.map((sample) =>
+                  React.createElement(
+                    "div",
+                    { key: sample.id, className: "flex items-center gap-3" },
+                    React.createElement(
+                      "div",
+                      { className: "flex-1" },
+                      React.createElement(
+                        Link,
+                        { to: createPageUrl(`SampleDetails?id=${sample.id}`) },
+                        React.createElement(
+                          Card,
+                          { className: "p-4 hover:shadow-md transition-shadow" },
+                          React.createElement(
+                            "div",
+                            { className: "flex items-center gap-4" },
+                            React.createElement(
+                              "div",
+                              { className: "flex-1" },
+                              React.createElement(
+                                "h4",
+                                { className: "font-medium text-slate-900" },
+                                sample.name,
+                              ),
+                              React.createElement(
+                                "p",
+                                { className: "text-sm text-slate-500" },
+                                sample.brand,
+                              ),
+                            ),
+                            React.createElement(StatusBadge, { status: sample.status }),
+                          ),
+                        ),
+                      ),
+                    ),
+                    React.createElement(
+                      Button,
+                      {
+                        variant: "ghost",
+                        size: "icon",
+                        onClick: () => removeSampleMutation.mutate(sample.id),
+                        disabled: removeSampleMutation.isPending,
+                        className: "text-slate-400 hover:text-red-500",
+                      },
+                      React.createElement(X, { className: "w-4 h-4" }),
+                    ),
+                  ),
+                ),
+              ),
+        ),
+      ),
+    ),
+  );
+};
+
 // Placeholder pages
 const PlaceholderPage = ({ title }) =>
   React.createElement(
@@ -1684,9 +2282,9 @@ const App = () =>
           React.createElement(Route, { path: "/samplecreate", element: React.createElement(SampleCreate) }),
           React.createElement(Route, { path: "/sampleedit", element: React.createElement(SampleEdit) }),
           React.createElement(Route, { path: "/bundles", element: React.createElement(BundlesPage) }),
-          React.createElement(Route, { path: "/bundledetails", element: React.createElement(PlaceholderPage, { title: "Bundle Details" }) }),
-          React.createElement(Route, { path: "/bundlecreate", element: React.createElement(PlaceholderPage, { title: "Create Bundle" }) }),
-          React.createElement(Route, { path: "/bundleedit", element: React.createElement(PlaceholderPage, { title: "Edit Bundle" }) }),
+          React.createElement(Route, { path: "/bundledetails", element: React.createElement(BundleDetails) }),
+          React.createElement(Route, { path: "/bundlecreate", element: React.createElement(BundleCreate) }),
+          React.createElement(Route, { path: "/bundleedit", element: React.createElement(BundleEdit) }),
           React.createElement(Route, { path: "/checkout", element: React.createElement(CheckoutPage) }),
           React.createElement(Route, { path: "/readme", element: React.createElement(PlaceholderPage, { title: "README" }) }),
           React.createElement(Route, { path: "*", element: React.createElement(PlaceholderPage, { title: "Page Not Found" }) }),
