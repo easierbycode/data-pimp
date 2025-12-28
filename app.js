@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
 import * as LucideIcons from "lucide-react";
 
 // Create React Query client
@@ -122,6 +122,22 @@ const translations = {
     editSample: "Edit Sample",
     deleteSample: "Delete Sample",
     deleteConfirm: "Are you sure?",
+    name: "Name",
+    brand: "Brand",
+    qrCode: "QR Code",
+    location: "Location",
+    status: "Status",
+    bundle: "Bundle",
+    noBundle: "No Bundle",
+    currentPrice: "Current Price",
+    bestPrice: "Best Price",
+    bestPriceSource: "Best Price Source",
+    tiktokLink: "TikTok Affiliate Link",
+    fireSale: "Fire Sale",
+    notes: "Notes",
+    checkedOutTo: "Checked out to",
+    checkedOutAt: "Checked out at",
+    checkedInAt: "Checked in at",
   },
   bundle: {
     titlePlural: "Bundles",
@@ -194,6 +210,128 @@ const Input = React.forwardRef(({ className = "", ...props }, ref) =>
 
 const Badge = ({ children, className = "" }) =>
   React.createElement("span", { className: `inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${className}` }, children);
+
+const Label = React.forwardRef(({ className = "", ...props }, ref) =>
+  React.createElement("label", {
+    ref,
+    className: `text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`,
+    ...props,
+  }),
+);
+
+const Textarea = React.forwardRef(({ className = "", ...props }, ref) =>
+  React.createElement("textarea", {
+    ref,
+    className: `flex min-h-[80px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
+    ...props,
+  }),
+);
+
+const Switch = React.forwardRef(({ checked = false, onCheckedChange, disabled = false, className = "", ...props }, ref) => {
+  return React.createElement(
+    "button",
+    {
+      type: "button",
+      role: "switch",
+      "aria-checked": checked,
+      disabled,
+      ref,
+      onClick: () => onCheckedChange?.(!checked),
+      className: `peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 ${checked ? "bg-slate-900" : "bg-slate-200"} ${className}`,
+      ...props,
+    },
+    React.createElement("span", {
+      className: `pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`,
+    }),
+  );
+});
+
+const SelectContext = React.createContext(undefined);
+
+const Select = ({ value = "", onValueChange = () => {}, children }) => {
+  const [open, setOpen] = React.useState(false);
+  return React.createElement(
+    SelectContext.Provider,
+    { value: { value, onValueChange, open, setOpen } },
+    React.createElement("div", { className: "relative" }, children),
+  );
+};
+
+const SelectTrigger = React.forwardRef(({ className = "", children, ...props }, ref) => {
+  const context = React.useContext(SelectContext);
+  const { ChevronDown } = LucideIcons;
+  return React.createElement(
+    "button",
+    {
+      type: "button",
+      ref,
+      onClick: () => context.setOpen(!context.open),
+      className: `flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
+      ...props,
+    },
+    children,
+    React.createElement(ChevronDown, { className: "h-4 w-4 opacity-50" }),
+  );
+});
+
+const SelectValue = ({ placeholder }) => {
+  const context = React.useContext(SelectContext);
+  return React.createElement("span", null, context.value || placeholder);
+};
+
+const SelectContent = ({ children, className = "" }) => {
+  const context = React.useContext(SelectContext);
+  const contentRef = React.useRef(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (contentRef.current && !contentRef.current.contains(event.target)) {
+        context.setOpen(false);
+      }
+    }
+    if (context.open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [context.open, context]);
+
+  if (!context.open) return null;
+
+  return React.createElement(
+    "div",
+    {
+      ref: contentRef,
+      className: `absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 text-base shadow-lg focus:outline-none sm:text-sm ${className}`,
+    },
+    children,
+  );
+};
+
+const SelectItem = ({ value, children, className = "" }) => {
+  const context = React.useContext(SelectContext);
+  const { Check } = LucideIcons;
+  const isSelected = context.value === value;
+
+  return React.createElement(
+    "div",
+    {
+      onClick: () => {
+        context.onValueChange(value);
+        context.setOpen(false);
+      },
+      className: `relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-slate-100 focus:bg-slate-100 ${className}`,
+    },
+    isSelected &&
+      React.createElement(
+        "span",
+        { className: "absolute left-2 flex h-3.5 w-3.5 items-center justify-center" },
+        React.createElement(Check, { className: "h-4 w-4" }),
+      ),
+    children,
+  );
+};
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -726,6 +864,296 @@ const AlertDialogFooter = ({ children }) => React.createElement("div", { classNa
 const AlertDialogCancel = ({ children, onClick }) => React.createElement(Button, { variant: "outline", onClick }, children);
 const AlertDialogAction = ({ children, onClick, className }) => React.createElement(Button, { onClick, className }, children);
 
+// Sample Form Component
+const SampleForm = ({ sample, bundles = [], onSave, onCancel }) => {
+  const { t } = useTranslation();
+  const { Loader2, Upload, X } = LucideIcons;
+  const [formData, setFormData] = React.useState({
+    name: sample?.name || "",
+    brand: sample?.brand || "",
+    location: sample?.location || "",
+    qr_code: sample?.qr_code || "",
+    picture_url: sample?.picture_url || "",
+    tiktok_affiliate_link: sample?.tiktok_affiliate_link || "",
+    fire_sale: sample?.fire_sale || false,
+    status: sample?.status || "available",
+    current_price: sample?.current_price || "",
+    best_price: sample?.best_price || "",
+    best_price_source: sample?.best_price_source || "",
+    bundle_id: sample?.bundle_id || "",
+    notes: sample?.notes || "",
+  });
+  const [saving, setSaving] = React.useState(false);
+  const [errors, setErrors] = React.useState({});
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = t("messages.required");
+    if (!formData.brand.trim()) newErrors.brand = t("messages.required");
+    if (!formData.qr_code.trim()) newErrors.qr_code = t("messages.required");
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setSaving(true);
+    const dataToSave = {
+      ...formData,
+      current_price: formData.current_price ? Number(formData.current_price) : null,
+      best_price: formData.best_price ? Number(formData.best_price) : null,
+      bundle_id: formData.bundle_id || null,
+    };
+    await onSave(dataToSave);
+    setSaving(false);
+  };
+
+  return React.createElement(
+    "form",
+    { onSubmit: handleSubmit, className: "space-y-6" },
+    // Basic Information Card
+    React.createElement(
+      Card,
+      null,
+      React.createElement(CardHeader, null, React.createElement(CardTitle, { className: "text-lg" }, "Basic Information")),
+      React.createElement(
+        CardContent,
+        { className: "grid gap-4 md:grid-cols-2" },
+        // Name
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "name" }, t("sample.name"), " *"),
+          React.createElement(Input, {
+            id: "name",
+            value: formData.name,
+            onChange: (e) => setFormData((prev) => ({ ...prev, name: e.target.value })),
+            className: errors.name ? "border-red-500" : "",
+          }),
+          errors.name && React.createElement("p", { className: "text-sm text-red-500" }, errors.name),
+        ),
+        // Brand
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "brand" }, t("sample.brand"), " *"),
+          React.createElement(Input, {
+            id: "brand",
+            value: formData.brand,
+            onChange: (e) => setFormData((prev) => ({ ...prev, brand: e.target.value })),
+            className: errors.brand ? "border-red-500" : "",
+          }),
+          errors.brand && React.createElement("p", { className: "text-sm text-red-500" }, errors.brand),
+        ),
+        // QR Code
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "qr_code" }, t("sample.qrCode"), " *"),
+          React.createElement(Input, {
+            id: "qr_code",
+            value: formData.qr_code,
+            onChange: (e) => setFormData((prev) => ({ ...prev, qr_code: e.target.value })),
+            className: errors.qr_code ? "border-red-500" : "",
+            placeholder: "Enter unique code",
+          }),
+          errors.qr_code && React.createElement("p", { className: "text-sm text-red-500" }, errors.qr_code),
+        ),
+        // Location
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "location" }, t("sample.location")),
+          React.createElement(Input, {
+            id: "location",
+            value: formData.location,
+            onChange: (e) => setFormData((prev) => ({ ...prev, location: e.target.value })),
+            placeholder: "e.g., Shelf A-12",
+          }),
+        ),
+        // Status
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "status" }, t("sample.status")),
+          React.createElement(
+            Select,
+            {
+              value: formData.status,
+              onValueChange: (value) => setFormData((prev) => ({ ...prev, status: value })),
+            },
+            React.createElement(SelectTrigger, null, React.createElement(SelectValue, null)),
+            React.createElement(
+              SelectContent,
+              null,
+              React.createElement(SelectItem, { value: "available" }, t("status.available")),
+              React.createElement(SelectItem, { value: "checked_out" }, t("status.checked_out")),
+              React.createElement(SelectItem, { value: "reserved" }, t("status.reserved")),
+              React.createElement(SelectItem, { value: "discontinued" }, t("status.discontinued")),
+            ),
+          ),
+        ),
+        // Bundle
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "bundle" }, t("sample.bundle")),
+          React.createElement(
+            Select,
+            {
+              value: formData.bundle_id || "none",
+              onValueChange: (value) => setFormData((prev) => ({ ...prev, bundle_id: value === "none" ? "" : value })),
+            },
+            React.createElement(SelectTrigger, null, React.createElement(SelectValue, { placeholder: t("sample.noBundle") })),
+            React.createElement(
+              SelectContent,
+              null,
+              React.createElement(SelectItem, { value: "none" }, t("sample.noBundle")),
+              bundles.map((bundle) => React.createElement(SelectItem, { key: bundle.id, value: bundle.id }, bundle.name)),
+            ),
+          ),
+        ),
+      ),
+    ),
+    // Image Card
+    React.createElement(
+      Card,
+      null,
+      React.createElement(CardHeader, null, React.createElement(CardTitle, { className: "text-lg" }, "Image")),
+      React.createElement(
+        CardContent,
+        null,
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "picture_url" }, "Image URL"),
+          React.createElement(Input, {
+            id: "picture_url",
+            value: formData.picture_url,
+            onChange: (e) => setFormData((prev) => ({ ...prev, picture_url: e.target.value })),
+            placeholder: "https://...",
+          }),
+        ),
+      ),
+    ),
+    // Pricing Card
+    React.createElement(
+      Card,
+      null,
+      React.createElement(CardHeader, null, React.createElement(CardTitle, { className: "text-lg" }, "Pricing")),
+      React.createElement(
+        CardContent,
+        { className: "grid gap-4 md:grid-cols-2" },
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "current_price" }, t("sample.currentPrice")),
+          React.createElement(Input, {
+            id: "current_price",
+            type: "number",
+            step: "0.01",
+            min: "0",
+            value: formData.current_price,
+            onChange: (e) => setFormData((prev) => ({ ...prev, current_price: e.target.value })),
+            placeholder: "0.00",
+          }),
+        ),
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "best_price" }, t("sample.bestPrice")),
+          React.createElement(Input, {
+            id: "best_price",
+            type: "number",
+            step: "0.01",
+            min: "0",
+            value: formData.best_price,
+            onChange: (e) => setFormData((prev) => ({ ...prev, best_price: e.target.value })),
+            placeholder: "0.00",
+          }),
+        ),
+        React.createElement(
+          "div",
+          { className: "md:col-span-2 space-y-2" },
+          React.createElement(Label, { htmlFor: "best_price_source" }, t("sample.bestPriceSource")),
+          React.createElement(Input, {
+            id: "best_price_source",
+            value: formData.best_price_source,
+            onChange: (e) => setFormData((prev) => ({ ...prev, best_price_source: e.target.value })),
+            placeholder: "https://...",
+          }),
+        ),
+      ),
+    ),
+    // Additional Details Card
+    React.createElement(
+      Card,
+      null,
+      React.createElement(CardHeader, null, React.createElement(CardTitle, { className: "text-lg" }, "Additional Details")),
+      React.createElement(
+        CardContent,
+        { className: "space-y-4" },
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "tiktok_link" }, t("sample.tiktokLink")),
+          React.createElement(Input, {
+            id: "tiktok_link",
+            value: formData.tiktok_affiliate_link,
+            onChange: (e) => setFormData((prev) => ({ ...prev, tiktok_affiliate_link: e.target.value })),
+            placeholder: "https://tiktok.com/...",
+          }),
+        ),
+        React.createElement(
+          "div",
+          { className: "flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200" },
+          React.createElement(
+            "div",
+            null,
+            React.createElement(Label, { htmlFor: "fire_sale", className: "text-base font-medium" }, t("sample.fireSale")),
+            React.createElement("p", { className: "text-sm text-slate-500" }, "Mark this item for fire sale pricing"),
+          ),
+          React.createElement(Switch, {
+            id: "fire_sale",
+            checked: formData.fire_sale,
+            onCheckedChange: (checked) => setFormData((prev) => ({ ...prev, fire_sale: checked })),
+          }),
+        ),
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(Label, { htmlFor: "notes" }, t("sample.notes")),
+          React.createElement(Textarea, {
+            id: "notes",
+            value: formData.notes,
+            onChange: (e) => setFormData((prev) => ({ ...prev, notes: e.target.value })),
+            rows: 3,
+            placeholder: "Additional notes...",
+          }),
+        ),
+      ),
+    ),
+    // Form Actions
+    React.createElement(
+      "div",
+      { className: "flex justify-end gap-3" },
+      React.createElement(
+        Button,
+        { type: "button", variant: "outline", onClick: onCancel, disabled: saving },
+        t("actions.cancel"),
+      ),
+      React.createElement(
+        Button,
+        { type: "submit", disabled: saving },
+        saving && React.createElement(Loader2, { className: "w-4 h-4 mr-2 animate-spin" }),
+        t("actions.save"),
+      ),
+    ),
+  );
+};
+
 // Sample Details Page
 const SampleDetails = () => {
   const { t } = useTranslation();
@@ -1082,6 +1510,96 @@ const SampleDetails = () => {
   );
 };
 
+// Sample Edit Page
+const SampleEdit = () => {
+  const { t } = useTranslation();
+  const { ArrowLeft, Loader2, AlertTriangle } = LucideIcons;
+  const urlParams = new URLSearchParams(window.location.search);
+  const sampleId = urlParams.get("id");
+
+  const { data: sample, isLoading } = useQuery({
+    queryKey: ["sample", sampleId],
+    queryFn: async () => {
+      const samples = await api.entities.Sample.filter({ id: sampleId });
+      return samples[0];
+    },
+    enabled: !!sampleId,
+  });
+
+  const { data: bundles = [] } = useQuery({
+    queryKey: ["bundles"],
+    queryFn: () => api.entities.Bundle.list(),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data) => api.entities.Sample.update(sampleId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+      queryClient.invalidateQueries({ queryKey: ["sample", sampleId] });
+      window.location.href = createPageUrl(`SampleDetails?id=${sampleId}`);
+    },
+  });
+
+  if (isLoading) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+    );
+  }
+
+  if (!sample) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      React.createElement(
+        "div",
+        { className: "text-center" },
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("sample.notFound")),
+        React.createElement(
+          Link,
+          { to: createPageUrl("Samples") },
+          React.createElement(Button, { variant: "outline" }, t("actions.back")),
+        ),
+      ),
+    );
+  }
+
+  return React.createElement(
+    "div",
+    { className: "min-h-screen bg-slate-50" },
+    React.createElement(
+      "div",
+      { className: "bg-white border-b border-slate-200" },
+      React.createElement(
+        "div",
+        { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+        React.createElement(
+          Link,
+          {
+            to: createPageUrl(`SampleDetails?id=${sampleId}`),
+            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+          },
+          React.createElement(ArrowLeft, { className: "w-4 h-4" }),
+          React.createElement("span", null, "Back to Sample"),
+        ),
+        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("sample.editSample")),
+      ),
+    ),
+    React.createElement(
+      "div",
+      { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+      React.createElement(SampleForm, {
+        sample,
+        bundles,
+        onSave: (data) => updateMutation.mutate(data),
+        onCancel: () => (window.location.href = createPageUrl(`SampleDetails?id=${sampleId}`)),
+      }),
+    ),
+  );
+};
+
 // Placeholder pages
 const PlaceholderPage = ({ title }) =>
   React.createElement(
@@ -1113,7 +1631,7 @@ const App = () =>
           React.createElement(Route, { path: "/samples", element: React.createElement(SamplesPage) }),
           React.createElement(Route, { path: "/sampledetails", element: React.createElement(SampleDetails) }),
           React.createElement(Route, { path: "/samplecreate", element: React.createElement(PlaceholderPage, { title: "Create Sample" }) }),
-          React.createElement(Route, { path: "/sampleedit", element: React.createElement(PlaceholderPage, { title: "Edit Sample" }) }),
+          React.createElement(Route, { path: "/sampleedit", element: React.createElement(SampleEdit) }),
           React.createElement(Route, { path: "/bundles", element: React.createElement(BundlesPage) }),
           React.createElement(Route, { path: "/bundledetails", element: React.createElement(PlaceholderPage, { title: "Bundle Details" }) }),
           React.createElement(Route, { path: "/bundlecreate", element: React.createElement(PlaceholderPage, { title: "Create Bundle" }) }),
