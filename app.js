@@ -646,7 +646,14 @@ const CheckoutPage = () => {
   const [err, setErr] = React.useState(null);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const [cartItems, setCartItems] = React.useState([]);
+  const [isDebugMode, setIsDebugMode] = React.useState(false);
   const defaultImage = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop";
+
+  // Check for debug mode via URL parameter
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setIsDebugMode(params.get('debug') === 'true');
+  }, [location.search]);
 
   const hasLowestPrice = (item) => {
     if (item?.current_price === null || item?.current_price === undefined) return false;
@@ -799,7 +806,7 @@ const CheckoutPage = () => {
                           lastChecked: sample.last_price_checked_at,
                         }),
                       ),
-                      React.createElement(
+                      isDebugMode && React.createElement(
                         "div",
                         { className: "mt-3 flex flex-wrap items-center gap-3" },
                         React.createElement("span", { className: "text-sm text-slate-500" }, "link"),
@@ -818,7 +825,7 @@ const CheckoutPage = () => {
                             )
                           : React.createElement("span", { className: "text-sm text-slate-400" }, "Not available"),
                       ),
-                      React.createElement(
+                      isDebugMode && React.createElement(
                         "p",
                         { className: "text-sm text-slate-500 mt-2" },
                         "has_fire_sale: ",
