@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { ExternalLink, Package } from "lucide-react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { createPageUrl, hasLowestPrice } from "@/utils";
 import StatusBadge from "../ui/StatusBadge.tsx";
 import FireSaleBadge from "../ui/FireSaleBadge.tsx";
+import LowestPriceOnlineBadge from "../ui/LowestPriceOnlineBadge.tsx";
 import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
 import type { Sample } from "@/api/base44Client.ts";
 
@@ -15,8 +16,8 @@ export default function SampleCard({ sample, compact = false }) {
   if (compact) {
     return (
       <div className="flex items-center gap-4 p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
-        <img 
-          src={sample.picture_url || defaultImage} 
+        <img
+          src={sample.picture_url || defaultImage}
           alt={sample.name}
           className="w-12 h-12 rounded-lg object-cover"
         />
@@ -26,6 +27,7 @@ export default function SampleCard({ sample, compact = false }) {
         </div>
         <StatusBadge status={sample.status} />
         {sample.fire_sale && <FireSaleBadge />}
+        {hasLowestPrice(sample) && <LowestPriceOnlineBadge />}
       </div>
     );
   }
@@ -33,14 +35,15 @@ export default function SampleCard({ sample, compact = false }) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-square relative bg-slate-100">
-        <img 
-          src={sample.picture_url || defaultImage} 
+        <img
+          src={sample.picture_url || defaultImage}
           alt={sample.name}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
           <StatusBadge status={sample.status} />
           {sample.fire_sale && <FireSaleBadge />}
+          {hasLowestPrice(sample) && <LowestPriceOnlineBadge />}
         </div>
         {sample.bundle_id && (
           <div className="absolute top-3 right-3">
