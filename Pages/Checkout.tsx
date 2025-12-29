@@ -25,28 +25,39 @@ export default function Checkout() {
 
   // Helper to check if item has lowest price online
   const hasLowestPrice = (item) => {
-    if (!item.current_price || !item.best_price) return false;
+    if (item?.current_price === null || item?.current_price === undefined) return false;
+    if (item?.best_price === null || item?.best_price === undefined) return false;
     return item.current_price < item.best_price;
   };
 
   // Add item to cart
   const handleAddToCart = useCallback((cartItem) => {
     setCart(prev => [...prev, cartItem]);
-
-    // Check if the added item has savings
-    let hasSavings = false;
-    if (cartItem.type === 'sample') {
-      hasSavings = hasLowestPrice(cartItem.data);
-    } else if (cartItem.type === 'bundle' && cartItem.samples) {
-      hasSavings = cartItem.samples.some(s => hasLowestPrice(s));
-    }
-
-    // Trigger confetti if there are savings
-    if (hasSavings) {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3500);
-    }
   }, []);
+
+  useEffect(() => {
+    if (!scanResult) {
+      setShowConfetti(false);
+      return;
+    }
+
+    let shouldCelebrate = false;
+    if (scanResult.type === 'sample') {
+      shouldCelebrate = hasLowestPrice(scanResult.data);
+    } else if (scanResult.type === 'bundle') {
+      const samples = scanResult.data?.samples || [];
+      shouldCelebrate = samples.some((sample) => hasLowestPrice(sample));
+    }
+
+    if (!shouldCelebrate) {
+      setShowConfetti(false);
+      return;
+    }
+
+    setShowConfetti(true);
+    const timeout = setTimeout(() => setShowConfetti(false), 3500);
+    return () => clearTimeout(timeout);
+  }, [scanResult]);
 
   // Remove item from cart
   const handleRemoveFromCart = useCallback((index) => {

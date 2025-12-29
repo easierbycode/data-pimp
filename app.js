@@ -639,10 +639,19 @@ const BundlesPage = () => {
 // Checkout Page (restored styling)
 const CheckoutPage = () => {
   const { t } = useTranslation();
-  const { QrCode } = LucideIcons;
+  const { QrCode, ExternalLink, ShoppingCart } = LucideIcons;
   const [code, setCode] = React.useState("");
   const [result, setResult] = React.useState(null);
   const [err, setErr] = React.useState(null);
+  const [showConfetti, setShowConfetti] = React.useState(false);
+  const [cartItems, setCartItems] = React.useState([]);
+  const defaultImage = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop";
+
+  const hasLowestPrice = (item) => {
+    if (item?.current_price === null || item?.current_price === undefined) return false;
+    if (item?.best_price === null || item?.best_price === undefined) return false;
+    return item.current_price < item.best_price;
+  };
 
   const handleScan = async () => {
     setErr(null);
@@ -660,6 +669,29 @@ const CheckoutPage = () => {
       setErr(e);
     }
   };
+
+  const handleAddToCart = () => {
+    if (!result || result.type !== "sample") return;
+    setCartItems((prev) => [...prev, result.data]);
+  };
+
+  const sample = result && result.type === "sample" ? result.data : null;
+  const primaryLink = sample ? sample.tiktok_affiliate_link || sample.best_price_source : null;
+  const showLowestBadge = sample ? hasLowestPrice(sample) : false;
+
+  React.useEffect(() => {
+    if (!sample) {
+      setShowConfetti(false);
+      return;
+    }
+    if (!hasLowestPrice(sample)) {
+      setShowConfetti(false);
+      return;
+    }
+    setShowConfetti(true);
+    const timeout = setTimeout(() => setShowConfetti(false), 3500);
+    return () => clearTimeout(timeout);
+  }, [sample]);
 
   return React.createElement(
     "div",
@@ -682,6 +714,7 @@ const CheckoutPage = () => {
     React.createElement(
       "div",
       { className: "max-w-4xl mx-auto px-4 py-8" },
+      React.createElement(Confetti, { active: showConfetti }),
       err ? React.createElement(ApiError, { error: err }) : null,
       React.createElement(
         Card,
@@ -705,12 +738,107 @@ const CheckoutPage = () => {
             { className: "p-6" },
             result.type === "not_found"
               ? React.createElement("p", { className: "text-red-600 text-center" }, t("checkout.notFound"))
-              : React.createElement(
-                  "div",
-                  null,
-                  React.createElement("h2", { className: "text-xl font-bold mb-2" }, result.data.name),
-                  React.createElement(StatusBadge, { status: result.data.status || "available" }),
-                ),
+              : result.type === "bundle"
+                ? React.createElement(
+                    "div",
+                    null,
+                    React.createElement("h2", { className: "text-xl font-bold mb-2" }, result.data.name),
+                    React.createElement(
+                      "p",
+                      { className: "text-sm text-slate-500" },
+                      "Bundle scanned. Sample details are not available.",
+                    ),
+                  )
+                : React.createElement(
+                    "div",
+                    { className: "flex flex-col md:flex-row gap-6" },
+                    React.createElement("img", {
+                      src: sample.picture_url || defaultImage,
+                      alt: sample.name,
+                      className: "w-32 h-32 rounded-xl object-cover flex-shrink-0",
+                    }),
+                    React.createElement(
+                      "div",
+                      { className: "flex-1 min-w-0" },
+                      React.createElement(
+                        "div",
+                        { className: "flex items-start justify-between gap-4 mb-2" },
+                        React.createElement(
+                          "div",
+                          null,
+                          React.createElement("h2", { className: "text-2xl font-bold text-slate-900" }, sample.name),
+                          React.createElement("p", { className: "text-lg text-slate-500" }, sample.brand),
+                        ),
+                        React.createElement(
+                          "div",
+                          { className: "flex flex-col items-end gap-2" },
+                          React.createElement(StatusBadge, { status: sample.status || "available" }),
+                          sample.fire_sale ? React.createElement(FireSaleBadge, null) : null,
+                          showLowestBadge ? React.createElement(LowestPriceOnlineBadge, null) : null,
+                        ),
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "mb-3" },
+                        React.createElement(PriceDisplay, {
+                          currentPrice: sample.current_price,
+                          bestPrice: sample.best_price,
+                          bestPriceSource: sample.best_price_source,
+                          lastChecked: sample.last_price_checked_at,
+                        }),
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "mt-3 flex flex-wrap items-center gap-3" },
+                        React.createElement("span", { className: "text-sm text-slate-500" }, "link"),
+                        primaryLink
+                          ? React.createElement(
+                              "a",
+                              {
+                                href: primaryLink,
+                                target: "_blank",
+                                rel: "noopener noreferrer",
+                                className:
+                                  "inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors",
+                              },
+                              "Open Link ",
+                              React.createElement(ExternalLink, { className: "w-4 h-4" }),
+                            )
+                          : React.createElement("span", { className: "text-sm text-slate-400" }, "Not available"),
+                      ),
+                      React.createElement(
+                        "p",
+                        { className: "text-sm text-slate-500 mt-2" },
+                        "has_fire_sale: ",
+                        React.createElement(
+                          "span",
+                          {
+                            className: `font-semibold ${
+                              sample.fire_sale ? "text-orange-600" : "text-slate-600"
+                            }`,
+                          },
+                          sample.fire_sale ? "true" : "false",
+                        ),
+                      ),
+                      React.createElement(
+                        Button,
+                        {
+                          onClick: handleAddToCart,
+                          className:
+                            "mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700",
+                        },
+                        React.createElement(ShoppingCart, { className: "w-4 h-4 mr-2" }),
+                        "Add to Cart",
+                        cartItems.length > 0
+                          ? React.createElement(
+                              "span",
+                              { className: "ml-2 text-xs text-white/80" },
+                              `(${cartItems.length})`,
+                            )
+                          : null,
+                      ),
+                    ),
+                  ),
           )
         : null,
     ),
@@ -813,6 +941,79 @@ const FireSaleBadge = () => {
     { className: "bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 gap-1" },
     React.createElement(Flame, { className: "w-3 h-3" }),
     "Fire Sale",
+  );
+};
+
+const LowestPriceOnlineBadge = () => {
+  const { TrendingDown } = LucideIcons;
+  return React.createElement(
+    Badge,
+    { className: "bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 gap-1" },
+    React.createElement(TrendingDown, { className: "w-3 h-3" }),
+    "Lowest Price Online",
+  );
+};
+
+const Confetti = ({ active = false }) => {
+  const [particles, setParticles] = React.useState([]);
+
+  React.useEffect(() => {
+    if (!active) return;
+
+    const colors = ["#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6"];
+    const newParticles = Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 0.5,
+      duration: 2 + Math.random() * 1,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    setParticles(newParticles);
+
+    const timeout = setTimeout(() => {
+      setParticles([]);
+    }, 3500);
+
+    return () => clearTimeout(timeout);
+  }, [active]);
+
+  if (!active || particles.length === 0) return null;
+
+  return React.createElement(
+    "div",
+    { className: "fixed inset-0 pointer-events-none z-50 overflow-hidden" },
+    particles.map((particle) =>
+      React.createElement("div", {
+        key: particle.id,
+        className: "absolute w-2 h-2 opacity-0 animate-confetti",
+        style: {
+          left: `${particle.left}%`,
+          top: "-10px",
+          backgroundColor: particle.color,
+          animationDelay: `${particle.delay}s`,
+          animationDuration: `${particle.duration}s`,
+        },
+      }),
+    ),
+    React.createElement(
+      "style",
+      null,
+      `
+        @keyframes confetti {
+          0% {
+            transform: translateY(0) rotateZ(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotateZ(720deg);
+            opacity: 0;
+          }
+        }
+        .animate-confetti {
+          animation: confetti linear forwards;
+        }
+      `,
+    ),
   );
 };
 

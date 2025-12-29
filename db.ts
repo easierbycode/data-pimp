@@ -4,7 +4,7 @@
 import { Pool } from "npm:pg";
 
 const pool = new Pool({
-  connectionString: Deno.env.get("DATABASE_URL"),
+  connectionString: `postgresql://neondb_owner:npg_hBWbu6xNorm7@ep-red-resonance-afsg8r6h-pooler.c-2.us-west-2.aws.neon.tech/d7223c-production?sslmode=require&channel_binding=require`,
   max: 1,
 });
 

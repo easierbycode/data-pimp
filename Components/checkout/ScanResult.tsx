@@ -29,7 +29,8 @@ export default function ScanResult({
 
   // Helper to check if item has lowest price online
   const hasLowestPrice = (item) => {
-    if (!item.current_price || !item.best_price) return false;
+    if (item?.current_price === null || item?.current_price === undefined) return false;
+    if (item?.best_price === null || item?.best_price === undefined) return false;
     return item.current_price < item.best_price;
   };
   
@@ -55,6 +56,7 @@ export default function ScanResult({
     const canCheckin = sample.status === 'checked_out';
     const canReserve = sample.status === 'available';
     const canUnreserve = sample.status === 'reserved';
+    const primaryLink = sample.tiktok_affiliate_link || sample.best_price_source;
 
     return (
       <Card className="overflow-hidden">
@@ -112,16 +114,27 @@ export default function ScanResult({
                 lastChecked={sample.last_price_checked_at}
               />
               
-              {sample.tiktok_affiliate_link && (
-                <a 
-                  href={sample.tiktok_affiliate_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-                >
-                  TikTok Link <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span className="text-sm text-slate-500">link</span>
+                {primaryLink ? (
+                  <a 
+                    href={primaryLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                  >
+                    Open Link <ExternalLink className="w-4 h-4" />
+                  </a>
+                ) : (
+                  <span className="text-sm text-slate-400">Not available</span>
+                )}
+              </div>
+              <p className="text-sm text-slate-500 mt-2">
+                has_fire_sale:{' '}
+                <span className={`font-semibold ${sample.fire_sale ? 'text-orange-600' : 'text-slate-600'}`}>
+                  {sample.fire_sale ? 'true' : 'false'}
+                </span>
+              </p>
             </div>
           </div>
           

@@ -183,11 +183,24 @@ function renderSPAShell(): Response {
 
 // Serve /app.js from local file (cache in-memory)
 const APP_JS_URL = new URL("./app.js", import.meta.url);
-let appJsCache: string | null = null;
+let appJsCache: { text: string; mtimeMs: number | null } | null = null;
 
 async function serveAppJs() {
-  if (!appJsCache) appJsCache = await Deno.readTextFile(APP_JS_URL);
-  return new Response(appJsCache, {
+  try {
+    const stat = await Deno.stat(APP_JS_URL);
+    const mtimeMs = stat.mtime ? stat.mtime.getTime() : null;
+    if (!appJsCache || appJsCache.mtimeMs !== mtimeMs) {
+      const text = await Deno.readTextFile(APP_JS_URL);
+      appJsCache = { text, mtimeMs };
+    }
+  } catch {
+    if (!appJsCache) {
+      const text = await Deno.readTextFile(APP_JS_URL);
+      appJsCache = { text, mtimeMs: null };
+    }
+  }
+  const body = appJsCache?.text ?? "";
+  return new Response(body, {
     status: 200,
     headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" },
   });
