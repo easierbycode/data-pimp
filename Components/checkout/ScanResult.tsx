@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -26,10 +26,13 @@ export default function ScanResult({
 }) {
   const { t } = useTranslation();
   const [checkoutTo, setCheckoutTo] = useState('');
+  const [isDebugMode, setIsDebugMode] = useState(false);
 
-  // Check for debug mode via URL parameter
-  const isDebugMode = typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('debug') === 'true';
+  // Check for debug mode via URL parameter on client side
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsDebugMode(params.get('debug') === 'true');
+  }, []);
 
   // Helper to check if item has lowest price online
   const hasLowestPrice = (item) => {
