@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card.tsx";
@@ -12,12 +13,14 @@ import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function Checkout() {
   const { t } = useTranslation();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [scanResult, setScanResult] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [recentScans, setRecentScans] = useState([]);
   const [cart, setCart] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [prefillCode, setPrefillCode] = useState("");
 
   const addRecentScan = (scan) => {
     setRecentScans(prev => [scan, ...prev].slice(0, 10));
@@ -192,6 +195,18 @@ export default function Checkout() {
     setProcessing(false);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const codeParam = params.get("code");
+    if (codeParam && codeParam.trim()) {
+      const trimmed = codeParam.trim();
+      setPrefillCode(trimmed);
+      handleScan(trimmed);
+      return;
+    }
+    setPrefillCode("");
+  }, [handleScan, location.search]);
+
   const handleCheckout = async (item, checkedOutTo, samples = null) => {
     setProcessing(true);
     const now = new Date().toISOString();
@@ -355,7 +370,7 @@ export default function Checkout() {
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[#2463eb] rounded-2xl flex items-center justify-center mx-auto mb-4">
               <QrCode className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900">{t('checkout.title')}</h1>
@@ -370,7 +385,7 @@ export default function Checkout() {
 
         {/* Scanner */}
         <Card className="p-6 mb-6 bg-white/80 backdrop-blur-sm">
-          <ScannerInput onScan={handleScan} disabled={processing} />
+          <ScannerInput onScan={handleScan} disabled={processing} prefillValue={prefillCode} />
         </Card>
 
         <div className="grid gap-6 lg:grid-cols-3">

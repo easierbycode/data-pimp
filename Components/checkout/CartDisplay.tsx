@@ -62,10 +62,10 @@ export default function CartDisplay({ items, onRemoveItem, onCheckout, onClearCa
 
   return (
     <Card className="bg-white">
-      <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+      <CardHeader className="border-b bg-[#2463eb]/10">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-indigo-600" />
+            <ShoppingCart className="w-5 h-5 text-[#2463eb]" />
             Cart ({items.length} {items.length === 1 ? 'item' : 'items'})
           </CardTitle>
           {items.length > 0 && (
@@ -139,10 +139,10 @@ export default function CartDisplay({ items, onRemoveItem, onCheckout, onClearCa
               const bundleSavings = samples.reduce((sum, s) => sum + calculateSavings(s), 0);
 
               return (
-                <div key={index} className="p-3 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                <div key={index} className="p-3 bg-[#2463eb]/10 rounded-lg border border-[#2463eb]/20">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Package className="w-5 h-5 text-indigo-600" />
+                      <Package className="w-5 h-5 text-[#2463eb]" />
                       <h4 className="font-semibold text-slate-900">{bundle.name}</h4>
                     </div>
                     <Button
@@ -190,7 +190,7 @@ export default function CartDisplay({ items, onRemoveItem, onCheckout, onClearCa
         <Button
           onClick={onCheckout}
           size="lg"
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold"
+          className="w-full bg-[#2463eb] hover:bg-[#1f57d0] text-white font-semibold"
         >
           <ShoppingCart className="w-5 h-5 mr-2" />
           Checkout {items.length} {items.length === 1 ? 'Item' : 'Items'}

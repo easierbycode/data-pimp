@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { QrCode, Loader2 } from "lucide-react";
 import { useTranslation } from "../i18n/translations.tsx";
 
-export default function ScannerInput({ onScan, disabled = false }) {
+export default function ScannerInput({ onScan, disabled = false, prefillValue = "" }) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -42,6 +42,12 @@ export default function ScannerInput({ onScan, disabled = false }) {
       setValue('');
     }, 150); // 150ms threshold for scanner input
   }, [onScan]);
+
+  useEffect(() => {
+    if (prefillValue === undefined || prefillValue === null) return;
+    bufferRef.current = prefillValue;
+    setValue(prefillValue);
+  }, [prefillValue]);
 
   // Keep input focused
   useEffect(() => {

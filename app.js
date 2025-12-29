@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
 import * as LucideIcons from "lucide-react";
 
@@ -639,6 +639,7 @@ const BundlesPage = () => {
 // Checkout Page (restored styling)
 const CheckoutPage = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const { QrCode, ExternalLink, ShoppingCart } = LucideIcons;
   const [code, setCode] = React.useState("");
   const [result, setResult] = React.useState(null);
@@ -653,15 +654,16 @@ const CheckoutPage = () => {
     return item.current_price < item.best_price;
   };
 
-  const handleScan = async () => {
+  const handleScan = async (nextCode) => {
     setErr(null);
-    if (!code.trim()) return;
+    const scanCode = (typeof nextCode === "string" ? nextCode : code).trim();
+    if (!scanCode) return;
     try {
-      const samples = await api.entities.Sample.filter({ qr_code: code });
+      const samples = await api.entities.Sample.filter({ qr_code: scanCode });
       if (samples.length > 0) {
         setResult({ type: "sample", data: samples[0] });
       } else {
-        const bundles = await api.entities.Bundle.filter({ qr_code: code });
+        const bundles = await api.entities.Bundle.filter({ qr_code: scanCode });
         if (bundles.length > 0) setResult({ type: "bundle", data: bundles[0] });
         else setResult({ type: "not_found" });
       }
@@ -669,6 +671,16 @@ const CheckoutPage = () => {
       setErr(e);
     }
   };
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const codeParam = params.get("code");
+    if (codeParam && codeParam.trim()) {
+      const trimmed = codeParam.trim();
+      setCode(trimmed);
+      handleScan(trimmed);
+    }
+  }, [location.search]);
 
   const handleAddToCart = () => {
     if (!result || result.type !== "sample") return;
@@ -704,7 +716,7 @@ const CheckoutPage = () => {
         { className: "max-w-4xl mx-auto px-4 py-6 text-center" },
         React.createElement(
           "div",
-          { className: "w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4" },
+          { className: "w-16 h-16 bg-[#2463eb] rounded-2xl flex items-center justify-center mx-auto mb-4" },
           React.createElement(QrCode, { className: "w-8 h-8 text-white" }),
         ),
         React.createElement("h1", { className: "text-3xl font-bold" }, t("checkout.title")),
@@ -825,7 +837,7 @@ const CheckoutPage = () => {
                         {
                           onClick: handleAddToCart,
                           className:
-                            "mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700",
+                            "mt-4 w-full bg-[#2463eb] hover:bg-[#1f57d0]",
                         },
                         React.createElement(ShoppingCart, { className: "w-4 h-4 mr-2" }),
                         "Add to Cart",

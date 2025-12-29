@@ -96,7 +96,7 @@ export default function ScanResult({
                   </div>
                 )}
                 {sample.bundle_id && (
-                  <div className="flex items-center gap-1 text-sm text-indigo-600">
+                  <div className="flex items-center gap-1 text-sm text-[#2463eb]">
                     <Package className="w-4 h-4" />
                     In Bundle
                   </div>
@@ -147,7 +147,7 @@ export default function ScanResult({
                   size="lg"
                   onClick={() => onAddToCart({ type: 'sample', data: sample })}
                   disabled={processing}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                  className="w-full bg-[#2463eb] hover:bg-[#1f57d0]"
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Add to Cart
@@ -232,9 +232,9 @@ export default function ScanResult({
 
     return (
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b flex items-center justify-between">
+        <div className="bg-[#2463eb]/10 px-6 py-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-indigo-500" />
+            <Package className="w-5 h-5 text-[#2463eb]" />
             <span className="font-medium text-slate-700">{t('checkout.bundleFound')}</span>
           </div>
           <span className="text-sm text-slate-500">{samples.length} samples</span>
@@ -242,7 +242,7 @@ export default function ScanResult({
         
         <CardContent className="p-6">
           <div className="flex items-start gap-4 mb-6">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 rounded-xl bg-[#2463eb] flex items-center justify-center flex-shrink-0">
               <Package className="w-8 h-8 text-white" />
             </div>
             <div className="flex-1">
@@ -272,7 +272,7 @@ export default function ScanResult({
                   size="lg"
                   onClick={() => onAddToCart({ type: 'bundle', data: bundle, samples })}
                   disabled={processing}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                  className="w-full bg-[#2463eb] hover:bg-[#1f57d0]"
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Add Bundle to Cart
