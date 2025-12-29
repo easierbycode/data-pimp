@@ -27,6 +27,10 @@ export default function ScanResult({
   const { t } = useTranslation();
   const [checkoutTo, setCheckoutTo] = useState('');
 
+  // Check for debug mode via URL parameter
+  const isDebugMode = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('debug') === 'true';
+
   // Helper to check if item has lowest price online
   const hasLowestPrice = (item) => {
     if (item?.current_price === null || item?.current_price === undefined) return false;
@@ -114,27 +118,31 @@ export default function ScanResult({
                 lastChecked={sample.last_price_checked_at}
               />
               
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <span className="text-sm text-slate-500">link</span>
-                {primaryLink ? (
-                  <a 
-                    href={primaryLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-                  >
-                    Open Link <ExternalLink className="w-4 h-4" />
-                  </a>
-                ) : (
-                  <span className="text-sm text-slate-400">Not available</span>
-                )}
-              </div>
-              <p className="text-sm text-slate-500 mt-2">
-                has_fire_sale:{' '}
-                <span className={`font-semibold ${sample.fire_sale ? 'text-orange-600' : 'text-slate-600'}`}>
-                  {sample.fire_sale ? 'true' : 'false'}
-                </span>
-              </p>
+              {isDebugMode && (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="text-sm text-slate-500">link</span>
+                    {primaryLink ? (
+                      <a
+                        href={primaryLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                      >
+                        Open Link <ExternalLink className="w-4 h-4" />
+                      </a>
+                    ) : (
+                      <span className="text-sm text-slate-400">Not available</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-500 mt-2">
+                    has_fire_sale:{' '}
+                    <span className={`font-semibold ${sample.fire_sale ? 'text-orange-600' : 'text-slate-600'}`}>
+                      {sample.fire_sale ? 'true' : 'false'}
+                    </span>
+                  </p>
+                </>
+              )}
             </div>
           </div>
           
