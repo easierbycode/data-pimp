@@ -85,6 +85,17 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
+/**
+ * Checks if an item has the lowest price online
+ * @param item - The item with current_price and best_price
+ * @returns True if current price is lower than best price
+ */
+export function hasLowestPrice(item: { current_price?: number | null; best_price?: number | null }): boolean {
+  if (item?.current_price === null || item?.current_price === undefined) return false;
+  if (item?.best_price === null || item?.best_price === undefined) return false;
+  return item.current_price < item.best_price;
+}
+
 export default {
   createPageUrl,
   formatDate,
@@ -92,4 +103,5 @@ export default {
   generateId,
   debounce,
   cn,
+  hasLowestPrice,
 };
