@@ -63,41 +63,36 @@ export default function Checkout() {
       return;
     }
 
-    // Delay to let the DOM render the badge before animating
-    // Need enough time for the badge component to mount and ref to be set
-    const startTimeout = setTimeout(() => {
+    // Step 1: Wait for DOM to render the badge (300ms)
+    // Step 2: Start badge animation
+    // Step 3: After badge animation (600ms), get position and start confetti
+    const startAnimationTimeout = setTimeout(() => {
       setAnimateBadge(true);
-    }, 300);
 
-    return () => clearTimeout(startTimeout);
-  }, [scanResult]);
-
-  // Handle badge animation complete - trigger confetti from badge position
-  const handleBadgeAnimationComplete = useCallback(() => {
-    let origin: { x: number; y: number } | null = null;
-
-    if (badgeRef.current) {
-      const rect = badgeRef.current.getBoundingClientRect();
-      origin = {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
-      };
-    }
-
-    // Only show confetti if we have a valid origin
-    if (origin) {
-      setConfettiOrigin(origin);
-      setShowConfetti(true);
-      setAnimateBadge(false);
-
+      // After badge animation completes, trigger confetti
       setTimeout(() => {
-        setShowConfetti(false);
-        setConfettiOrigin(null);
-      }, 3500);
-    } else {
-      setAnimateBadge(false);
-    }
-  }, []);
+        if (badgeRef.current) {
+          const rect = badgeRef.current.getBoundingClientRect();
+          const origin = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          };
+          setConfettiOrigin(origin);
+          setShowConfetti(true);
+        }
+
+        setAnimateBadge(false);
+
+        // Clean up confetti after animation
+        setTimeout(() => {
+          setShowConfetti(false);
+          setConfettiOrigin(null);
+        }, 3500);
+      }, 600); // Badge animation duration
+    }, 300); // DOM render delay
+
+    return () => clearTimeout(startAnimationTimeout);
+  }, [scanResult]);
 
   // Remove item from cart
   const handleRemoveFromCart = useCallback((index) => {
@@ -439,7 +434,6 @@ export default function Checkout() {
                 processing={processing}
                 badgeRef={badgeRef}
                 animateBadge={animateBadge}
-                onBadgeAnimationComplete={handleBadgeAnimationComplete}
               />
             )}
 
