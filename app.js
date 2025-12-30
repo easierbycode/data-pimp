@@ -433,11 +433,19 @@ const SamplesPage = () => {
 
   if (error) return React.createElement(ApiError, { error });
 
+  // Helper function to check if sample has the lowest price online
+  const hasLowestPrice = (item) => {
+    if (item?.current_price === null || item?.current_price === undefined) return false;
+    if (item?.best_price === null || item?.best_price === undefined) return false;
+    return item.current_price < item.best_price;
+  };
+
   const filteredSamples = samples.filter(
     (s) =>
       !search ||
       s.name?.toLowerCase().includes(search.toLowerCase()) ||
-      s.brand?.toLowerCase().includes(search.toLowerCase()),
+      s.brand?.toLowerCase().includes(search.toLowerCase()) ||
+      s.qr_code?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return React.createElement(
@@ -519,8 +527,10 @@ const SamplesPage = () => {
                       }),
                       React.createElement(
                         "div",
-                        { className: "absolute top-3 left-3" },
+                        { className: "absolute top-3 left-3 flex flex-wrap gap-2" },
                         React.createElement(StatusBadge, { status: sample.status || "available" }),
+                        sample.fire_sale ? React.createElement(FireSaleBadge, null) : null,
+                        hasLowestPrice(sample) ? React.createElement(LowestPriceOnlineBadge, null) : null,
                       ),
                     ),
                     React.createElement(
