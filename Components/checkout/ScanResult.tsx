@@ -24,8 +24,7 @@ export default function ScanResult({
   onAddToCart,
   processing = false,
   badgeRef = null,
-  animateBadge = false,
-  onBadgeAnimationComplete = null
+  animateBadge = false
 }) {
   const { t } = useTranslation();
   const [checkoutTo, setCheckoutTo] = useState('');
@@ -98,7 +97,6 @@ export default function ScanResult({
                     <LowestPriceOnlineBadge
                       ref={badgeRef}
                       animate={animateBadge}
-                      onAnimationComplete={onBadgeAnimationComplete}
                     />
                   )}
                 </div>
@@ -368,7 +366,6 @@ export default function ScanResult({
                         <LowestPriceOnlineBadge
                           ref={isFirstLowest ? badgeRef : undefined}
                           animate={isFirstLowest ? animateBadge : false}
-                          onAnimationComplete={isFirstLowest ? onBadgeAnimationComplete : undefined}
                         />
                       )}
                     </div>

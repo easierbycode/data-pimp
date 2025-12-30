@@ -1,37 +1,16 @@
-import React, { forwardRef, useEffect, useRef } from "react";
+import React, { forwardRef } from "react";
 import { Badge } from "@/components/ui/badge.tsx";
 import { TrendingDown } from "lucide-react";
 
 interface LowestPriceOnlineBadgeProps {
   animate?: boolean;
-  onAnimationComplete?: () => void;
 }
 
 const LowestPriceOnlineBadge = forwardRef<HTMLDivElement, LowestPriceOnlineBadgeProps>(
-  ({ animate = false, onAnimationComplete }, ref) => {
-    const badgeRef = useRef<HTMLDivElement>(null);
-    const hasAnimatedRef = useRef(false);
-
-    useEffect(() => {
-      if (animate && !hasAnimatedRef.current) {
-        hasAnimatedRef.current = true;
-        // Animation duration: bulge takes 600ms, then callback
-        const timeout = setTimeout(() => {
-          onAnimationComplete?.();
-        }, 600);
-        return () => clearTimeout(timeout);
-      }
-
-      // Reset when animate becomes false
-      if (!animate) {
-        hasAnimatedRef.current = false;
-      }
-    }, [animate, onAnimationComplete]);
-
+  ({ animate = false }, ref) => {
     return (
       <div ref={ref} className="relative inline-block">
         <Badge
-          ref={badgeRef}
           className={`
             bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 gap-1
             relative overflow-hidden
