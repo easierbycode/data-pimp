@@ -42,9 +42,12 @@ export default function Checkout() {
   }, []);
 
   useEffect(() => {
+    // Reset animation state when scan result changes
+    setShowConfetti(false);
+    setAnimateBadge(false);
+    setConfettiOrigin(null);
+
     if (!scanResult) {
-      setShowConfetti(false);
-      setAnimateBadge(false);
       return;
     }
 
@@ -57,35 +60,43 @@ export default function Checkout() {
     }
 
     if (!shouldCelebrate) {
-      setShowConfetti(false);
-      setAnimateBadge(false);
       return;
     }
 
-    // Small delay to let the DOM render the badge before animating
+    // Delay to let the DOM render the badge before animating
+    // Need enough time for the badge component to mount and ref to be set
     const startTimeout = setTimeout(() => {
       setAnimateBadge(true);
-    }, 100);
+    }, 300);
 
     return () => clearTimeout(startTimeout);
   }, [scanResult]);
 
   // Handle badge animation complete - trigger confetti from badge position
   const handleBadgeAnimationComplete = useCallback(() => {
+    let origin: { x: number; y: number } | null = null;
+
     if (badgeRef.current) {
       const rect = badgeRef.current.getBoundingClientRect();
-      setConfettiOrigin({
+      origin = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2
-      });
+      };
     }
-    setShowConfetti(true);
-    setAnimateBadge(false);
-    const timeout = setTimeout(() => {
-      setShowConfetti(false);
-      setConfettiOrigin(null);
-    }, 3500);
-    return () => clearTimeout(timeout);
+
+    // Only show confetti if we have a valid origin
+    if (origin) {
+      setConfettiOrigin(origin);
+      setShowConfetti(true);
+      setAnimateBadge(false);
+
+      setTimeout(() => {
+        setShowConfetti(false);
+        setConfettiOrigin(null);
+      }, 3500);
+    } else {
+      setAnimateBadge(false);
+    }
   }, []);
 
   // Remove item from cart

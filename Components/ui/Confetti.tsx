@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 interface ConfettiProps {
   active?: boolean;
@@ -7,9 +7,15 @@ interface ConfettiProps {
 
 export default function Confetti({ active = false, origin = null }: ConfettiProps) {
   const [particles, setParticles] = useState<any[]>([]);
+  const [renderOrigin, setRenderOrigin] = useState<{ x: number; y: number } | null>(null);
+  const animationKey = useRef(0);
 
   useEffect(() => {
-    if (active) {
+    if (active && origin) {
+      // Store the origin at the time of activation
+      setRenderOrigin(origin);
+      animationKey.current += 1;
+
       // Generate confetti particles that burst from origin point
       const particleCount = 60;
       const newParticles = Array.from({ length: particleCount }, (_, i) => {
@@ -19,7 +25,7 @@ export default function Confetti({ active = false, origin = null }: ConfettiProp
         const radians = (angle * Math.PI) / 180;
 
         return {
-          id: i,
+          id: `${animationKey.current}-${i}`,
           angle,
           velocity,
           // Calculate end position based on angle
@@ -40,17 +46,17 @@ export default function Confetti({ active = false, origin = null }: ConfettiProp
       // Clear particles after animation
       const timeout = setTimeout(() => {
         setParticles([]);
+        setRenderOrigin(null);
       }, 3500);
 
       return () => clearTimeout(timeout);
+    } else if (!active) {
+      setParticles([]);
+      setRenderOrigin(null);
     }
-  }, [active]);
+  }, [active, origin]);
 
-  if (!active || particles.length === 0) return null;
-
-  // Default origin to center of screen if not provided
-  const originX = origin?.x ?? window.innerWidth / 2;
-  const originY = origin?.y ?? window.innerHeight / 3;
+  if (!active || particles.length === 0 || !renderOrigin) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
@@ -59,8 +65,8 @@ export default function Confetti({ active = false, origin = null }: ConfettiProp
           key={particle.id}
           className="absolute opacity-0"
           style={{
-            left: originX,
-            top: originY,
+            left: renderOrigin.x,
+            top: renderOrigin.y,
             width: particle.shape === 'rect' ? particle.size * 1.5 : particle.size,
             height: particle.shape === 'rect' ? particle.size * 0.6 : particle.size,
             backgroundColor: particle.color,
