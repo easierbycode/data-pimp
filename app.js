@@ -645,6 +645,9 @@ const CheckoutPage = () => {
   const [result, setResult] = React.useState(null);
   const [err, setErr] = React.useState(null);
   const [showConfetti, setShowConfetti] = React.useState(false);
+  const [animateBadge, setAnimateBadge] = React.useState(false);
+  const [confettiOrigin, setConfettiOrigin] = React.useState(null);
+  const badgeRef = React.useRef(null);
   const [cartItems, setCartItems] = React.useState([]);
   const [isDebugMode, setIsDebugMode] = React.useState(false);
   const defaultImage = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop";
@@ -699,17 +702,43 @@ const CheckoutPage = () => {
   const showLowestBadge = sample ? hasLowestPrice(sample) : false;
 
   React.useEffect(() => {
-    if (!sample) {
-      setShowConfetti(false);
+    // Reset animation state
+    setShowConfetti(false);
+    setAnimateBadge(false);
+    setConfettiOrigin(null);
+
+    if (!sample || !hasLowestPrice(sample)) {
       return;
     }
-    if (!hasLowestPrice(sample)) {
-      setShowConfetti(false);
-      return;
-    }
-    setShowConfetti(true);
-    const timeout = setTimeout(() => setShowConfetti(false), 3500);
-    return () => clearTimeout(timeout);
+
+    // Step 1: Wait for DOM to render the badge (300ms)
+    // Step 2: Start badge animation
+    // Step 3: After badge animation (600ms), get position and start confetti
+    const startAnimationTimeout = setTimeout(() => {
+      setAnimateBadge(true);
+
+      // After badge animation completes, trigger confetti from badge position
+      setTimeout(() => {
+        if (badgeRef.current) {
+          const rect = badgeRef.current.getBoundingClientRect();
+          const origin = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          };
+          setConfettiOrigin(origin);
+          setShowConfetti(true);
+        }
+        setAnimateBadge(false);
+
+        // Clean up confetti after animation
+        setTimeout(() => {
+          setShowConfetti(false);
+          setConfettiOrigin(null);
+        }, 3500);
+      }, 600); // Badge animation duration
+    }, 300); // DOM render delay
+
+    return () => clearTimeout(startAnimationTimeout);
   }, [sample]);
 
   return React.createElement(
@@ -733,7 +762,7 @@ const CheckoutPage = () => {
     React.createElement(
       "div",
       { className: "max-w-4xl mx-auto px-4 py-8" },
-      React.createElement(Confetti, { active: showConfetti }),
+      React.createElement(Confetti, { active: showConfetti, origin: confettiOrigin }),
       err ? React.createElement(ApiError, { error: err }) : null,
       React.createElement(
         Card,
@@ -793,7 +822,7 @@ const CheckoutPage = () => {
                           { className: "flex flex-col items-end gap-2" },
                           React.createElement(StatusBadge, { status: sample.status || "available" }),
                           sample.fire_sale ? React.createElement(FireSaleBadge, null) : null,
-                          showLowestBadge ? React.createElement(LowestPriceOnlineBadge, null) : null,
+                          showLowestBadge ? React.createElement(LowestPriceOnlineBadge, { ref: badgeRef, animate: animateBadge }) : null,
                         ),
                       ),
                       React.createElement(
@@ -963,40 +992,94 @@ const FireSaleBadge = () => {
   );
 };
 
-const LowestPriceOnlineBadge = () => {
+const LowestPriceOnlineBadge = React.forwardRef(({ animate = false }, ref) => {
   const { TrendingDown } = LucideIcons;
   return React.createElement(
-    Badge,
-    { className: "bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 gap-1" },
-    React.createElement(TrendingDown, { className: "w-3 h-3" }),
-    "Lowest Price Online",
+    "div",
+    { ref, className: "relative inline-block" },
+    React.createElement(
+      Badge,
+      {
+        className: `bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 gap-1 relative overflow-hidden ${animate ? 'animate-bulge' : ''}`
+      },
+      React.createElement(TrendingDown, { className: "w-3 h-3" }),
+      "Lowest Price Online",
+      animate ? React.createElement("span", { className: "absolute inset-0 animate-shine" }) : null
+    ),
+    React.createElement(
+      "style",
+      null,
+      `
+        @keyframes bulge {
+          0% { transform: scale(1); }
+          30% { transform: scale(1.3); }
+          50% { transform: scale(1.2); }
+          70% { transform: scale(1.25); }
+          100% { transform: scale(1); }
+        }
+        .animate-bulge {
+          animation: bulge 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes shine {
+          0% {
+            background: linear-gradient(120deg, transparent 0%, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%, transparent 100%);
+            background-size: 200% 100%;
+            background-position: 200% 0;
+          }
+          100% {
+            background: linear-gradient(120deg, transparent 0%, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%, transparent 100%);
+            background-size: 200% 100%;
+            background-position: -200% 0;
+          }
+        }
+        .animate-shine {
+          animation: shine 600ms ease-out forwards;
+        }
+      `
+    )
   );
-};
+});
 
-const Confetti = ({ active = false }) => {
+const Confetti = ({ active = false, origin = null }) => {
   const [particles, setParticles] = React.useState([]);
+  const [renderOrigin, setRenderOrigin] = React.useState(null);
 
   React.useEffect(() => {
-    if (!active) return;
+    if (active && origin) {
+      setRenderOrigin(origin);
+      const colors = ["#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#fbbf24", "#f59e0b"];
+      const particleCount = 60;
+      const newParticles = Array.from({ length: particleCount }, (_, i) => {
+        const angle = (i / particleCount) * 360 + (Math.random() * 30 - 15);
+        const velocity = 150 + Math.random() * 200;
+        const radians = (angle * Math.PI) / 180;
+        return {
+          id: i,
+          translateX: Math.cos(radians) * velocity,
+          translateY: Math.sin(radians) * velocity,
+          delay: Math.random() * 0.15,
+          duration: 1.5 + Math.random() * 1,
+          rotation: Math.random() * 1080 - 540,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          size: 4 + Math.random() * 6,
+          isRect: Math.random() > 0.5,
+        };
+      });
+      setParticles(newParticles);
 
-    const colors = ["#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6"];
-    const newParticles = Array.from({ length: 50 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 0.5,
-      duration: 2 + Math.random() * 1,
-      color: colors[Math.floor(Math.random() * colors.length)],
-    }));
-    setParticles(newParticles);
+      const timeout = setTimeout(() => {
+        setParticles([]);
+        setRenderOrigin(null);
+      }, 3500);
 
-    const timeout = setTimeout(() => {
+      return () => clearTimeout(timeout);
+    } else if (!active) {
       setParticles([]);
-    }, 3500);
+      setRenderOrigin(null);
+    }
+  }, [active, origin]);
 
-    return () => clearTimeout(timeout);
-  }, [active]);
-
-  if (!active || particles.length === 0) return null;
+  if (!active || particles.length === 0 || !renderOrigin) return null;
 
   return React.createElement(
     "div",
@@ -1004,13 +1087,22 @@ const Confetti = ({ active = false }) => {
     particles.map((particle) =>
       React.createElement("div", {
         key: particle.id,
-        className: "absolute w-2 h-2 opacity-0 animate-confetti",
+        className: "absolute opacity-0",
         style: {
-          left: `${particle.left}%`,
-          top: "-10px",
+          left: renderOrigin.x,
+          top: renderOrigin.y,
+          width: particle.isRect ? particle.size * 1.5 : particle.size,
+          height: particle.isRect ? particle.size * 0.6 : particle.size,
           backgroundColor: particle.color,
+          borderRadius: particle.isRect ? "1px" : "2px",
           animationDelay: `${particle.delay}s`,
           animationDuration: `${particle.duration}s`,
+          animationName: "confettiBurst",
+          animationTimingFunction: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          animationFillMode: "forwards",
+          "--tx": `${particle.translateX}px`,
+          "--ty": `${particle.translateY}px`,
+          "--rot": `${particle.rotation}deg`,
         },
       }),
     ),
@@ -1018,18 +1110,22 @@ const Confetti = ({ active = false }) => {
       "style",
       null,
       `
-        @keyframes confetti {
+        @keyframes confettiBurst {
           0% {
-            transform: translateY(0) rotateZ(0deg);
+            transform: translate(-50%, -50%) translateX(0) translateY(0) rotateZ(0deg) scale(0);
+            opacity: 1;
+          }
+          10% {
+            transform: translate(-50%, -50%) translateX(calc(var(--tx) * 0.1)) translateY(calc(var(--ty) * 0.1)) rotateZ(calc(var(--rot) * 0.1)) scale(1);
+            opacity: 1;
+          }
+          70% {
             opacity: 1;
           }
           100% {
-            transform: translateY(100vh) rotateZ(720deg);
+            transform: translate(-50%, -50%) translateX(var(--tx)) translateY(calc(var(--ty) + 100px)) rotateZ(var(--rot)) scale(0.5);
             opacity: 0;
           }
-        }
-        .animate-confetti {
-          animation: confetti linear forwards;
         }
       `,
     ),
