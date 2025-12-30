@@ -128,7 +128,10 @@ export const translations = {
       allLocations: 'All Locations',
       allStatuses: 'All Statuses',
       fireSaleOnly: 'Fire Sale Only',
-      searchPlaceholder: 'Search by name, brand, or code...'
+      searchPlaceholder: 'Search by name, brand, or code...',
+      filterByStatus: 'Filter by status...',
+      fireSale: 'Fire Sale',
+      lowestPrice: 'Lowest Price Online'
     },
     
     // Messages
