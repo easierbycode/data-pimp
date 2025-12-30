@@ -941,7 +941,7 @@ const PriceDisplay = ({ currentPrice, bestPrice, bestPriceSource, lastChecked })
             href: bestPriceSource,
             target: "_blank",
             rel: "noopener noreferrer",
-            className: "inline-flex items-center gap-1 text-sm text-[#4493f8] hover:text-blue-800",
+            className: "inline-flex items-center gap-1 text-sm text-[#4493f8] hover:text-[#4493f8]",
           },
           "View source ",
           React.createElement(ExternalLink, { className: "w-3 h-3" }),
