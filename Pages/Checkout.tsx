@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client.ts";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,6 +21,9 @@ export default function Checkout() {
   const [cart, setCart] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [prefillCode, setPrefillCode] = useState("");
+  const [animateBadge, setAnimateBadge] = useState(false);
+  const [confettiOrigin, setConfettiOrigin] = useState<{ x: number; y: number } | null>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   const addRecentScan = (scan) => {
     setRecentScans(prev => [scan, ...prev].slice(0, 10));
@@ -41,6 +44,7 @@ export default function Checkout() {
   useEffect(() => {
     if (!scanResult) {
       setShowConfetti(false);
+      setAnimateBadge(false);
       return;
     }
 
@@ -54,13 +58,35 @@ export default function Checkout() {
 
     if (!shouldCelebrate) {
       setShowConfetti(false);
+      setAnimateBadge(false);
       return;
     }
 
-    setShowConfetti(true);
-    const timeout = setTimeout(() => setShowConfetti(false), 3500);
-    return () => clearTimeout(timeout);
+    // Small delay to let the DOM render the badge before animating
+    const startTimeout = setTimeout(() => {
+      setAnimateBadge(true);
+    }, 100);
+
+    return () => clearTimeout(startTimeout);
   }, [scanResult]);
+
+  // Handle badge animation complete - trigger confetti from badge position
+  const handleBadgeAnimationComplete = useCallback(() => {
+    if (badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      setConfettiOrigin({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
+    }
+    setShowConfetti(true);
+    setAnimateBadge(false);
+    const timeout = setTimeout(() => {
+      setShowConfetti(false);
+      setConfettiOrigin(null);
+    }, 3500);
+    return () => clearTimeout(timeout);
+  }, []);
 
   // Remove item from cart
   const handleRemoveFromCart = useCallback((index) => {
@@ -381,7 +407,7 @@ export default function Checkout() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Confetti Animation */}
-        <Confetti active={showConfetti} />
+        <Confetti active={showConfetti} origin={confettiOrigin} />
 
         {/* Scanner */}
         <Card className="p-6 mb-6 bg-white/80 backdrop-blur-sm">
@@ -400,6 +426,9 @@ export default function Checkout() {
                 onReserve={handleReserve}
                 onAddToCart={handleAddToCart}
                 processing={processing}
+                badgeRef={badgeRef}
+                animateBadge={animateBadge}
+                onBadgeAnimationComplete={handleBadgeAnimationComplete}
               />
             )}
 

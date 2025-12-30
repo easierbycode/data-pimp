@@ -22,7 +22,10 @@ export default function ScanResult({
   onCheckin,
   onReserve,
   onAddToCart,
-  processing = false
+  processing = false,
+  badgeRef = null,
+  animateBadge = false,
+  onBadgeAnimationComplete = null
 }) {
   const { t } = useTranslation();
   const [checkoutTo, setCheckoutTo] = useState('');
@@ -91,7 +94,13 @@ export default function ScanResult({
                 </div>
                 <div className="flex flex-col gap-2">
                   {sample.fire_sale && <FireSaleBadge />}
-                  {hasLowestPrice(sample) && <LowestPriceOnlineBadge />}
+                  {hasLowestPrice(sample) && (
+                    <LowestPriceOnlineBadge
+                      ref={badgeRef}
+                      animate={animateBadge}
+                      onAnimationComplete={onBadgeAnimationComplete}
+                    />
+                  )}
                 </div>
               </div>
               
@@ -335,27 +344,37 @@ export default function ScanResult({
           <div>
             <h3 className="font-semibold text-slate-900 mb-3">{t('checkout.allSamples')}</h3>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {samples.map(sample => (
-                <div 
-                  key={sample.id}
-                  className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
-                >
-                  <img 
-                    src={sample.picture_url || defaultImage}
-                    alt={sample.name}
-                    className="w-10 h-10 rounded-lg object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{sample.name}</p>
-                    <p className="text-sm text-slate-500">{sample.brand}</p>
+              {samples.map((sample, index) => {
+                const isLowest = hasLowestPrice(sample);
+                const isFirstLowest = isLowest && samples.findIndex(s => hasLowestPrice(s)) === index;
+                return (
+                  <div
+                    key={sample.id}
+                    className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+                  >
+                    <img
+                      src={sample.picture_url || defaultImage}
+                      alt={sample.name}
+                      className="w-10 h-10 rounded-lg object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 truncate">{sample.name}</p>
+                      <p className="text-sm text-slate-500">{sample.brand}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      <StatusBadge status={sample.status} />
+                      {sample.fire_sale && <FireSaleBadge />}
+                      {isLowest && (
+                        <LowestPriceOnlineBadge
+                          ref={isFirstLowest ? badgeRef : undefined}
+                          animate={isFirstLowest ? animateBadge : false}
+                          onAnimationComplete={isFirstLowest ? onBadgeAnimationComplete : undefined}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    <StatusBadge status={sample.status} />
-                    {sample.fire_sale && <FireSaleBadge />}
-                    {hasLowestPrice(sample) && <LowestPriceOnlineBadge />}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </CardContent>
