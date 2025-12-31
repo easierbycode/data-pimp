@@ -3,12 +3,11 @@ import { base44 } from "@/api/base44Client.ts";
 import type { Sample } from "@/api/base44Client.ts";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { createPageUrl, hasLowestPrice } from "@/utils";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
-import { Switch } from "@/components/ui/switch.tsx";
-import { Label } from "@/components/ui/label.tsx";
+import { StatusMultiSelect, type StatusOption } from "@/components/ui/multi-select.tsx";
 import { Plus, Search, Filter, Grid3X3, List, Loader2 } from "lucide-react";
 import SampleCard from "../Components/samples/SampleCard.tsx";
 import { useTranslation } from "../Components/i18n/translations.tsx";
@@ -16,11 +15,20 @@ import { useTranslation } from "../Components/i18n/translations.tsx";
 export default function Samples() {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [brandFilter, setBrandFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
-  const [fireSaleOnly, setFireSaleOnly] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
+
+  // Status filter options with badge-matching styles
+  const statusOptions: StatusOption[] = [
+    { value: 'available', label: t('status.available'), type: 'status' },
+    { value: 'checked_out', label: t('status.checked_out'), type: 'status' },
+    { value: 'reserved', label: t('status.reserved'), type: 'status' },
+    { value: 'discontinued', label: t('status.discontinued'), type: 'status' },
+    { value: 'fire_sale', label: t('filters.fireSale'), type: 'badge' },
+    { value: 'lowest_price', label: t('filters.lowestPrice'), type: 'badge' },
+  ];
 
   const { data: samples = [], isLoading } = useQuery({
     queryKey: ['samples'],
@@ -41,19 +49,43 @@ export default function Samples() {
   // Filter samples
   const filteredSamples = useMemo(() => {
     return samples.filter(sample => {
-      const matchesSearch = !search || 
+      const matchesSearch = !search ||
         sample.name?.toLowerCase().includes(search.toLowerCase()) ||
         sample.brand?.toLowerCase().includes(search.toLowerCase()) ||
         sample.qr_code?.toLowerCase().includes(search.toLowerCase());
-      
-      const matchesStatus = statusFilter === 'all' || sample.status === statusFilter;
+
+      // Handle multi-select status filtering
+      let matchesStatusFilter = true;
+      if (statusFilters.length > 0) {
+        // Separate status filters from badge filters
+        const statusValues = statusFilters.filter(f => !['fire_sale', 'lowest_price'].includes(f));
+        const hasBadgeFilters = statusFilters.includes('fire_sale') || statusFilters.includes('lowest_price');
+
+        // Check if sample matches any of the selected statuses
+        const matchesStatus = statusValues.length === 0 || statusValues.includes(sample.status || '');
+
+        // Check badge filters
+        const matchesFireSale = !statusFilters.includes('fire_sale') || sample.fire_sale;
+        const matchesLowestPrice = !statusFilters.includes('lowest_price') || hasLowestPrice(sample);
+
+        // If only badge filters are selected, show all statuses that match those badges
+        // If status filters are selected, require matching both status AND any badge filters
+        if (statusValues.length === 0 && hasBadgeFilters) {
+          // Only badge filters: OR logic between badges
+          matchesStatusFilter = (statusFilters.includes('fire_sale') && sample.fire_sale) ||
+                               (statusFilters.includes('lowest_price') && hasLowestPrice(sample));
+        } else {
+          // Status filters with optional badge filters: AND logic
+          matchesStatusFilter = matchesStatus && matchesFireSale && matchesLowestPrice;
+        }
+      }
+
       const matchesBrand = brandFilter === 'all' || sample.brand === brandFilter;
       const matchesLocation = locationFilter === 'all' || sample.location === locationFilter;
-      const matchesFireSale = !fireSaleOnly || sample.fire_sale;
 
-      return matchesSearch && matchesStatus && matchesBrand && matchesLocation && matchesFireSale;
+      return matchesSearch && matchesStatusFilter && matchesBrand && matchesLocation;
     });
-  }, [samples, search, statusFilter, brandFilter, locationFilter, fireSaleOnly]);
+  }, [samples, search, statusFilters, brandFilter, locationFilter]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -94,18 +126,13 @@ export default function Samples() {
 
             {/* Filter dropdowns */}
             <div className="flex flex-wrap gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder={t('filters.allStatuses')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
-                  <SelectItem value="available">{t('status.available')}</SelectItem>
-                  <SelectItem value="checked_out">{t('status.checked_out')}</SelectItem>
-                  <SelectItem value="reserved">{t('status.reserved')}</SelectItem>
-                  <SelectItem value="discontinued">{t('status.discontinued')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <StatusMultiSelect
+                options={statusOptions}
+                value={statusFilters}
+                onChange={setStatusFilters}
+                placeholder={t('filters.filterByStatus')}
+                className="min-w-[200px]"
+              />
 
               <Select value={brandFilter} onValueChange={setBrandFilter}>
                 <SelectTrigger className="w-36">
@@ -130,17 +157,6 @@ export default function Samples() {
                   ))}
                 </SelectContent>
               </Select>
-
-              <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
-                <Switch
-                  id="fire-sale"
-                  checked={fireSaleOnly}
-                  onCheckedChange={setFireSaleOnly}
-                />
-                <Label htmlFor="fire-sale" className="text-sm font-medium text-orange-700 cursor-pointer">
-                  🔥 {t('filters.fireSaleOnly')}
-                </Label>
-              </div>
 
               {/* View toggle */}
               <div className="flex border border-slate-200 rounded-lg overflow-hidden">
