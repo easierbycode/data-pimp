@@ -845,24 +845,21 @@ const CheckoutPage = () => {
                           lastChecked: sample.last_price_checked_at,
                         }),
                       ),
-                      isDebugMode && React.createElement(
+                      sample.tiktok_affiliate_link && React.createElement(
                         "div",
-                        { className: "mt-3 flex flex-wrap items-center gap-3" },
-                        React.createElement("span", { className: "text-sm text-slate-500" }, "link"),
-                        primaryLink
-                          ? React.createElement(
-                              "a",
-                              {
-                                href: primaryLink,
-                                target: "_blank",
-                                rel: "noopener noreferrer",
-                                className:
-                                  "inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors",
-                              },
-                              "Open Link ",
-                              React.createElement(ExternalLink, { className: "w-4 h-4" }),
-                            )
-                          : React.createElement("span", { className: "text-sm text-slate-400" }, "Not available"),
+                        { className: "mt-3" },
+                        React.createElement(
+                          "a",
+                          {
+                            href: sample.tiktok_affiliate_link,
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            className:
+                              "inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors",
+                          },
+                          "TikTok Affiliate Link ",
+                          React.createElement(ExternalLink, { className: "w-4 h-4" }),
+                        ),
                       ),
                       isDebugMode && React.createElement(
                         "p",
