@@ -42,7 +42,7 @@ export default function ScanResult({
     if (item?.best_price === null || item?.best_price === undefined) return false;
     return item.current_price < item.best_price;
   };
-  
+
   const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
 
   if (type === 'not_found') {
@@ -76,15 +76,15 @@ export default function ScanResult({
           </div>
           <StatusBadge status={sample.status} />
         </div>
-        
+
         <CardContent className="p-6">
           <div className="flex gap-6">
-            <img 
+            <img
               src={sample.picture_url || defaultImage}
               alt={sample.name}
               className="w-32 h-32 rounded-xl object-cover flex-shrink-0"
             />
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-4 mb-2">
                 <div>
@@ -101,7 +101,7 @@ export default function ScanResult({
                   )}
                 </div>
               </div>
-              
+
               <div className="flex flex-wrap gap-4 mb-4">
                 {sample.location && (
                   <div className="flex items-center gap-1 text-sm text-slate-500">
@@ -116,35 +116,34 @@ export default function ScanResult({
                   </div>
                 )}
               </div>
-              
+
               <div className="mb-4">
                 <QRCodeDisplay code={sample.qr_code} />
               </div>
-              
-              <PriceDisplay 
+
+              <PriceDisplay
                 currentPrice={sample.current_price}
                 bestPrice={sample.best_price}
                 bestPriceSource={sample.best_price_source}
                 lastChecked={sample.last_price_checked_at}
               />
-              
+
+              <div className="mt-4">
+                {primaryLink ? (
+                  <a
+                    href={primaryLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center w-full px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                  >
+                    {sample.tiktok_affiliate_link ? 'View on TikTok Shop' : 'View Product Page'}
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </a>
+                ) : null}
+              </div>
+
               {isDebugMode && (
                 <>
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <span className="text-sm text-slate-500">link</span>
-                    {primaryLink ? (
-                      <a
-                        href={primaryLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-                      >
-                        Open Link <ExternalLink className="w-4 h-4" />
-                      </a>
-                    ) : (
-                      <span className="text-sm text-slate-400">Not available</span>
-                    )}
-                  </div>
                   <p className="text-sm text-slate-500 mt-2">
                     has_fire_sale:{' '}
                     <span className={`font-semibold ${sample.fire_sale ? 'text-orange-600' : 'text-slate-600'}`}>
@@ -155,7 +154,7 @@ export default function ScanResult({
               )}
             </div>
           </div>
-          
+
           {/* Checkout Actions */}
           <div className="mt-6 pt-6 border-t">
             {/* Add to Cart Button */}
@@ -257,7 +256,7 @@ export default function ScanResult({
           </div>
           <span className="text-sm text-slate-500">{samples.length} samples</span>
         </div>
-        
+
         <CardContent className="p-6">
           <div className="flex items-start gap-4 mb-6">
             <div className="w-16 h-16 rounded-xl bg-[#2463eb] flex items-center justify-center flex-shrink-0">
@@ -276,11 +275,11 @@ export default function ScanResult({
               </div>
             </div>
           </div>
-          
+
           {bundle.notes && (
             <p className="text-slate-600 mb-6 p-4 bg-slate-50 rounded-lg">{bundle.notes}</p>
           )}
-          
+
           {/* Bundle Checkout Actions */}
           <div className="mb-6 pt-4 border-t">
             {/* Add to Cart Button */}
@@ -337,7 +336,7 @@ export default function ScanResult({
               )}
             </div>
           </div>
-          
+
           {/* Sample List */}
           <div>
             <h3 className="font-semibold text-slate-900 mb-3">{t('checkout.allSamples')}</h3>
