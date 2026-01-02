@@ -169,6 +169,9 @@ const translations = {
     allBrands: "All Brands",
     allLocations: "All Locations",
     fireSaleOnly: "Fire Sale Only",
+    filterByStatus: "Filter by status...",
+    fireSale: "Fire Sale",
+    lowestPrice: "Lowest Price Online",
   },
   actions: { save: "Save", cancel: "Cancel", delete: "Delete", edit: "Edit", back: "Back" },
   messages: { noResults: "No results found", required: "Required" },
@@ -340,6 +343,154 @@ const SelectItem = ({ value, children, className = "" }) => {
   );
 };
 
+// Status MultiSelect with badge-styled options
+const statusOptionStyles = {
+  available: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', selected: 'bg-emerald-100' },
+  checked_out: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', selected: 'bg-amber-100' },
+  reserved: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', selected: 'bg-blue-100' },
+  discontinued: { bg: 'bg-slate-50', text: 'text-slate-800', border: 'border-slate-200', selected: 'bg-slate-100' },
+  fire_sale: { bg: 'bg-gradient-to-r from-orange-50 to-red-50', text: 'text-orange-700', border: 'border-orange-200', selected: 'bg-gradient-to-r from-orange-100 to-red-100' },
+  lowest_price: { bg: 'bg-gradient-to-r from-emerald-50 to-green-50', text: 'text-green-700', border: 'border-green-200', selected: 'bg-gradient-to-r from-emerald-100 to-green-100' }
+};
+
+const statusPillStyles = {
+  available: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  checked_out: 'bg-amber-100 text-amber-800 border-amber-200',
+  reserved: 'bg-blue-100 text-blue-800 border-blue-200',
+  discontinued: 'bg-slate-100 text-slate-800 border-slate-200',
+  fire_sale: 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-0',
+  lowest_price: 'bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0'
+};
+
+const StatusMultiSelect = ({ options, value, onChange, placeholder = "Filter by status...", className = "" }) => {
+  const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef(null);
+  const { ChevronDown, Check, X, Flame, TrendingDown } = LucideIcons;
+
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  const toggleOption = (optionValue) => {
+    if (value.includes(optionValue)) {
+      onChange(value.filter(v => v !== optionValue));
+    } else {
+      onChange([...value, optionValue]);
+    }
+  };
+
+  const removeOption = (optionValue, e) => {
+    e.stopPropagation();
+    onChange(value.filter(v => v !== optionValue));
+  };
+
+  const clearAll = (e) => {
+    e.stopPropagation();
+    onChange([]);
+  };
+
+  const getOptionLabel = (optionValue) => {
+    return options.find(o => o.value === optionValue)?.label || optionValue;
+  };
+
+  const renderIcon = (optionValue) => {
+    if (optionValue === 'fire_sale') return React.createElement(Flame, { className: "w-3 h-3" });
+    if (optionValue === 'lowest_price') return React.createElement(TrendingDown, { className: "w-3 h-3" });
+    return null;
+  };
+
+  return React.createElement(
+    "div",
+    { ref: containerRef, className: `relative ${className}` },
+    // Trigger button
+    React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => setOpen(!open),
+        className: "flex min-h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
+      },
+      React.createElement(
+        "div",
+        { className: "flex flex-wrap gap-1 flex-1" },
+        value.length === 0
+          ? React.createElement("span", { className: "text-slate-500" }, placeholder)
+          : value.map(v =>
+              React.createElement(
+                "span",
+                {
+                  key: v,
+                  className: `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${statusPillStyles[v] || 'bg-slate-100 text-slate-800'}`
+                },
+                renderIcon(v),
+                getOptionLabel(v),
+                React.createElement(X, {
+                  className: "w-3 h-3 cursor-pointer hover:opacity-70",
+                  onClick: (e) => removeOption(v, e)
+                })
+              )
+            )
+      ),
+      React.createElement(
+        "div",
+        { className: "flex items-center gap-1 ml-2" },
+        value.length > 0 && React.createElement(X, {
+          className: "w-4 h-4 text-slate-400 hover:text-slate-600 cursor-pointer",
+          onClick: clearAll
+        }),
+        React.createElement(ChevronDown, { className: `w-4 h-4 opacity-50 transition-transform ${open ? 'rotate-180' : ''}` })
+      )
+    ),
+    // Dropdown content
+    open && React.createElement(
+      "div",
+      { className: "absolute z-50 mt-1 w-full min-w-[200px] overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg" },
+      options.map(option => {
+        const isSelected = value.includes(option.value);
+        const styles = statusOptionStyles[option.value] || statusOptionStyles.available;
+        return React.createElement(
+          "div",
+          {
+            key: option.value,
+            onClick: () => toggleOption(option.value),
+            className: `relative flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm transition-colors ${isSelected ? styles.selected : ''} hover:${styles.bg} ${styles.text}`
+          },
+          // Checkbox indicator
+          React.createElement(
+            "div",
+            {
+              className: `flex h-4 w-4 items-center justify-center rounded border ${
+                isSelected
+                  ? (option.value === 'fire_sale'
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 border-orange-500'
+                      : option.value === 'lowest_price'
+                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 border-emerald-500'
+                        : `${styles.selected} ${styles.border}`)
+                  : 'border-slate-300 bg-white'
+              }`
+            },
+            isSelected && React.createElement(Check, { className: `w-3 h-3 ${option.value === 'fire_sale' || option.value === 'lowest_price' ? 'text-white' : ''}` })
+          ),
+          // Icon for special badges
+          renderIcon(option.value),
+          // Label
+          React.createElement("span", { className: "font-medium" }, option.label)
+        );
+      })
+    )
+  );
+};
+
 const StatusBadge = ({ status }) => {
   const styles = {
     available: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -424,7 +575,18 @@ const Layout = ({ children }) => {
 const SamplesPage = () => {
   const { t } = useTranslation();
   const [search, setSearch] = React.useState("");
+  const [statusFilters, setStatusFilters] = React.useState([]);
   const { Plus, Search, Loader2, Filter } = LucideIcons;
+
+  // Status filter options
+  const statusOptions = [
+    { value: 'available', label: t('status.available'), type: 'status' },
+    { value: 'checked_out', label: t('status.checked_out'), type: 'status' },
+    { value: 'reserved', label: t('status.reserved'), type: 'status' },
+    { value: 'discontinued', label: t('status.discontinued'), type: 'status' },
+    { value: 'fire_sale', label: t('filters.fireSale'), type: 'badge' },
+    { value: 'lowest_price', label: t('filters.lowestPrice'), type: 'badge' },
+  ];
 
   const { data: samples = [], isLoading, error } = useQuery({
     queryKey: ["samples"],
@@ -440,13 +602,33 @@ const SamplesPage = () => {
     return item.current_price < item.best_price;
   };
 
-  const filteredSamples = samples.filter(
-    (s) =>
-      !search ||
-      s.name?.toLowerCase().includes(search.toLowerCase()) ||
-      s.brand?.toLowerCase().includes(search.toLowerCase()) ||
-      s.qr_code?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredSamples = samples.filter((sample) => {
+    // Search filter
+    const matchesSearch = !search ||
+      sample.name?.toLowerCase().includes(search.toLowerCase()) ||
+      sample.brand?.toLowerCase().includes(search.toLowerCase()) ||
+      sample.qr_code?.toLowerCase().includes(search.toLowerCase());
+
+    // Status filter
+    let matchesStatusFilter = true;
+    if (statusFilters.length > 0) {
+      const statusValues = statusFilters.filter(f => !['fire_sale', 'lowest_price'].includes(f));
+      const hasBadgeFilters = statusFilters.includes('fire_sale') || statusFilters.includes('lowest_price');
+
+      const matchesStatus = statusValues.length === 0 || statusValues.includes(sample.status || '');
+      const matchesFireSale = !statusFilters.includes('fire_sale') || sample.fire_sale;
+      const matchesLowestPriceFilter = !statusFilters.includes('lowest_price') || hasLowestPrice(sample);
+
+      if (statusValues.length === 0 && hasBadgeFilters) {
+        matchesStatusFilter = (statusFilters.includes('fire_sale') && sample.fire_sale) ||
+                             (statusFilters.includes('lowest_price') && hasLowestPrice(sample));
+      } else {
+        matchesStatusFilter = matchesStatus && matchesFireSale && matchesLowestPriceFilter;
+      }
+    }
+
+    return matchesSearch && matchesStatusFilter;
+  });
 
   return React.createElement(
     "div",
@@ -464,7 +646,7 @@ const SamplesPage = () => {
             "div",
             null,
             React.createElement("h1", { className: "text-2xl font-bold text-slate-900" }, t("sample.titlePlural")),
-            React.createElement("p", { className: "text-sm text-slate-500" }, `${filteredSamples.length} samples`),
+            React.createElement("p", { className: "text-sm text-slate-500" }, `${filteredSamples.length} of ${samples.length} samples`),
           ),
           React.createElement(
             Link,
@@ -482,13 +664,26 @@ const SamplesPage = () => {
         { className: "bg-white rounded-xl shadow-sm border p-4 mb-6" },
         React.createElement(
           "div",
-          { className: "relative" },
-          React.createElement(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" }),
-          React.createElement(Input, {
-            value: search,
-            onChange: (e) => setSearch(e.target.value),
-            placeholder: t("filters.searchPlaceholder"),
-            className: "pl-10",
+          { className: "flex flex-col lg:flex-row gap-4" },
+          // Search input
+          React.createElement(
+            "div",
+            { className: "flex-1 relative" },
+            React.createElement(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" }),
+            React.createElement(Input, {
+              value: search,
+              onChange: (e) => setSearch(e.target.value),
+              placeholder: t("filters.searchPlaceholder"),
+              className: "pl-10",
+            }),
+          ),
+          // Status multi-select
+          React.createElement(StatusMultiSelect, {
+            options: statusOptions,
+            value: statusFilters,
+            onChange: setStatusFilters,
+            placeholder: t("filters.filterByStatus"),
+            className: "min-w-[220px]",
           }),
         ),
       ),
