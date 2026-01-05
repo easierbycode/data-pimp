@@ -542,8 +542,8 @@ const Layout = ({ children }) => {
             Link,
             { to: createPageUrl("Samples"), className: "flex items-center gap-3" },
             React.createElement("img", {
-              src: "https://assets.codepen.io/11817390/lifepreneur-logo.jpg",
-              alt: "Lifepreneur",
+              src: "https://assets.codepen.io/11817390/LifePreneur-logo.svg",
+              alt: "LifePreneur",
               className: "h-10 w-auto rounded-lg",
             }),
             React.createElement("span", { className: "font-bold text-xl text-slate-900 hidden sm:block" }, t("nav.inventory")),
