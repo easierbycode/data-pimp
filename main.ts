@@ -784,19 +784,72 @@ export async function legacyHandler(req: Request): Promise<Response> {
 type FetchFn = (req: Request) => Response | Promise<Response>;
 
 let memberFetch: FetchFn | null = null;
+let memberLoadError: string | null = null;
 try {
   const mod = await import("./member/_fresh/server.js");
   memberFetch = (mod.default as { fetch: FetchFn }).fetch;
 } catch (err) {
+  memberLoadError = err instanceof Error ? err.message : String(err);
   console.warn(
     "[thirsty-os] /member is unavailable — run `deno task member:build` to build the Fresh member app.",
-    err instanceof Error ? err.message : err,
+    memberLoadError,
   );
 }
 
 function memberOwnsPath(p: string): boolean {
   return p === "/member" || p.startsWith("/member/") ||
     p.startsWith("/assets/") || p === "/logo.svg" || p === "/lp-logo.png";
+}
+
+// The Fresh member app failed to load (its build output, member/_fresh, wasn't
+// present at startup — it's git-ignored and produced by `deno task build`).
+// Serve a clear notice for the member routes instead of letting them fall
+// through to legacyHandler, which would render the entire Thirsty OS desktop
+// shell inside the member window (the "Member/Web opens Finder" bug).
+function renderMemberUnavailable(): Response {
+  const headers: Record<string, string> = {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  };
+  if (memberLoadError) {
+    headers["x-member-load-error"] = memberLoadError.slice(0, 200);
+  }
+  const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Member app not built</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center;
+        background: #0b0d11; color: #e8eaed; padding: 2rem;
+        font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .card {
+        max-width: 32rem; text-align: center; background: #14181f;
+        border: 1px solid #232a35; border-radius: 16px; padding: 2rem 1.75rem;
+      }
+      h1 { font-size: 1.15rem; margin: 0 0 .65rem; }
+      p { margin: .5rem 0; color: #aab3c0; }
+      code {
+        background: #0b0d11; border: 1px solid #232a35; border-radius: 6px;
+        padding: .15rem .4rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .9em; color: #e8eaed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Member app isn't built yet</h1>
+      <p>The Fresh member dashboard hasn't been built for this deployment.</p>
+      <p>Run <code>deno task build</code> (which runs <code>deno task member:build</code>)
+         before serving, or set it as the deployment's build command.</p>
+    </div>
+  </body>
+</html>`;
+  return new Response(html, { status: 503, headers });
 }
 
 Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, (req) => {
@@ -808,6 +861,11 @@ Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, (req) => {
     const u = new URL(req.url);
     u.pathname = "/member" + p;
     return memberFetch(new Request(u, req));
+  }
+  // Member app unavailable: intercept its own routes so they never render the
+  // OS desktop shell inside the member window (the Member/Web "Finder" bug).
+  if (!memberFetch && (p === "/member" || p.startsWith("/member/"))) {
+    return renderMemberUnavailable();
   }
   return legacyHandler(req);
 });
