@@ -1,0 +1,163 @@
+{
+  "_PageHeader-BB8EE7sm.mjs": {
+    "file": "assets/PageHeader-BB8EE7sm.mjs",
+    "name": "PageHeader",
+    "imports": [
+      "fresh:server_entry"
+    ],
+    "css": [
+      "assets/PageHeader-BhiNc4go.css"
+    ]
+  },
+  "_PageHeader-BhiNc4go.css": {
+    "file": "assets/PageHeader-BhiNc4go.css",
+    "src": "_PageHeader-BhiNc4go.css"
+  },
+  "_base64-rR4j1CBY.mjs": {
+    "file": "assets/base64-rR4j1CBY.mjs",
+    "name": "base64"
+  },
+  "_escaping-ukrAy0Ul.mjs": {
+    "file": "assets/escaping-ukrAy0Ul.mjs",
+    "name": "escaping"
+  },
+  "_index-C7vMwkNG.mjs": {
+    "file": "assets/index-C7vMwkNG.mjs",
+    "name": "index",
+    "imports": [
+      "_escaping-ukrAy0Ul.mjs",
+      "_utils-C1AuI3vl.mjs",
+      "_base64-rR4j1CBY.mjs"
+    ]
+  },
+  "_utils-C1AuI3vl.mjs": {
+    "file": "assets/utils-C1AuI3vl.mjs",
+    "name": "utils"
+  },
+  "components/Counter.svelte": {
+    "file": "assets/Counter-DyMWHnEF.mjs",
+    "name": "Counter",
+    "src": "components/Counter.svelte",
+    "isDynamicEntry": true,
+    "imports": [
+      "_escaping-ukrAy0Ul.mjs",
+      "_base64-rR4j1CBY.mjs"
+    ],
+    "css": [
+      "assets/Counter-BzMMCu5M.css"
+    ]
+  },
+  "components/SellerDashboard.svelte": {
+    "file": "assets/SellerDashboard-dEFSkimk.mjs",
+    "name": "SellerDashboard",
+    "src": "components/SellerDashboard.svelte",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-C7vMwkNG.mjs",
+      "_escaping-ukrAy0Ul.mjs",
+      "_base64-rR4j1CBY.mjs",
+      "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+      "fresh:server_entry",
+      "_utils-C1AuI3vl.mjs"
+    ],
+    "css": [
+      "assets/SellerDashboard-Csa5HYtt.css"
+    ]
+  },
+  "components/StreamerDashboard.svelte": {
+    "file": "assets/StreamerDashboard-0l8Skd7N.mjs",
+    "name": "StreamerDashboard",
+    "src": "components/StreamerDashboard.svelte",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-C7vMwkNG.mjs",
+      "fresh:server_entry",
+      "_escaping-ukrAy0Ul.mjs",
+      "_utils-C1AuI3vl.mjs",
+      "_base64-rR4j1CBY.mjs"
+    ],
+    "css": [
+      "assets/StreamerDashboard-D51W5TNU.css"
+    ]
+  },
+  "fresh-route::_index": {
+    "file": "assets/_fresh-route___index-BBRKcwcT.mjs",
+    "name": "_fresh-route___index",
+    "src": "fresh-route::_index",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry"
+    ]
+  },
+  "fresh-route::_saas_app_content_index": {
+    "file": "assets/_fresh-route___saas_app_content_index-BMzPliXD.mjs",
+    "name": "_fresh-route___saas_app_content_index",
+    "src": "fresh-route::_saas_app_content_index",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry",
+      "_PageHeader-BB8EE7sm.mjs"
+    ]
+  },
+  "fresh-route::_saas_app_dashboard_index": {
+    "file": "assets/_fresh-route___saas_app_dashboard_index-CvuqA-qs.mjs",
+    "name": "_fresh-route___saas_app_dashboard_index",
+    "src": "fresh-route::_saas_app_dashboard_index",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry"
+    ]
+  },
+  "fresh-route::_saas_app_seller_dashboard_index": {
+    "file": "assets/_fresh-route___saas_app_seller_dashboard_index-DmTVYkve.mjs",
+    "name": "_fresh-route___saas_app_seller_dashboard_index",
+    "src": "fresh-route::_saas_app_seller_dashboard_index",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry",
+      "_PageHeader-BB8EE7sm.mjs"
+    ]
+  },
+  "fresh-route::_saas_app_streamer_dashboard_index": {
+    "file": "assets/_fresh-route___saas_app_streamer_dashboard_index-CMaHMV_B.mjs",
+    "name": "_fresh-route___saas_app_streamer_dashboard_index",
+    "src": "fresh-route::_saas_app_streamer_dashboard_index",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry",
+      "_PageHeader-BB8EE7sm.mjs"
+    ]
+  },
+  "fresh:server_entry": {
+    "file": "server-entry.mjs",
+    "name": "server-entry",
+    "src": "fresh:server_entry",
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+      "components/Counter.svelte",
+      "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+      "components/SellerDashboard.svelte",
+      "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+      "components/StreamerDashboard.svelte",
+      "fresh-route::_index",
+      "fresh-route::_saas_app_content_index",
+      "fresh-route::_saas_app_dashboard_index",
+      "fresh-route::_saas_app_seller_dashboard_index",
+      "fresh-route::_saas_app_streamer_dashboard_index"
+    ],
+    "css": [
+      "assets/server-entry-B7sbXjey.css"
+    ]
+  },
+  "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js": {
+    "file": "assets/index-server-fy-S9KcP.mjs",
+    "name": "index-server",
+    "src": "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_base64-rR4j1CBY.mjs",
+      "_utils-C1AuI3vl.mjs"
+    ]
+  }
+}
