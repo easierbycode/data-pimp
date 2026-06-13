@@ -29,8 +29,8 @@
     "dev:deno-db": "deno run --tunnel main.ts",
     "check": "deno check **/*.ts **/*.tsx",
     "seed:kiosk": "deno run -A scripts/seed-from-kiosk.ts",
-    "build:mac": "deno compile -A --target aarch64-apple-darwin --output build/data-pimp-mac-arm64 main.ts && deno compile -A --target x86_64-apple-darwin --output build/data-pimp-mac-x64 main.ts",
-    "build:windows": "deno compile -A --target x86_64-pc-windows-msvc --output build/data-pimp-windows main.ts"
+    "build:mac": "deno compile -A --include static --target aarch64-apple-darwin --output build/data-pimp-mac-arm64 main.ts && deno compile -A --include static --target x86_64-apple-darwin --output build/data-pimp-mac-x64 main.ts",
+    "build:windows": "deno compile -A --include static --target x86_64-pc-windows-msvc --output build/data-pimp-windows main.ts"
   },
   "deploy": {
     "org": "easierbycode",

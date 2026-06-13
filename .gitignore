@@ -2,3 +2,7 @@
 # (core/samples.ts). Ephemeral on Deno Deploy; never commit it.
 .thirsty/
 .env
+
+# Compiled desktop binaries (build:mac / build:windows) — large, never commit.
+build/
+.DS_Store

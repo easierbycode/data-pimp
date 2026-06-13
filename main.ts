@@ -301,30 +301,33 @@ async function serveLocalFile(relPath: string, contentType: string) {
   });
 }
 
-Deno.serve(async (req) => {
+Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
-  // Client app + Thirsty OS shell assets
+  // Client app + Thirsty OS shell assets. The React bundle is stored as
+  // static/app.bundle (no .js extension) so `deno compile --include static`
+  // treats it as a data file instead of trying to resolve its browser imports
+  // (react-dom/client etc.) as a Deno module.
   if (pathname === "/app.js") {
-    return await serveLocalFile("./app.js", "text/javascript; charset=utf-8");
+    return await serveLocalFile("./static/app.bundle", "text/javascript; charset=utf-8");
   }
   if (pathname === "/os.js") {
-    return await serveLocalFile("./os.js", "text/javascript; charset=utf-8");
+    return await serveLocalFile("./static/os.js", "text/javascript; charset=utf-8");
   }
   if (pathname === "/os.css") {
-    return await serveLocalFile("./os.css", "text/css; charset=utf-8");
+    return await serveLocalFile("./static/os.css", "text/css; charset=utf-8");
   }
 
   // Product Analysis dashboard (migrated from the kiosk) + its assets.
   if (pathname === "/inventory" || pathname === "/inventory.html") {
-    return await serveLocalFile("./inventory.html", "text/html; charset=utf-8");
+    return await serveLocalFile("./static/inventory.html", "text/html; charset=utf-8");
   }
   if (pathname === "/ui.js") {
-    return await serveLocalFile("./ui.js", "text/javascript; charset=utf-8");
+    return await serveLocalFile("./static/ui.js", "text/javascript; charset=utf-8");
   }
   if (pathname === "/styles.css") {
-    return await serveLocalFile("./styles.css", "text/css; charset=utf-8");
+    return await serveLocalFile("./static/styles.css", "text/css; charset=utf-8");
   }
 
   // Debug
