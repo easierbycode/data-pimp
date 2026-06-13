@@ -219,7 +219,7 @@ const Input = React.forwardRef(({ className = "", ...props }, ref) =>
 );
 
 const Badge = ({ children, className = "" }) =>
-  React.createElement("span", { className: `inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${className}` }, children);
+  React.createElement("span", { className: `inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold backdrop-blur-[2px] shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_0_0_1px_rgba(255,255,255,0.22),inset_0_0_0_999px_rgba(255,255,255,0.15),0_1px_1px_rgba(0,0,0,0.3)] [text-shadow:0_1px_1px_rgba(0,0,0,0.35),0_0_2px_rgba(255,255,255,0.5)] ${className}` }, children);
 
 const Label = React.forwardRef(({ className = "", ...props }, ref) =>
   React.createElement("label", {

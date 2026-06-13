@@ -18,7 +18,7 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     return (
       <div
         ref={ref}
-        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 ${variantClasses} ${className}`}
+        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold backdrop-blur-[2px] shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_0_0_1px_rgba(255,255,255,0.22),inset_0_0_0_999px_rgba(255,255,255,0.15),0_1px_1px_rgba(0,0,0,0.3)] [text-shadow:0_1px_1px_rgba(0,0,0,0.35),0_0_2px_rgba(255,255,255,0.5)] transition-colors focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 ${variantClasses} ${className}`}
         {...props}
       />
     );
