@@ -34,9 +34,6 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-box" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#4fc3a1"/><stop offset="1" stop-color="#239b7e"/>
       </linearGradient>
-      <linearGradient id="g-kiosk" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#7aa6ff"/><stop offset="1" stop-color="#4364cf"/>
-      </linearGradient>
     </defs>
   </svg>`;
 
@@ -68,28 +65,25 @@ const ICONS = {
       <text x="29.5" y="40" font-family="Space Grotesk, sans-serif" font-size="17" font-weight="700" fill="#c77f0c" text-anchor="middle">$</text>
     </svg>`,
 
+  // Lucide "boxes" glyph on the teal tile — shared by Inventory and Kiosk.
   boxes: `
     <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-box)"/>
       <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".10"/>
-      <rect x="24" y="15.5" width="16" height="15" rx="2.5" fill="#fff"/>
-      <rect x="30.5" y="15.5" width="3" height="15" fill="#16715b" opacity=".5"/>
-      <rect x="14.5" y="32.5" width="16" height="15" rx="2.5" fill="#fff" opacity=".95"/>
-      <rect x="21" y="32.5" width="3" height="15" fill="#16715b" opacity=".45"/>
-      <rect x="33.5" y="32.5" width="16" height="15" rx="2.5" fill="#fff" opacity=".95"/>
-      <rect x="40" y="32.5" width="3" height="15" fill="#16715b" opacity=".45"/>
-    </svg>`,
-
-  kiosk: `
-    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-kiosk)"/>
-      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
-      <rect x="15" y="16" width="34" height="23" rx="3" fill="#fff"/>
-      <rect x="19" y="20" width="26" height="4" rx="2" fill="#3f6fd0" opacity=".55"/>
-      <rect x="19" y="27" width="17" height="3" rx="1.5" fill="#3f6fd0" opacity=".35"/>
-      <rect x="19" y="32" width="22" height="3" rx="1.5" fill="#3f6fd0" opacity=".35"/>
-      <rect x="29" y="39" width="6" height="5" fill="#fff" opacity=".9"/>
-      <rect x="22" y="44" width="20" height="4" rx="2" fill="#fff"/>
+      <g transform="translate(14 14) scale(1.5)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/>
+        <path d="m7 16.5-4.74-2.85"/>
+        <path d="m7 16.5 5-3"/>
+        <path d="M7 16.5v5.17"/>
+        <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/>
+        <path d="m17 16.5-5-3"/>
+        <path d="m17 16.5 4.74-2.85"/>
+        <path d="M17 16.5v5.17"/>
+        <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/>
+        <path d="M12 8 7.26 5.15"/>
+        <path d="m12 8 4.74-2.85"/>
+        <path d="M12 13.5V8"/>
+      </g>
     </svg>`,
 };
 
@@ -127,7 +121,7 @@ const FOLDERS = [
       {
         id: "kiosk",
         name: "Kiosk",
-        icon: ICONS.kiosk,
+        icon: ICONS.boxes,
         // The storefront that used to live at thirsty.store, now an app inside
         // the OS (same-origin, served under /kiosk).
         url: "/kiosk",
