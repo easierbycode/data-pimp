@@ -37,6 +37,9 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-mobile" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#7c5cd6"/>
       </linearGradient>
+      <linearGradient id="g-browser" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#5b9bd5"/><stop offset="1" stop-color="#2f6fb0"/>
+      </linearGradient>
     </defs>
   </svg>`;
 
@@ -97,6 +100,19 @@ const ICONS = {
       <rect x="24.5" y="17.5" width="15" height="26" rx="2" fill="#7c5cd6" opacity=".45"/>
       <circle cx="32" cy="15.4" r="0.9" fill="#7c5cd6" opacity=".6"/>
       <rect x="29" y="46.5" width="6" height="1.8" rx="0.9" fill="#7c5cd6" opacity=".6"/>
+    </svg>`,
+
+  browser: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-browser)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
+        <circle cx="32" cy="32" r="15"/>
+        <ellipse cx="32" cy="32" rx="6.5" ry="15"/>
+        <line x1="17" y1="32" x2="47" y2="32"/>
+        <line x1="19.5" y1="24" x2="44.5" y2="24" stroke-width="1.8" opacity=".8"/>
+        <line x1="19.5" y1="40" x2="44.5" y2="40" stroke-width="1.8" opacity=".8"/>
+      </g>
     </svg>`,
 };
 
@@ -669,6 +685,81 @@ function openFolder(folder) {
   flashStatus(folder.name);
 }
 
+// Hosts that refuse to be iframed (X-Frame-Options / CSP frame-ancestors), so a
+// browser window must offer "open in a new tab" instead of a blank frame.
+const UNFRAMEABLE = /(^|\.)(tiktok\.com|tiktokv\.[a-z]+|instagram\.com|youtube\.com|google\.com|facebook\.com|amazon\.[a-z.]+)$/i;
+
+// Open a URL in a draggable Thirsty OS "browser" window. Used when a link
+// inside an app (e.g. a TikTok affiliate link in the Kiosk) wants to leave the
+// app's own frame.
+function openBrowser(url) {
+  let host = url;
+  let frameHost = "";
+  try {
+    const u = new URL(url);
+    frameHost = u.hostname;
+    host = u.hostname.replace(/^www\./, "");
+  } catch { /* keep url as host fallback */ }
+
+  const id = "browser:" + url;
+  const existing = windows.get(id);
+  if (existing) {
+    if (existing.minimized) setMinimized(existing, false);
+    else {
+      focusWindow(id);
+      focusChrome(existing);
+    }
+    return;
+  }
+
+  const blocked = UNFRAMEABLE.test(frameHost);
+  const launcher = document.activeElement;
+  const bodyHTML = `
+    <div class="browser">
+      <div class="browser-bar">
+        <span class="browser-dot"></span>
+        <span class="browser-url"></span>
+        <button class="browser-open" type="button">Open ↗</button>
+      </div>
+      <div class="browser-view">${
+    blocked
+      ? `<div class="browser-blocked"><p></p><button class="browser-open-lg" type="button">Open in a new tab ↗</button></div>`
+      : `<div class="window-loader"><div class="spinner"></div><span>Loading…</span></div>`
+  }</div>
+    </div>`;
+
+  const win = createWindow({
+    id,
+    title: host,
+    icon: ICONS.browser,
+    bodyHTML,
+    width: 1024,
+    height: 720,
+    launcher,
+  });
+
+  win.el.querySelector(".browser-url").textContent = url;
+  for (const btn of win.el.querySelectorAll(".browser-open, .browser-open-lg")) {
+    btn.addEventListener("click", () => globalThis.open(url, "_blank", "noopener,noreferrer"));
+  }
+
+  if (blocked) {
+    win.el.querySelector(".browser-blocked p").textContent =
+      `${host} can't be displayed inside Thirsty OS — it blocks embedding. Open it in a new browser tab:`;
+  } else {
+    const view = win.el.querySelector(".browser-view");
+    const loader = view.querySelector(".window-loader");
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("src", url);
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups");
+    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    iframe.addEventListener("load", () => loader && loader.classList.add("hidden"));
+    win.loaderTimer = setTimeout(() => loader && loader.classList.add("hidden"), 8000);
+    view.appendChild(iframe);
+  }
+  flashStatus(`Opening ${host}`);
+}
+
 /* ------------------------------------------------------- chrome / boot -- */
 
 function tickClock() {
@@ -709,6 +800,17 @@ globalThis.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   const front = frontWindow(null);
   if (front && front.el.contains(document.activeElement)) setMinimized(front, true);
+});
+
+// Same-origin apps (e.g. the Kiosk storefront at /kiosk) post a message to ask
+// the OS to open an external link in a browser window instead of leaving their
+// own frame. Only trust same-origin senders + http(s) URLs.
+globalThis.addEventListener("message", (e) => {
+  if (e.origin !== location.origin) return;
+  const data = e.data;
+  if (!data || data.source !== "thirsty-os" || data.type !== "open-url") return;
+  if (typeof data.url !== "string" || !/^https?:\/\//i.test(data.url)) return;
+  openBrowser(data.url);
 });
 
 document.body.insertAdjacentHTML("afterbegin", ICON_GRADIENTS);

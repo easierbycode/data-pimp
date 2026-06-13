@@ -2812,3 +2812,27 @@ const App = () =>
   );
 
 createRoot(document.getElementById("root")).render(React.createElement(App));
+
+// When embedded in Thirsty OS (e.g. the Kiosk app), route external / new-tab
+// links (like TikTok affiliate links) up to the OS so it opens them in a
+// draggable browser window instead of navigating away or popping a raw tab.
+if (window.parent !== window.self) {
+  document.addEventListener(
+    "click",
+    (e) => {
+      const anchor = e.target.closest && e.target.closest("a[href]");
+      if (!anchor) return;
+      const href = anchor.href || "";
+      const external = /^https?:\/\//i.test(href) &&
+        !href.startsWith(window.location.origin);
+      if (!external && anchor.target !== "_blank") return;
+      if (!/^https?:\/\//i.test(href)) return;
+      e.preventDefault();
+      window.parent.postMessage(
+        { source: "thirsty-os", type: "open-url", url: href },
+        window.location.origin,
+      );
+    },
+    true,
+  );
+}
