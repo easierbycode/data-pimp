@@ -34,6 +34,9 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-box" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#4fc3a1"/><stop offset="1" stop-color="#239b7e"/>
       </linearGradient>
+      <linearGradient id="g-mobile" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#7c5cd6"/>
+      </linearGradient>
     </defs>
   </svg>`;
 
@@ -84,6 +87,16 @@ const ICONS = {
         <path d="m12 8 4.74-2.85"/>
         <path d="M12 13.5V8"/>
       </g>
+    </svg>`,
+
+  mobile: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-mobile)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <rect x="22" y="13" width="20" height="38" rx="5" fill="#fff"/>
+      <rect x="24.5" y="17.5" width="15" height="26" rx="2" fill="#7c5cd6" opacity=".45"/>
+      <circle cx="32" cy="15.4" r="0.9" fill="#7c5cd6" opacity=".6"/>
+      <rect x="29" y="46.5" width="6" height="1.8" rx="0.9" fill="#7c5cd6" opacity=".6"/>
     </svg>`,
 };
 
@@ -146,6 +159,17 @@ const FOLDERS = [
         external: true,
         width: 1040,
         height: 720,
+      },
+      {
+        id: "samples",
+        name: "Samples",
+        icon: ICONS.mobile,
+        url: "https://easierbycode.com/tok-scrape/mobile-demo/www/",
+        allow: "fullscreen",
+        external: true,
+        // Phone-shaped window to suit the mobile demo.
+        width: 430,
+        height: 780,
       },
     ],
   },
