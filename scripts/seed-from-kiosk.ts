@@ -223,10 +223,10 @@ async function seedViaDatabase(rows: SeedSample[]) {
 async function seedViaApi(rows: SeedSample[]) {
   console.log(`\nClearing ${API_BASE} via API...`);
 
-  const transactions = await fetchJson(`${API_BASE}/api/transactions?limit=500`);
-  if (Array.isArray(transactions) && transactions.length > 0) {
-    await deleteAll("transactions", transactions);
-  }
+  // The transactions endpoint caps each response at 500 rows, so fetch-once
+  // would only clear the first page and leave older rows that FK-reference
+  // samples -- drain it page by page until it comes back empty.
+  await drainAndDelete("transactions", `${API_BASE}/api/transactions?limit=500`);
 
   const samples = await fetchJson(`${API_BASE}/api/samples`);
   if (Array.isArray(samples)) await deleteAll("samples", samples);
@@ -250,6 +250,19 @@ async function seedViaApi(rows: SeedSample[]) {
   });
 
   console.log(`Done. ${inserted} samples inserted via ${API_BASE}.`);
+}
+
+// Repeatedly fetch a (server-capped) page and delete it until the endpoint
+// returns nothing, so resources larger than one page are fully cleared.
+async function drainAndDelete(resource: string, url: string) {
+  let total = 0;
+  for (let guard = 0; guard < 10000; guard++) {
+    const page = await fetchJson(url);
+    if (!Array.isArray(page) || page.length === 0) break;
+    await deleteAll(resource, page);
+    total += page.length;
+  }
+  if (total === 0) console.log(`  ${resource}: none to delete`);
 }
 
 async function deleteAll(resource: string, rows: Array<{ id: unknown }>) {
