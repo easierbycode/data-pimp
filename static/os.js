@@ -221,7 +221,7 @@ const FOLDERS = [
     items: [
       {
         id: "tokscrape-dashboard",
-        name: "Member",
+        name: "App",
         icon: ICONS.mobile,
         // The TokScrape member dashboard — a third-party origin, so it gets the
         // top-navigation-blocking sandbox like the other external apps.
@@ -230,6 +230,18 @@ const FOLDERS = [
         external: true,
         // Phone-shaped window — it's a Cordova mobile app (matches Samples).
         width: 430,
+        height: 780,
+      },
+      {
+        id: "member-web",
+        name: "Web",
+        icon: ICONS.browser,
+        // The Fresh 2.3 member dashboard, served same-origin by data-pimp under
+        // /member (see main.ts). Same-origin, so no top-nav-blocking sandbox —
+        // it opens in a normal draggable OS window.
+        url: "/member",
+        allow: "fullscreen",
+        width: 1180,
         height: 780,
       },
     ],

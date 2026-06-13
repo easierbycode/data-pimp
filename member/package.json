@@ -1,0 +1,12 @@
+{
+  "name": "@apps/fresh",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Deno Fresh 2.3 frontend (alongside the Next.js apps/web). Uses Deno tasks, not pnpm scripts.",
+  "scripts": {
+    "dev": "deno task dev",
+    "build": "deno task build",
+    "start": "deno task start",
+    "preview": "deno task preview"
+  }
+}

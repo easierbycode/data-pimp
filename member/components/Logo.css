@@ -1,0 +1,25 @@
+.lp-logo {
+	display: inline-flex;
+	align-items: center;
+	font-weight: 600;
+	color: var(--foreground, #f2f1ed);
+	line-height: 1;
+}
+
+.lp-logo__mark {
+	width: 2.5rem;
+	height: 2.5rem;
+	display: block;
+}
+
+.lp-logo__label {
+	margin-left: 0.75rem;
+	font-size: 1.125rem;
+	display: none;
+}
+
+@media (min-width: 768px) {
+	.lp-logo__label {
+		display: inline;
+	}
+}

@@ -434,7 +434,10 @@ async function resolveSampleImage(id: string): Promise<string | null> {
   return imageUrl;
 }
 
-Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (req) => {
+// The legacy data-pimp surface: Thirsty OS shell, /kiosk, /inventory, the React
+// SPA bundle, and the whole /api/* + DB/proxy/Graylog stack. Exported so the
+// Fresh-composition entry at the bottom of this file can delegate to it.
+export async function legacyHandler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
@@ -766,4 +769,45 @@ Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (req) => {
 
   // Thirsty OS desktop owns the root; unknown routes fall back to it too.
   return renderOSShell();
+}
+
+// ── Fresh 2.3 member app ─────────────────────────────────────────────────────
+// The member dashboard is a vendored Fresh 2.3 app (./member) built to
+// member/_fresh by `deno task member:build`. We mount it same-origin under
+// /member and delegate everything else to legacyHandler. Loaded dynamically so
+// the rest of the server still boots if the Fresh app hasn't been built yet.
+//
+// Fresh's basePath ("/member") prefixes routes and the island bootstrap JS, but
+// CSS <link>s and asset() statics still emit at the document root (/assets/*,
+// /logo.svg, /lp-logo.png). The basePath'd Fresh server serves those under
+// /member, so we hoist the root-emitted asset paths back under /member here.
+type FetchFn = (req: Request) => Response | Promise<Response>;
+
+let memberFetch: FetchFn | null = null;
+try {
+  const mod = await import("./member/_fresh/server.js");
+  memberFetch = (mod.default as { fetch: FetchFn }).fetch;
+} catch (err) {
+  console.warn(
+    "[thirsty-os] /member is unavailable — run `deno task member:build` to build the Fresh member app.",
+    err instanceof Error ? err.message : err,
+  );
+}
+
+function memberOwnsPath(p: string): boolean {
+  return p === "/member" || p.startsWith("/member/") ||
+    p.startsWith("/assets/") || p === "/logo.svg" || p === "/lp-logo.png";
+}
+
+Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, (req) => {
+  const p = new URL(req.url).pathname;
+  if (memberFetch && memberOwnsPath(p)) {
+    if (p.startsWith("/member")) return memberFetch(req);
+    // Hoist a root-emitted member asset (/assets/*, /logo.svg, /lp-logo.png)
+    // under /member so the basePath'd Fresh server can serve it.
+    const u = new URL(req.url);
+    u.pathname = "/member" + p;
+    return memberFetch(new Request(u, req));
+  }
+  return legacyHandler(req);
 });

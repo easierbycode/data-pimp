@@ -1,0 +1,64 @@
+.lp-user-menu {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.625rem;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	padding: 0.25rem 0.5rem;
+	border-radius: 999px;
+	cursor: pointer;
+	transition: background-color 150ms ease;
+}
+
+.lp-user-menu:hover {
+	background: rgba(242, 241, 237, 0.06);
+}
+
+.lp-user-menu__avatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border-radius: 999px;
+	background: var(--primary, #f54e00);
+	color: var(--primary-foreground, #ffffff);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	flex-shrink: 0;
+}
+
+.lp-user-menu__name {
+	display: none;
+	flex-direction: column;
+	align-items: flex-start;
+	line-height: 1.2;
+	font-size: 0.85rem;
+	min-width: 0;
+}
+
+.lp-user-menu__display-name {
+	font-weight: 600;
+	color: var(--foreground, #f2f1ed);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 12rem;
+}
+
+.lp-user-menu__email {
+	font-size: 0.7rem;
+	color: var(--muted-foreground, rgba(242, 241, 237, 0.6));
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 12rem;
+}
+
+@media (min-width: 1024px) {
+	.lp-user-menu__name {
+		display: flex;
+	}
+}
