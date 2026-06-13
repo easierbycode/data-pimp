@@ -1,0 +1,1 @@
+function _(t,a,l,e){var i=e,n=!0,u=()=>(n&&(n=!1,i=e),i),r;r=t[a],r===void 0&&e!==void 0&&(r=u());var d;return d=()=>{var f=t[a];return f===void 0?u():(n=!0,f)},d}const v="5";typeof window<"u"&&((window.__svelte??={}).v??=new Set).add(v);export{_ as p};

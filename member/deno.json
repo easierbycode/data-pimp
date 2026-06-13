@@ -3,7 +3,7 @@
   "tasks": {
     "check": "deno fmt --check . && deno lint . && deno check",
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && deno run --allow-read --allow-write scripts/fix-static-paths.ts",
     "start": "deno serve -A _fresh/server.js",
     "preview": "deno task build && deno task start",
     "update": "deno run -A -r jsr:@fresh/update ."
