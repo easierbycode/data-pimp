@@ -142,9 +142,10 @@ const ICONS = {
 
 /* ------------------------------------------------------------ app model -- */
 
-// Per-item `allow` keeps Permissions-Policy minimal (no camera/mic). The
-// external demo is marked so it gets a sandbox that blocks top-navigation
-// (a kiosk must not be navigated away from the OS shell).
+// Per-item `allow` is the iframe Permissions-Policy allowlist. The Kiosk and
+// Inventory apps get `camera` for QR/barcode scanning; everything else stays
+// minimal. External apps are marked so they get a sandbox that blocks
+// top-navigation (a kiosk must not be navigated away from the OS shell).
 const FOLDERS = [
   {
     id: "apps",
@@ -166,7 +167,7 @@ const FOLDERS = [
         name: "Inventory",
         icon: ICONS.boxes,
         url: "https://admin.thirsty.store",
-        allow: "fullscreen",
+        allow: "fullscreen; camera",
         external: true,
         width: 1180,
         height: 780,
@@ -178,7 +179,7 @@ const FOLDERS = [
         // The storefront that used to live at thirsty.store, now an app inside
         // the OS (same-origin, served under /kiosk).
         url: "/kiosk",
-        allow: "fullscreen",
+        allow: "fullscreen; camera",
         width: 1180,
         height: 780,
       },
