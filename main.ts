@@ -3,6 +3,7 @@
 
 import { Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
+import { fetchProductImage, pdpUrlForSample } from "./product-image.ts";
 // Migrated from thirsty-store-kiosk: the Graylog-backed Product Analysis
 // dashboard. Catalog (/api/products) is served from Postgres instead (below).
 import {
@@ -406,6 +407,33 @@ async function serveLocalFile(relPath: string, contentType: string) {
   });
 }
 
+// --- Product image resolution via ScrapeCreators (TikTok Shop) ---------------
+// Older samples were created by a price-only fetch and have picture_url = null.
+// We resolve the real product image on demand from the TikTok Shop PDP (see
+// product-image.ts) and backfill it into Postgres so it is fetched only once.
+// Runs on the central deployment (which has DATABASE_URL); kiosks reach it via
+// the /api/* proxy above.
+async function resolveSampleImage(id: string): Promise<string | null> {
+  const rows = await Samples.filter({ id }, undefined, 1);
+  const sample = rows[0];
+  if (!sample) return null;
+  if (sample.picture_url) return sample.picture_url as string;
+
+  const pdpUrl = pdpUrlForSample(sample);
+  if (!pdpUrl) return null;
+
+  const imageUrl = await fetchProductImage(pdpUrl);
+  if (!imageUrl) return null;
+
+  // Backfill so the image is saved permanently (best-effort).
+  try {
+    await Samples.update(String(sample.id), { picture_url: imageUrl });
+  } catch (err) {
+    console.error(`Failed to backfill picture_url for sample ${id}:`, err);
+  }
+  return imageUrl;
+}
+
 Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
@@ -531,6 +559,16 @@ Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (req) => {
           const body = await req.json();
           const created = await Samples.create(body);
           return json(created, 201);
+        }
+      }
+
+      // Resolve (and backfill) a sample's product image via ScrapeCreators
+      const sampleImageMatch = pathname.match(/^\/api\/samples\/([^/]+)\/image$/);
+      if (sampleImageMatch) {
+        const id = sampleImageMatch[1];
+        if (req.method === "GET") {
+          const picture_url = await resolveSampleImage(id);
+          return json({ id, picture_url });
         }
       }
 

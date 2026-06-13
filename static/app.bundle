@@ -571,6 +571,56 @@ const Layout = ({ children }) => {
   );
 };
 
+// Neutral product placeholder (inline SVG) shown only when no image can be resolved.
+const PRODUCT_PLACEHOLDER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>" +
+      "<rect width='400' height='400' fill='#f1f5f9'/>" +
+      "<g fill='none' stroke='#cbd5e1' stroke-width='14' stroke-linecap='round' stroke-linejoin='round'>" +
+      "<path d='M200 92 L300 148 V252 L200 308 L100 252 V148 Z'/>" +
+      "<path d='M100 148 L200 204 L300 148'/><path d='M200 204 V308'/>" +
+      "</g></svg>",
+  );
+
+// Renders a sample's product image. For older "price-only" records that have no
+// picture_url, it lazily resolves the image from /api/samples/:id/image (which
+// fetches the TikTok Shop product via ScrapeCreators and backfills picture_url),
+// falling back to a neutral placeholder if nothing can be resolved.
+const ProductImage = ({ sample, className = "" }) => {
+  const existing = (sample && sample.picture_url) || "";
+  const sampleId = sample && sample.id;
+  const [src, setSrc] = React.useState(existing);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setFailed(false);
+    if (existing) {
+      setSrc(existing);
+      return;
+    }
+    setSrc("");
+    if (sampleId == null) return;
+    let cancelled = false;
+    fetchJson(`/api/samples/${sampleId}/image`)
+      .then((res) => {
+        if (!cancelled && res && res.picture_url) setSrc(res.picture_url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sampleId, existing]);
+
+  return React.createElement("img", {
+    src: !failed && src ? src : PRODUCT_PLACEHOLDER,
+    alt: (sample && sample.name) || "",
+    className,
+    loading: "lazy",
+    onError: () => setFailed(true),
+  });
+};
+
 // Samples Page (restored styling)
 const SamplesPage = () => {
   const { t } = useTranslation();
@@ -713,11 +763,8 @@ const SamplesPage = () => {
                     React.createElement(
                       "div",
                       { className: "aspect-square bg-muted relative" },
-                      React.createElement("img", {
-                        src:
-                          sample.picture_url ||
-                          "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200",
-                        alt: sample.name,
+                      React.createElement(ProductImage, {
+                        sample,
                         className: "w-full h-full object-cover",
                       }),
                       React.createElement(
@@ -855,7 +902,6 @@ const CheckoutPage = () => {
   const badgeRef = React.useRef(null);
   const [cartItems, setCartItems] = React.useState([]);
   const [isDebugMode, setIsDebugMode] = React.useState(false);
-  const defaultImage = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop";
 
   // Check for debug mode via URL parameter
   React.useEffect(() => {
@@ -1005,9 +1051,8 @@ const CheckoutPage = () => {
                 : React.createElement(
                     "div",
                     { className: "flex flex-col md:flex-row gap-6" },
-                    React.createElement("img", {
-                      src: sample.picture_url || defaultImage,
-                      alt: sample.name,
+                    React.createElement(ProductImage, {
+                      sample,
                       className: "w-32 h-32 rounded-xl object-cover flex-shrink-0",
                     }),
                     React.createElement(
@@ -1832,8 +1877,6 @@ const SampleDetails = () => {
     window.location.href = "/samples";
   };
 
-  const defaultImage = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop";
-
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleString("en-US", {
@@ -1965,9 +2008,8 @@ const SampleDetails = () => {
                 React.createElement(
                   "div",
                   { className: "aspect-square relative" },
-                  React.createElement("img", {
-                    src: sample.picture_url || defaultImage,
-                    alt: sample.name,
+                  React.createElement(ProductImage, {
+                    sample,
                     className: "w-full h-full object-cover",
                   }),
                   React.createElement(

@@ -11,6 +11,7 @@ import StatusBadge from "../ui/StatusBadge.tsx";
 import FireSaleBadge from "../ui/FireSaleBadge.tsx";
 import LowestPriceOnlineBadge from "../ui/LowestPriceOnlineBadge.tsx";
 import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
+import ProductImage from "../ui/ProductImage.tsx";
 import PriceDisplay from "../ui/PriceDisplay.tsx";
 import { useTranslation } from "../i18n/translations.tsx";
 import type { Sample, Bundle } from "@/api/base44Client.ts";
@@ -43,8 +44,6 @@ export default function ScanResult({
     return item.current_price < item.best_price;
   };
   
-  const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
-
   if (type === 'not_found') {
     return (
       <Card className="border-red-200 bg-red-50">
@@ -79,9 +78,8 @@ export default function ScanResult({
         
         <CardContent className="p-6">
           <div className="flex gap-6">
-            <img 
-              src={sample.picture_url || defaultImage}
-              alt={sample.name}
+            <ProductImage
+              sample={sample}
               className="w-32 h-32 rounded-xl object-cover flex-shrink-0"
             />
             
@@ -345,9 +343,8 @@ export default function ScanResult({
                     key={sample.id}
                     className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
                   >
-                    <img
-                      src={sample.picture_url || defaultImage}
-                      alt={sample.name}
+                    <ProductImage
+                      sample={sample}
                       className="w-10 h-10 rounded-lg object-cover"
                     />
                     <div className="flex-1 min-w-0">

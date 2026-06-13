@@ -8,17 +8,15 @@ import StatusBadge from "../ui/StatusBadge.tsx";
 import FireSaleBadge from "../ui/FireSaleBadge.tsx";
 import LowestPriceOnlineBadge from "../ui/LowestPriceOnlineBadge.tsx";
 import QRCodeDisplay from "../ui/QRCodeDisplay.tsx";
+import ProductImage from "../ui/ProductImage.tsx";
 import type { Sample } from "@/api/base44Client.ts";
 
 export default function SampleCard({ sample, compact = false }) {
-  const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop';
-  
   if (compact) {
     return (
       <div className="flex items-center gap-4 p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
-        <img
-          src={sample.picture_url || defaultImage}
-          alt={sample.name}
+        <ProductImage
+          sample={sample}
           className="w-12 h-12 rounded-lg object-cover"
         />
         <div className="flex-1 min-w-0">
@@ -35,9 +33,8 @@ export default function SampleCard({ sample, compact = false }) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-square relative bg-slate-100">
-        <img
-          src={sample.picture_url || defaultImage}
-          alt={sample.name}
+        <ProductImage
+          sample={sample}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">

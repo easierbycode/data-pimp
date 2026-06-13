@@ -24,6 +24,7 @@ import StatusBadge from "../Components/ui/StatusBadge.tsx";
 import FireSaleBadge from "../Components/ui/FireSaleBadge.tsx";
 import QRCodeDisplay from "../Components/ui/QRCodeDisplay.tsx";
 import PriceDisplay from "../Components/ui/PriceDisplay.tsx";
+import ProductImage from "../Components/ui/ProductImage.tsx";
 import { useTranslation } from "../Components/i18n/translations.tsx";
 
 export default function SampleDetails() {
@@ -66,7 +67,6 @@ export default function SampleDetails() {
     }
   });
 
-  const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop';
 
   if (isLoading) {
     return (
@@ -157,9 +157,8 @@ export default function SampleDetails() {
               <div className="md:flex">
                 <div className="md:w-1/3">
                   <div className="aspect-square relative">
-                    <img 
-                      src={sample.picture_url || defaultImage}
-                      alt={sample.name}
+                    <ProductImage
+                      sample={sample}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-3 left-3 flex flex-wrap gap-2">

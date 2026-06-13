@@ -5,6 +5,7 @@ import { ShoppingCart, Package, Trash2, TrendingDown } from "lucide-react";
 import StatusBadge from "../ui/StatusBadge.tsx";
 import FireSaleBadge from "../ui/FireSaleBadge.tsx";
 import LowestPriceOnlineBadge from "../ui/LowestPriceOnlineBadge.tsx";
+import ProductImage from "../ui/ProductImage.tsx";
 
 interface CartItem {
   type: 'sample' | 'bundle';
@@ -20,8 +21,6 @@ interface CartDisplayProps {
 }
 
 export default function CartDisplay({ items, onRemoveItem, onCheckout, onClearCart }: CartDisplayProps) {
-  const defaultImage = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
-
   // Calculate if item has best price (current_price < best_price)
   const hasLowestPrice = (item: any) => {
     if (!item.current_price || !item.best_price) return false;
@@ -92,9 +91,8 @@ export default function CartDisplay({ items, onRemoveItem, onCheckout, onClearCa
 
               return (
                 <div key={index} className="flex gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <img
-                    src={sample.picture_url || defaultImage}
-                    alt={sample.name}
+                  <ProductImage
+                    sample={sample}
                     className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
