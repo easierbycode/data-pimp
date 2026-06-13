@@ -40,6 +40,9 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-browser" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#5b9bd5"/><stop offset="1" stop-color="#2f6fb0"/>
       </linearGradient>
+      <linearGradient id="g-kiosk" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#54c4f5"/><stop offset="1" stop-color="#1f8fd1"/>
+      </linearGradient>
     </defs>
   </svg>`;
 
@@ -114,6 +117,27 @@ const ICONS = {
         <line x1="19.5" y1="40" x2="44.5" y2="40" stroke-width="1.8" opacity=".8"/>
       </g>
     </svg>`,
+
+  // Lucide "qr-code" glyph (the Kiosk's Checkout-tab icon) on a sky tile.
+  qr: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-kiosk)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <g transform="translate(14 14) scale(1.5)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="5" height="5" x="3" y="3" rx="1"/>
+        <rect width="5" height="5" x="16" y="3" rx="1"/>
+        <rect width="5" height="5" x="3" y="16" rx="1"/>
+        <path d="M21 16h-3a2 2 0 0 0-2 2v3"/>
+        <path d="M21 21v.01"/>
+        <path d="M12 7v3a2 2 0 0 1-2 2H7"/>
+        <path d="M3 12h.01"/>
+        <path d="M12 3h.01"/>
+        <path d="M12 16v.01"/>
+        <path d="M16 12h1"/>
+        <path d="M21 12v.01"/>
+        <path d="M12 21v-1"/>
+      </g>
+    </svg>`,
 };
 
 /* ------------------------------------------------------------ app model -- */
@@ -150,7 +174,7 @@ const FOLDERS = [
       {
         id: "kiosk",
         name: "Kiosk",
-        icon: ICONS.boxes,
+        icon: ICONS.qr,
         // The storefront that used to live at thirsty.store, now an app inside
         // the OS (same-origin, served under /kiosk).
         url: "/kiosk",
