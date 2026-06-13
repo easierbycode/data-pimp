@@ -231,6 +231,8 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@fresh/core@^2.3.0",
+      "jsr:@std/expect@1",
       "npm:@tanstack/react-query@^5.12.0",
       "npm:lucide-react@0.294",
       "npm:react-dom@^18.2.0",

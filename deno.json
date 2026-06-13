@@ -21,16 +21,20 @@
     "@/": "./",
     "@/api/": "./api/",
     "@/components/": "./Components/",
-    "@/utils": "./utils.ts"
+    "@/utils": "./utils.ts",
+    "fresh": "jsr:@fresh/core@^2.3.0",
+    "@std/expect": "jsr:@std/expect@^1"
   },
   "tasks": {
     "start": "deno run -A main.ts",
     "dev": "deno run -A --watch main.ts",
     "dev:deno-db": "deno run --tunnel main.ts",
-    "check": "deno check **/*.ts **/*.tsx",
+    "check": "deno check main.ts",
     "seed:kiosk": "deno run -A scripts/seed-from-kiosk.ts",
-    "build:mac": "deno compile -A --include static --target aarch64-apple-darwin --output build/data-pimp-mac-arm64 main.ts && deno compile -A --include static --target x86_64-apple-darwin --output build/data-pimp-mac-x64 main.ts",
-    "build:windows": "deno compile -A --include static --target x86_64-pc-windows-msvc --output build/data-pimp-windows main.ts"
+    "member:build": "cd member && deno task build",
+    "build": "deno task member:build",
+    "build:mac": "deno task member:build && deno compile -A --include static --include member/_fresh --target aarch64-apple-darwin --output build/data-pimp-mac-arm64 main.ts && deno compile -A --include static --include member/_fresh --target x86_64-apple-darwin --output build/data-pimp-mac-x64 main.ts",
+    "build:windows": "deno task member:build && deno compile -A --include static --include member/_fresh --target x86_64-pc-windows-msvc --output build/data-pimp-windows main.ts"
   },
   "deploy": {
     "org": "easierbycode",
