@@ -20,20 +20,6 @@ const CHARACTER_URL =
 const GRAYLOG_ENDPOINT = "http://graylog-server.thirsty.store:12201/gelf";
 const MAX_GELF_MESSAGE_SIZE = 8000;
 
-const SPA_ROUTES = [
-  "/",
-  "/samples",
-  "/sampledetails",
-  "/samplecreate",
-  "/sampleedit",
-  "/bundles",
-  "/bundledetails",
-  "/bundlecreate",
-  "/bundleedit",
-  "/checkout",
-  "/readme",
-];
-
 const TABLES = ["bundles", "inventory_transactions", "samples"] as const;
 
 function redactedDbUrl() {
@@ -181,28 +167,67 @@ function renderSPAShell(): Response {
   });
 }
 
-// Serve /app.js from local file (cache in-memory)
-const APP_JS_URL = new URL("./app.js", import.meta.url);
-let appJsCache: { text: string; mtimeMs: number | null } | null = null;
+// Thirsty OS desktop shell — the front door at thirsty.store. Folders launch
+// each app (the storefront, the sample tracker, etc.) in draggable windows.
+function renderOSShell(): Response {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Thirsty OS</title>
+    <meta name="theme-color" content="#0b0d11">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Figtree:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/os.css">
+  </head>
+  <body>
+    <div id="menubar" class="menubar">
+      <div class="menubar-left">
+        <span class="brand"><span class="brand-mark">◆</span> Thirsty&nbsp;OS</span>
+        <span id="active-app" class="active-app" aria-live="polite" aria-atomic="true">Finder</span>
+      </div>
+      <div class="menubar-right">
+        <span id="menubar-status" class="mb-status"></span>
+        <span id="clock" class="clock tnum"></span>
+      </div>
+    </div>
+    <main id="desktop" class="desktop" aria-label="Desktop">
+      <div id="desktop-icons" class="desktop-icons" aria-label="Desktop items"></div>
+    </main>
+    <div id="dock" class="dock" aria-label="Dock"></div>
+    <script type="module" src="/os.js"></script>
+  </body>
+</html>`;
 
-async function serveAppJs() {
+  return new Response(html, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
+// Serve a local file (cached in-memory, refreshed when its mtime changes).
+// Used for the client bundle (/app.js) and the Thirsty OS shell assets.
+const fileCache = new Map<string, { text: string; mtimeMs: number | null }>();
+
+async function serveLocalFile(relPath: string, contentType: string) {
+  const fileUrl = new URL(relPath, import.meta.url);
   try {
-    const stat = await Deno.stat(APP_JS_URL);
+    const stat = await Deno.stat(fileUrl);
     const mtimeMs = stat.mtime ? stat.mtime.getTime() : null;
-    if (!appJsCache || appJsCache.mtimeMs !== mtimeMs) {
-      const text = await Deno.readTextFile(APP_JS_URL);
-      appJsCache = { text, mtimeMs };
+    const cached = fileCache.get(relPath);
+    if (!cached || cached.mtimeMs !== mtimeMs) {
+      fileCache.set(relPath, { text: await Deno.readTextFile(fileUrl), mtimeMs });
     }
   } catch {
-    if (!appJsCache) {
-      const text = await Deno.readTextFile(APP_JS_URL);
-      appJsCache = { text, mtimeMs: null };
+    if (!fileCache.has(relPath)) {
+      fileCache.set(relPath, { text: await Deno.readTextFile(fileUrl), mtimeMs: null });
     }
   }
-  const body = appJsCache?.text ?? "";
-  return new Response(body, {
+  return new Response(fileCache.get(relPath)?.text ?? "", {
     status: 200,
-    headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" },
+    headers: { "content-type": contentType, "cache-control": "no-store" },
   });
 }
 
@@ -210,8 +235,16 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const pathname = url.pathname.toLowerCase();
 
-  // Client app
-  if (pathname === "/app.js") return await serveAppJs();
+  // Client app + Thirsty OS shell assets
+  if (pathname === "/app.js") {
+    return await serveLocalFile("./app.js", "text/javascript; charset=utf-8");
+  }
+  if (pathname === "/os.js") {
+    return await serveLocalFile("./os.js", "text/javascript; charset=utf-8");
+  }
+  if (pathname === "/os.css") {
+    return await serveLocalFile("./os.css", "text/css; charset=utf-8");
+  }
 
   // Debug
   if (pathname === "/__debug") {
@@ -390,9 +423,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  // SPA routing
-  const isSPARoute = SPA_ROUTES.some((r) => pathname === r || pathname === r + "/");
-  if (isSPARoute || pathname === "/") return renderSPAShell();
+  // The storefront SPA now lives under /kiosk (its BrowserRouter uses
+  // basename="/kiosk"); serve its shell for /kiosk and any client-routed path.
+  if (pathname === "/kiosk" || pathname.startsWith("/kiosk/")) return renderSPAShell();
 
-  return renderSPAShell();
+  // Thirsty OS desktop owns the root; unknown routes fall back to it too.
+  return renderOSShell();
 });

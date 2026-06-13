@@ -2787,7 +2787,7 @@ const App = () =>
     { client: queryClient },
     React.createElement(
       BrowserRouter,
-      null,
+      { basename: "/kiosk" },
       React.createElement(
         Layout,
         null,
