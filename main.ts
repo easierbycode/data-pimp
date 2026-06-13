@@ -3,6 +3,18 @@
 
 import { Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
+// Migrated from thirsty-store-kiosk: the Graylog-backed Product Analysis
+// dashboard. Catalog (/api/products) is served from Postgres instead (below).
+import {
+  fetchComparisonWithEdits,
+  fetchPriceForSample,
+  fetchProductWithEdits,
+  fetchSampleValuationWithEdits,
+  listUnpricedSamples,
+  updateSamplePrice,
+  upsertSampleProduct,
+} from "./core/samples.ts";
+import { envValue, graylogConfigFromEnv } from "./core/graylog.ts";
 
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
@@ -48,6 +60,64 @@ function json(data: unknown, status = 200) {
     },
   });
 }
+
+// The catalog is read cross-origin by the sample tracker (admin.thirsty.store),
+// so it needs a permissive CORS header (the kiosk served it the same way).
+function corsJson(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+    },
+  });
+}
+
+async function readJsonBody(req: Request): Promise<Record<string, unknown>> {
+  try {
+    const body = await req.json();
+    return body && typeof body === "object" && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+// Map a Postgres `samples` row back to the kiosk's catalog product shape that
+// the tracker expects (inverse of scripts/seed-from-kiosk.ts).
+interface KioskProduct {
+  productId: string;
+  name: string;
+  priceRange: string;
+  min_sku_original_price: number;
+  category: string;
+  seller: string;
+  sampleCount: number;
+  estimatedRetailValue: number;
+  lastSeen: string | null;
+  image: string | null;
+}
+
+function sampleRowToKioskProduct(row: Record<string, unknown>): KioskProduct {
+  const price = Number(row.current_price) || 0;
+  return {
+    productId: String(row.qr_code ?? "").trim(),
+    name: String(row.name ?? "").trim(),
+    priceRange: price > 0 ? `$${price.toFixed(2)}` : "",
+    min_sku_original_price: price,
+    category: "",
+    seller: row.brand ? String(row.brand) : "Unknown seller",
+    sampleCount: 0,
+    estimatedRetailValue: 0,
+    lastSeen: row.created_at ? new Date(String(row.created_at)).toISOString() : null,
+    image: row.picture_url ? String(row.picture_url) : null,
+  };
+}
+
+// Kiosk-fleet heartbeat state (in-memory; powers the dashboard's Fleet panel).
+const kiosks = new Map<string, { lastSeen: number; disabled: boolean }>();
 
 async function fetchCharacter() {
   try {
@@ -246,6 +316,17 @@ Deno.serve(async (req) => {
     return await serveLocalFile("./os.css", "text/css; charset=utf-8");
   }
 
+  // Product Analysis dashboard (migrated from the kiosk) + its assets.
+  if (pathname === "/inventory" || pathname === "/inventory.html") {
+    return await serveLocalFile("./inventory.html", "text/html; charset=utf-8");
+  }
+  if (pathname === "/ui.js") {
+    return await serveLocalFile("./ui.js", "text/javascript; charset=utf-8");
+  }
+  if (pathname === "/styles.css") {
+    return await serveLocalFile("./styles.css", "text/css; charset=utf-8");
+  }
+
   // Debug
   if (pathname === "/__debug") {
     return json({
@@ -413,6 +494,107 @@ Deno.serve(async (req) => {
       if (transactionMatch && req.method === "DELETE") {
         await InventoryTransactions.delete(transactionMatch[1]);
         return new Response(null, { status: 204 });
+      }
+
+      // ---- Migrated from thirsty-store-kiosk ----
+
+      // Catalog: durable, Postgres-backed (the data already lives in `samples`).
+      // Consumed cross-origin by the tracker, so it carries CORS.
+      if (pathname === "/api/products") {
+        const limit = url.searchParams.get("limit")
+          ? parseInt(url.searchParams.get("limit")!, 10)
+          : undefined;
+        const rows = await Samples.list("-created_at") as Record<string, unknown>[];
+        const catalog = rows
+          .map(sampleRowToKioskProduct)
+          .filter((p) => p.productId && p.name);
+        return corsJson(limit ? catalog.slice(0, limit) : catalog);
+      }
+
+      // Product Analysis dashboard endpoints (Graylog-backed; degrade to empty
+      // when GRAYLOG_* env is unset, exactly as on the kiosk).
+      if (pathname === "/api/health") {
+        const graylog = graylogConfigFromEnv();
+        return json({
+          ok: true,
+          graylogConfigured: Boolean(graylog),
+          graylogStreamId: graylog?.streamId || null,
+          graylogRangeSeconds: graylog?.rangeSeconds || null,
+          scrapeCreatorsConfigured: Boolean(
+            envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY"),
+          ),
+        });
+      }
+
+      if (pathname.startsWith("/api/product/")) {
+        // Extract the id from the RAW path; the lowercased `pathname` would
+        // corrupt any product id containing letters (the kiosk used raw too).
+        const id = decodeURIComponent(url.pathname.split("/").pop() || "");
+        const product = await fetchProductWithEdits(id);
+        if (!product) return json({ ok: false, error: "Product not found in Graylog" }, 404);
+        return json(product);
+      }
+
+      if (pathname === "/api/unpriced-samples") {
+        return json(await listUnpricedSamples(
+          url.searchParams.get("query") || "",
+          Number(url.searchParams.get("limit") || 100),
+        ));
+      }
+
+      if (pathname === "/api/sample-products") {
+        if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+        return json(await upsertSampleProduct(await readJsonBody(req)));
+      }
+
+      // Match against the RAW path so captured ids keep their original case.
+      const unpricedMatch = url.pathname.match(/^\/api\/unpriced-samples\/([^/]+)$/i);
+      if (unpricedMatch) {
+        if (req.method !== "PATCH") return json({ ok: false, error: "Method not allowed" }, 405);
+        return json(await updateSamplePrice(decodeURIComponent(unpricedMatch[1]), await readJsonBody(req)));
+      }
+
+      const fetchPriceMatch = url.pathname.match(/^\/api\/unpriced-samples\/([^/]+)\/fetch-price$/i);
+      if (fetchPriceMatch) {
+        if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+        return json(await fetchPriceForSample(decodeURIComponent(fetchPriceMatch[1])));
+      }
+
+      if (pathname === "/api/comparison") {
+        return json(await fetchComparisonWithEdits());
+      }
+
+      if (pathname === "/api/sample-valuation") {
+        return json(await fetchSampleValuationWithEdits());
+      }
+
+      // Kiosk-fleet heartbeat (in-memory; powers the dashboard's Fleet panel).
+      if (pathname === "/api/heartbeat") {
+        const id = req.headers.get("x-kiosk-id") || "unknown";
+        const existing = kiosks.get(id);
+        kiosks.set(id, { lastSeen: Date.now(), disabled: existing?.disabled || false });
+        return json({ ok: true, disabled: kiosks.get(id)?.disabled || false });
+      }
+      if (pathname === "/api/kiosks") {
+        return json([...kiosks.entries()].map(([id, k]) => ({
+          id,
+          lastSeen: k.lastSeen,
+          online: !k.disabled && Date.now() - k.lastSeen < 15000,
+          disabled: k.disabled,
+        })));
+      }
+      if (pathname.startsWith("/api/kiosks/") && pathname.endsWith("/disable")) {
+        // Raw path id, to match the (case-preserving) x-kiosk-id heartbeat key.
+        const id = url.pathname.split("/")[3];
+        const existing = kiosks.get(id);
+        kiosks.set(id, { lastSeen: existing?.lastSeen || 0, disabled: true });
+        return json({ ok: true, id, disabled: true });
+      }
+      if (pathname.startsWith("/api/kiosks/") && pathname.endsWith("/enable")) {
+        const id = url.pathname.split("/")[3];
+        const existing = kiosks.get(id);
+        kiosks.set(id, { lastSeen: existing?.lastSeen || Date.now(), disabled: false });
+        return json({ ok: true, id, disabled: false });
       }
 
       return json({ error: "API endpoint not found" }, 404);

@@ -1,0 +1,4 @@
+# Local sample-price store written by the migrated dashboard backend
+# (core/samples.ts). Ephemeral on Deno Deploy; never commit it.
+.thirsty/
+.env

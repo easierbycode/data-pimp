@@ -102,9 +102,9 @@ const FOLDERS = [
         id: "product-analysis",
         name: "Product Analysis",
         icon: ICONS.inventory,
-        url: "https://thirsty-store-kiosk.easierbycode.deno.net/inventory",
+        // Migrated from the kiosk — now served same-origin by data-pimp.
+        url: "/inventory",
         allow: "fullscreen",
-        external: true,
         width: 1180,
         height: 780,
       },
