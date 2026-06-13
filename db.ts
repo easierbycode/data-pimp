@@ -202,4 +202,5 @@ export const InventoryTransactions = {
   filter: (filters: Record<string, unknown>, orderBy?: string, limit?: number) =>
     filterTable("inventory_transactions", filters, orderBy, limit),
   create: (data: Record<string, unknown>) => insertRow("inventory_transactions", data),
+  delete: (id: string) => deleteRow("inventory_transactions", id),
 };
