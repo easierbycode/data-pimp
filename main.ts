@@ -376,6 +376,12 @@ Deno.serve(async (req) => {
         }
       }
 
+      const transactionMatch = pathname.match(/^\/api\/transactions\/([^/]+)$/);
+      if (transactionMatch && req.method === "DELETE") {
+        await InventoryTransactions.delete(transactionMatch[1]);
+        return new Response(null, { status: 204 });
+      }
+
       return json({ error: "API endpoint not found" }, 404);
     } catch (error) {
       console.error("API error:", error);
