@@ -21,11 +21,23 @@ const pool = new Pool({
   max: 1,
 });
 
-// Initialize database on startup
-await initializeDatabase().catch((err) => {
-  console.error("Failed to initialize database:", err);
-  console.log("Will continue without database - may fail on API calls");
-});
+// Thin-client mode: with no local DATABASE_URL (e.g. the compiled desktop
+// binary on a kiosk), proxy /api/* to the central deployment instead of a local
+// DB — no DB credentials on-device, one shared source of truth. Override the
+// upstream with THIRSTY_API.
+const REMOTE_API = Deno.env.get("DATABASE_URL")
+  ? null
+  : (Deno.env.get("THIRSTY_API") || "https://thirsty.store").replace(/\/+$/, "");
+
+if (REMOTE_API) {
+  console.log(`[thirsty-os] No DATABASE_URL — proxying /api/* to ${REMOTE_API}`);
+} else {
+  // Initialize database on startup
+  await initializeDatabase().catch((err) => {
+    console.error("Failed to initialize database:", err);
+    console.log("Will continue without database - may fail on API calls");
+  });
+}
 
 const CHARACTER_URL =
   "https://spritehub-c3a33-default-rtdb.firebaseio.com/characters/dukeNukem.json";
@@ -72,6 +84,34 @@ function corsJson(data: unknown, status = 200) {
       "access-control-allow-origin": "*",
     },
   });
+}
+
+// Forward an /api/* request to the central deployment (thin-client mode).
+async function proxyApi(req: Request, url: URL): Promise<Response> {
+  const target = REMOTE_API + url.pathname + url.search;
+  const headers = new Headers();
+  const ct = req.headers.get("content-type");
+  if (ct) headers.set("content-type", ct);
+  const kioskId = req.headers.get("x-kiosk-id");
+  if (kioskId) headers.set("x-kiosk-id", kioskId);
+  const init: RequestInit = { method: req.method, headers };
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    init.body = await req.arrayBuffer();
+  }
+  try {
+    const resp = await fetch(target, init);
+    return new Response(await resp.arrayBuffer(), {
+      status: resp.status,
+      headers: {
+        "content-type": resp.headers.get("content-type") || "application/json",
+        "cache-control": "no-store",
+      },
+    });
+  } catch (e) {
+    return json({
+      error: `Upstream ${REMOTE_API} unreachable: ${e instanceof Error ? e.message : String(e)}`,
+    }, 502);
+  }
 }
 
 async function readJsonBody(req: Request): Promise<Record<string, unknown>> {
@@ -391,6 +431,15 @@ Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (req) => {
 
   // Fetch demo
   if (pathname === "/fetch-demo") return await handleFetchDemo();
+
+  // Thin-client mode: forward every API call to the central deployment.
+  // Skip if the upstream is ourselves (misconfig guard against a proxy loop).
+  if (
+    REMOTE_API && pathname.startsWith("/api/") &&
+    new URL(REMOTE_API).host !== url.host
+  ) {
+    return await proxyApi(req, url);
+  }
 
   // API
   if (pathname.startsWith("/api/")) {
