@@ -187,11 +187,11 @@ const createPageUrl = (page) =>
 // UI Components
 const Button = ({ children, variant = "default", size = "default", className = "", ...props }) => {
   const variants = {
-    default: "bg-slate-900 text-white hover:bg-slate-800",
-    outline: "border border-slate-200 bg-white hover:bg-slate-100",
-    ghost: "hover:bg-slate-100",
-    secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200",
-    destructive: "bg-red-600 text-white hover:bg-red-700",
+    default: "bg-primary text-primary-foreground hover:bg-primary/90",
+    outline: "border border-border bg-card hover:bg-muted",
+    ghost: "hover:bg-muted",
+    secondary: "bg-muted text-foreground hover:bg-muted",
+    destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
   };
   const sizes = { default: "h-10 px-4 py-2", sm: "h-9 px-3", lg: "h-11 px-8", icon: "h-10 w-10" };
   return React.createElement(
@@ -205,7 +205,7 @@ const Button = ({ children, variant = "default", size = "default", className = "
 };
 
 const Card = ({ children, className = "", ...props }) =>
-  React.createElement("div", { className: `rounded-lg border border-slate-200 bg-white shadow-sm ${className}`, ...props }, children);
+  React.createElement("div", { className: `rounded-lg border border-border bg-card shadow-sm ${className}`, ...props }, children);
 const CardHeader = ({ children, className = "" }) => React.createElement("div", { className: `p-6 ${className}` }, children);
 const CardTitle = ({ children, className = "" }) => React.createElement("h3", { className: `text-2xl font-semibold ${className}` }, children);
 const CardContent = ({ children, className = "" }) => React.createElement("div", { className: `p-6 pt-0 ${className}` }, children);
@@ -213,7 +213,7 @@ const CardContent = ({ children, className = "" }) => React.createElement("div",
 const Input = React.forwardRef(({ className = "", ...props }, ref) =>
   React.createElement("input", {
     ref,
-    className: `flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ${className}`,
+    className: `flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm ${className}`,
     ...props,
   }),
 );
@@ -232,7 +232,7 @@ const Label = React.forwardRef(({ className = "", ...props }, ref) =>
 const Textarea = React.forwardRef(({ className = "", ...props }, ref) =>
   React.createElement("textarea", {
     ref,
-    className: `flex min-h-[80px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
+    className: `flex min-h-[80px] w-full rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
     ...props,
   }),
 );
@@ -247,11 +247,11 @@ const Switch = React.forwardRef(({ checked = false, onCheckedChange, disabled = 
       disabled,
       ref,
       onClick: () => onCheckedChange?.(!checked),
-      className: `peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 ${checked ? "bg-slate-900" : "bg-slate-200"} ${className}`,
+      className: `peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${checked ? "bg-primary" : "bg-muted"} ${className}`,
       ...props,
     },
     React.createElement("span", {
-      className: `pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`,
+      className: `pointer-events-none block h-5 w-5 rounded-full bg-card shadow-lg ring-0 transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`,
     }),
   );
 });
@@ -276,7 +276,7 @@ const SelectTrigger = React.forwardRef(({ className = "", children, ...props }, 
       type: "button",
       ref,
       onClick: () => context.setOpen(!context.open),
-      className: `flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
+      className: `flex h-10 w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`,
       ...props,
     },
     children,
@@ -313,7 +313,7 @@ const SelectContent = ({ children, className = "" }) => {
     "div",
     {
       ref: contentRef,
-      className: `absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 text-base shadow-lg focus:outline-none sm:text-sm ${className}`,
+      className: `absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-card py-1 text-base shadow-lg focus:outline-none sm:text-sm ${className}`,
     },
     children,
   );
@@ -331,7 +331,7 @@ const SelectItem = ({ value, children, className = "" }) => {
         context.onValueChange(value);
         context.setOpen(false);
       },
-      className: `relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-slate-100 focus:bg-slate-100 ${className}`,
+      className: `relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-muted focus:bg-muted ${className}`,
     },
     isSelected &&
       React.createElement(
@@ -345,19 +345,19 @@ const SelectItem = ({ value, children, className = "" }) => {
 
 // Status MultiSelect with badge-styled options
 const statusOptionStyles = {
-  available: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', selected: 'bg-emerald-100' },
-  checked_out: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', selected: 'bg-amber-100' },
-  reserved: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', selected: 'bg-blue-100' },
-  discontinued: { bg: 'bg-slate-50', text: 'text-slate-800', border: 'border-slate-200', selected: 'bg-slate-100' },
-  fire_sale: { bg: 'bg-gradient-to-r from-orange-50 to-red-50', text: 'text-orange-700', border: 'border-orange-200', selected: 'bg-gradient-to-r from-orange-100 to-red-100' },
-  lowest_price: { bg: 'bg-gradient-to-r from-emerald-50 to-green-50', text: 'text-green-700', border: 'border-green-200', selected: 'bg-gradient-to-r from-emerald-100 to-green-100' }
+  available: { bg: 'bg-success/10', text: 'text-success', border: 'border-success/30', selected: 'bg-success/15' },
+  checked_out: { bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/30', selected: 'bg-warning/15' },
+  reserved: { bg: 'bg-accent/10', text: 'text-accent', border: 'border-accent/30', selected: 'bg-accent/15' },
+  discontinued: { bg: 'bg-background', text: 'text-foreground', border: 'border-border', selected: 'bg-muted' },
+  fire_sale: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/30', selected: 'bg-primary/20' },
+  lowest_price: { bg: 'bg-success/10', text: 'text-success', border: 'border-success/30', selected: 'bg-success/20' }
 };
 
 const statusPillStyles = {
-  available: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  checked_out: 'bg-amber-100 text-amber-800 border-amber-200',
-  reserved: 'bg-blue-100 text-blue-800 border-blue-200',
-  discontinued: 'bg-slate-100 text-slate-800 border-slate-200',
+  available: 'bg-success/15 text-success border-success/30',
+  checked_out: 'bg-warning/15 text-warning border-warning/30',
+  reserved: 'bg-accent/15 text-accent border-accent/30',
+  discontinued: 'bg-muted text-foreground border-border',
   fire_sale: 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-0',
   lowest_price: 'bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0'
 };
@@ -418,19 +418,19 @@ const StatusMultiSelect = ({ options, value, onChange, placeholder = "Filter by 
       {
         type: "button",
         onClick: () => setOpen(!open),
-        className: "flex min-h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
+        className: "flex min-h-10 w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       },
       React.createElement(
         "div",
         { className: "flex flex-wrap gap-1 flex-1" },
         value.length === 0
-          ? React.createElement("span", { className: "text-slate-500" }, placeholder)
+          ? React.createElement("span", { className: "text-muted-foreground" }, placeholder)
           : value.map(v =>
               React.createElement(
                 "span",
                 {
                   key: v,
-                  className: `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${statusPillStyles[v] || 'bg-slate-100 text-slate-800'}`
+                  className: `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${statusPillStyles[v] || 'bg-muted text-foreground'}`
                 },
                 renderIcon(v),
                 getOptionLabel(v),
@@ -445,7 +445,7 @@ const StatusMultiSelect = ({ options, value, onChange, placeholder = "Filter by 
         "div",
         { className: "flex items-center gap-1 ml-2" },
         value.length > 0 && React.createElement(X, {
-          className: "w-4 h-4 text-slate-400 hover:text-slate-600 cursor-pointer",
+          className: "w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer",
           onClick: clearAll
         }),
         React.createElement(ChevronDown, { className: `w-4 h-4 opacity-50 transition-transform ${open ? 'rotate-180' : ''}` })
@@ -454,7 +454,7 @@ const StatusMultiSelect = ({ options, value, onChange, placeholder = "Filter by 
     // Dropdown content
     open && React.createElement(
       "div",
-      { className: "absolute z-50 mt-1 w-full min-w-[200px] overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg" },
+      { className: "absolute z-50 mt-1 w-full min-w-[200px] overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg" },
       options.map(option => {
         const isSelected = value.includes(option.value);
         const styles = statusOptionStyles[option.value] || statusOptionStyles.available;
@@ -472,11 +472,11 @@ const StatusMultiSelect = ({ options, value, onChange, placeholder = "Filter by 
               className: `flex h-4 w-4 items-center justify-center rounded border ${
                 isSelected
                   ? (option.value === 'fire_sale'
-                      ? 'bg-gradient-to-r from-orange-500 to-red-500 border-orange-500'
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 border-primary'
                       : option.value === 'lowest_price'
-                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 border-emerald-500'
+                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 border-success'
                         : `${styles.selected} ${styles.border}`)
-                  : 'border-slate-300 bg-white'
+                  : 'border-border bg-card'
               }`
             },
             isSelected && React.createElement(Check, { className: `w-3 h-3 ${option.value === 'fire_sale' || option.value === 'lowest_price' ? 'text-white' : ''}` })
@@ -493,10 +493,10 @@ const StatusMultiSelect = ({ options, value, onChange, placeholder = "Filter by 
 
 const StatusBadge = ({ status }) => {
   const styles = {
-    available: "bg-emerald-100 text-emerald-800 border-emerald-200",
-    checked_out: "bg-amber-100 text-amber-800 border-amber-200",
-    reserved: "bg-blue-100 text-blue-800 border-blue-200",
-    discontinued: "bg-slate-100 text-slate-800 border-slate-200",
+    available: "bg-success/15 text-success border-success/30",
+    checked_out: "bg-warning/15 text-warning border-warning/30",
+    reserved: "bg-accent/15 text-accent border-accent/30",
+    discontinued: "bg-muted text-foreground border-border",
   };
   const { t } = useTranslation();
   return React.createElement(Badge, { className: styles[status] || styles.available }, t(`status.${status}`));
@@ -509,9 +509,9 @@ const ApiError = ({ error }) => {
     { className: "max-w-7xl mx-auto px-4 py-6" },
     React.createElement(
       "div",
-      { className: "rounded-lg border border-red-200 bg-red-50 p-4" },
-      React.createElement("div", { className: "font-semibold text-red-800 mb-2" }, "API Error"),
-      React.createElement("pre", { className: "text-xs whitespace-pre-wrap text-red-900" }, msg),
+      { className: "rounded-lg border border-destructive/30 bg-destructive/10 p-4" },
+      React.createElement("div", { className: "font-semibold text-destructive mb-2" }, "API Error"),
+      React.createElement("pre", { className: "text-xs whitespace-pre-wrap text-destructive" }, msg),
     ),
   );
 };
@@ -528,10 +528,10 @@ const Layout = ({ children }) => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "nav",
-      { className: "bg-white border-b border-slate-200 sticky top-0 z-50" },
+      { className: "bg-card border-b border-border sticky top-0 z-50" },
       React.createElement(
         "div",
         { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" },
@@ -546,7 +546,7 @@ const Layout = ({ children }) => {
               alt: "LifePreneur",
               className: "h-10 w-auto rounded-lg",
             }),
-            React.createElement("span", { className: "font-bold text-xl text-slate-900 hidden sm:block" }, t("nav.inventory")),
+            React.createElement("span", { className: "font-bold text-xl text-foreground hidden sm:block" }, t("nav.inventory")),
           ),
           React.createElement(
             "div",
@@ -632,10 +632,10 @@ const SamplesPage = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200 sticky top-0 z-10" },
+      { className: "bg-card border-b border-border sticky top-0 z-10" },
       React.createElement(
         "div",
         { className: "max-w-7xl mx-auto px-4 py-4" },
@@ -645,8 +645,8 @@ const SamplesPage = () => {
           React.createElement(
             "div",
             null,
-            React.createElement("h1", { className: "text-2xl font-bold text-slate-900" }, t("sample.titlePlural")),
-            React.createElement("p", { className: "text-sm text-slate-500" }, `${filteredSamples.length} of ${samples.length} samples`),
+            React.createElement("h1", { className: "text-2xl font-bold text-foreground" }, t("sample.titlePlural")),
+            React.createElement("p", { className: "text-sm text-muted-foreground" }, `${filteredSamples.length} of ${samples.length} samples`),
           ),
           React.createElement(
             Link,
@@ -661,7 +661,7 @@ const SamplesPage = () => {
       { className: "max-w-7xl mx-auto px-4 py-6" },
       React.createElement(
         "div",
-        { className: "bg-white rounded-xl shadow-sm border p-4 mb-6" },
+        { className: "bg-card rounded-xl shadow-sm border p-4 mb-6" },
         React.createElement(
           "div",
           { className: "flex flex-col lg:flex-row gap-4" },
@@ -669,7 +669,7 @@ const SamplesPage = () => {
           React.createElement(
             "div",
             { className: "flex-1 relative" },
-            React.createElement(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" }),
+            React.createElement(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" }),
             React.createElement(Input, {
               value: search,
               onChange: (e) => setSearch(e.target.value),
@@ -691,14 +691,14 @@ const SamplesPage = () => {
         ? React.createElement(
             "div",
             { className: "flex justify-center py-20" },
-            React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+            React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-muted-foreground" }),
           )
         : filteredSamples.length === 0
           ? React.createElement(
               "div",
               { className: "text-center py-20" },
-              React.createElement(Filter, { className: "w-12 h-12 text-slate-300 mx-auto mb-4" }),
-              React.createElement("p", { className: "text-slate-500" }, t("messages.noResults")),
+              React.createElement(Filter, { className: "w-12 h-12 text-muted-foreground mx-auto mb-4" }),
+              React.createElement("p", { className: "text-muted-foreground" }, t("messages.noResults")),
             )
           : React.createElement(
               "div",
@@ -712,7 +712,7 @@ const SamplesPage = () => {
                     { className: "overflow-hidden hover:shadow-lg transition-shadow" },
                     React.createElement(
                       "div",
-                      { className: "aspect-square bg-slate-100 relative" },
+                      { className: "aspect-square bg-muted relative" },
                       React.createElement("img", {
                         src:
                           sample.picture_url ||
@@ -732,7 +732,7 @@ const SamplesPage = () => {
                       CardContent,
                       { className: "p-4" },
                       React.createElement("h3", { className: "font-semibold truncate" }, sample.name),
-                      React.createElement("p", { className: "text-sm text-slate-500" }, sample.brand),
+                      React.createElement("p", { className: "text-sm text-muted-foreground" }, sample.brand),
                       sample.current_price
                         ? React.createElement("p", { className: "font-bold mt-2" }, `$${Number(sample.current_price).toFixed(2)}`)
                         : null,
@@ -762,10 +762,10 @@ const BundlesPage = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-7xl mx-auto px-4 py-4" },
@@ -786,11 +786,11 @@ const BundlesPage = () => {
       { className: "max-w-7xl mx-auto px-4 py-6" },
       React.createElement(
         "div",
-        { className: "bg-white rounded-xl shadow-sm border p-4 mb-6" },
+        { className: "bg-card rounded-xl shadow-sm border p-4 mb-6" },
         React.createElement(
           "div",
           { className: "relative max-w-md" },
-          React.createElement(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" }),
+          React.createElement(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" }),
           React.createElement(Input, {
             value: search,
             onChange: (e) => setSearch(e.target.value),
@@ -828,11 +828,11 @@ const BundlesPage = () => {
                       null,
                       React.createElement("h3", { className: "font-semibold" }, bundle.name),
                       bundle.location
-                        ? React.createElement("p", { className: "text-sm text-slate-500" }, bundle.location)
+                        ? React.createElement("p", { className: "text-sm text-muted-foreground" }, bundle.location)
                         : null,
                     ),
                   ),
-                  React.createElement("code", { className: "text-sm bg-slate-100 px-2 py-1 rounded" }, bundle.qr_code),
+                  React.createElement("code", { className: "text-sm bg-muted px-2 py-1 rounded" }, bundle.qr_code),
                 ),
               ),
             ),
@@ -948,20 +948,20 @@ const CheckoutPage = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-gradient-to-br from-slate-50 to-slate-100" },
+    { className: "min-h-screen bg-gradient-to-br from-background to-card" },
     React.createElement(
       "div",
-      { className: "bg-white border-b" },
+      { className: "bg-card border-b" },
       React.createElement(
         "div",
         { className: "max-w-4xl mx-auto px-4 py-6 text-center" },
         React.createElement(
           "div",
-          { className: "w-16 h-16 bg-[#2463eb] rounded-2xl flex items-center justify-center mx-auto mb-4" },
-          React.createElement(QrCode, { className: "w-8 h-8 text-white" }),
+          { className: "w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4" },
+          React.createElement(QrCode, { className: "w-8 h-8 text-accent-foreground" }),
         ),
         React.createElement("h1", { className: "text-3xl font-bold" }, t("checkout.title")),
-        React.createElement("p", { className: "text-slate-500 mt-2" }, t("checkout.scanPrompt")),
+        React.createElement("p", { className: "text-muted-foreground mt-2" }, t("checkout.scanPrompt")),
       ),
     ),
     React.createElement(
@@ -990,7 +990,7 @@ const CheckoutPage = () => {
             Card,
             { className: "p-6" },
             result.type === "not_found"
-              ? React.createElement("p", { className: "text-red-600 text-center" }, t("checkout.notFound"))
+              ? React.createElement("p", { className: "text-destructive text-center" }, t("checkout.notFound"))
               : result.type === "bundle"
                 ? React.createElement(
                     "div",
@@ -998,7 +998,7 @@ const CheckoutPage = () => {
                     React.createElement("h2", { className: "text-xl font-bold mb-2" }, result.data.name),
                     React.createElement(
                       "p",
-                      { className: "text-sm text-slate-500" },
+                      { className: "text-sm text-muted-foreground" },
                       "Bundle scanned. Sample details are not available.",
                     ),
                   )
@@ -1019,8 +1019,8 @@ const CheckoutPage = () => {
                         React.createElement(
                           "div",
                           null,
-                          React.createElement("h2", { className: "text-2xl font-bold text-slate-900" }, sample.name),
-                          React.createElement("p", { className: "text-lg text-slate-500" }, sample.brand),
+                          React.createElement("h2", { className: "text-2xl font-bold text-foreground" }, sample.name),
+                          React.createElement("p", { className: "text-lg text-muted-foreground" }, sample.brand),
                         ),
                         React.createElement(
                           "div",
@@ -1050,7 +1050,7 @@ const CheckoutPage = () => {
                             target: "_blank",
                             rel: "noopener noreferrer",
                             className:
-                              "inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors",
+                              "inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors",
                           },
                           "TikTok Affiliate Link ",
                           React.createElement(ExternalLink, { className: "w-4 h-4" }),
@@ -1058,13 +1058,13 @@ const CheckoutPage = () => {
                       ),
                       isDebugMode && React.createElement(
                         "p",
-                        { className: "text-sm text-slate-500 mt-2" },
+                        { className: "text-sm text-muted-foreground mt-2" },
                         "has_fire_sale: ",
                         React.createElement(
                           "span",
                           {
                             className: `font-semibold ${
-                              sample.fire_sale ? "text-orange-600" : "text-slate-600"
+                              sample.fire_sale ? "text-primary" : "text-muted-foreground"
                             }`,
                           },
                           sample.fire_sale ? "true" : "false",
@@ -1075,14 +1075,14 @@ const CheckoutPage = () => {
                         {
                           onClick: handleAddToCart,
                           className:
-                            "mt-4 w-full bg-[#2463eb] hover:bg-[#1f57d0]",
+                            "mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90",
                         },
                         React.createElement(ShoppingCart, { className: "w-4 h-4 mr-2" }),
                         "Add to Cart",
                         cartItems.length > 0
                           ? React.createElement(
                               "span",
-                              { className: "ml-2 text-xs text-white/80" },
+                              { className: "ml-2 text-xs text-accent-foreground/80" },
                               `(${cartItems.length})`,
                             )
                           : null,
@@ -1113,16 +1113,16 @@ const QRCodeDisplay = ({ code }) => {
     { className: "flex items-center gap-3" },
     React.createElement(
       "div",
-      { className: "flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 font-mono text-sm" },
-      React.createElement(QrCode, { className: "w-4 h-4 text-slate-400" }),
+      { className: "flex items-center gap-2 px-3 py-2 bg-background rounded-lg border border-border font-mono text-sm" },
+      React.createElement(QrCode, { className: "w-4 h-4 text-muted-foreground" }),
       React.createElement("span", { className: "select-all" }, code),
     ),
     React.createElement(
       Button,
       { variant: "ghost", onClick: handleCopy, className: "h-8 w-8 p-0" },
       copied
-        ? React.createElement(Check, { className: "w-4 h-4 text-emerald-500" })
-        : React.createElement(Copy, { className: "w-4 h-4 text-slate-400" }),
+        ? React.createElement(Check, { className: "w-4 h-4 text-success" })
+        : React.createElement(Copy, { className: "w-4 h-4 text-muted-foreground" }),
     ),
   );
 };
@@ -1153,15 +1153,15 @@ const PriceDisplay = ({ currentPrice, bestPrice, bestPriceSource, lastChecked })
       React.createElement(
         "div",
         null,
-        React.createElement("span", { className: "text-sm text-slate-500" }, "Current: "),
+        React.createElement("span", { className: "text-sm text-muted-foreground" }, "Current: "),
         React.createElement("span", { className: "font-semibold text-lg" }, formatPrice(currentPrice)),
       ),
       bestPrice
         ? React.createElement(
             "div",
             null,
-            React.createElement("span", { className: "text-sm text-slate-500" }, "Best: "),
-            React.createElement("span", { className: "font-semibold text-emerald-600" }, formatPrice(bestPrice)),
+            React.createElement("span", { className: "text-sm text-muted-foreground" }, "Best: "),
+            React.createElement("span", { className: "font-semibold text-success" }, formatPrice(bestPrice)),
           )
         : null,
     ),
@@ -1172,14 +1172,14 @@ const PriceDisplay = ({ currentPrice, bestPrice, bestPriceSource, lastChecked })
             href: bestPriceSource,
             target: "_blank",
             rel: "noopener noreferrer",
-            className: "inline-flex items-center gap-1 text-sm text-[#4493f8] hover:text-[#4493f8]",
+            className: "inline-flex items-center gap-1 text-sm text-accent hover:text-accent/80",
           },
           "View source ",
           React.createElement(ExternalLink, { className: "w-3 h-3" }),
         )
       : null,
     lastChecked
-      ? React.createElement("p", { className: "text-xs text-slate-400" }, `Last checked: ${formatDate(lastChecked)}`)
+      ? React.createElement("p", { className: "text-xs text-muted-foreground" }, `Last checked: ${formatDate(lastChecked)}`)
       : null,
   );
 };
@@ -1376,7 +1376,7 @@ const AlertDialogContent = ({ children, onClose }) => {
     React.createElement("div", { className: "fixed inset-0 bg-black/50", onClick: onClose }),
     React.createElement(
       "div",
-      { className: "relative bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6 space-y-4 z-10" },
+      { className: "relative bg-card rounded-lg shadow-lg max-w-md w-full mx-4 p-6 space-y-4 z-10" },
       children,
     ),
   );
@@ -1384,7 +1384,7 @@ const AlertDialogContent = ({ children, onClose }) => {
 
 const AlertDialogHeader = ({ children }) => React.createElement("div", { className: "space-y-2" }, children);
 const AlertDialogTitle = ({ children }) => React.createElement("h2", { className: "text-lg font-semibold" }, children);
-const AlertDialogDescription = ({ children }) => React.createElement("p", { className: "text-sm text-slate-500" }, children);
+const AlertDialogDescription = ({ children }) => React.createElement("p", { className: "text-sm text-muted-foreground" }, children);
 const AlertDialogFooter = ({ children }) => React.createElement("div", { className: "flex gap-2 justify-end" }, children);
 const AlertDialogCancel = ({ children, onClick }) => React.createElement(Button, { variant: "outline", onClick }, children);
 const AlertDialogAction = ({ children, onClick, className }) => React.createElement(Button, { onClick, className }, children);
@@ -1455,9 +1455,9 @@ const SampleForm = ({ sample, bundles = [], onSave, onCancel }) => {
             id: "name",
             value: formData.name,
             onChange: (e) => setFormData((prev) => ({ ...prev, name: e.target.value })),
-            className: errors.name ? "border-red-500" : "",
+            className: errors.name ? "border-destructive" : "",
           }),
-          errors.name && React.createElement("p", { className: "text-sm text-red-500" }, errors.name),
+          errors.name && React.createElement("p", { className: "text-sm text-destructive" }, errors.name),
         ),
         // Brand
         React.createElement(
@@ -1468,9 +1468,9 @@ const SampleForm = ({ sample, bundles = [], onSave, onCancel }) => {
             id: "brand",
             value: formData.brand,
             onChange: (e) => setFormData((prev) => ({ ...prev, brand: e.target.value })),
-            className: errors.brand ? "border-red-500" : "",
+            className: errors.brand ? "border-destructive" : "",
           }),
-          errors.brand && React.createElement("p", { className: "text-sm text-red-500" }, errors.brand),
+          errors.brand && React.createElement("p", { className: "text-sm text-destructive" }, errors.brand),
         ),
         // QR Code
         React.createElement(
@@ -1481,10 +1481,10 @@ const SampleForm = ({ sample, bundles = [], onSave, onCancel }) => {
             id: "qr_code",
             value: formData.qr_code,
             onChange: (e) => setFormData((prev) => ({ ...prev, qr_code: e.target.value })),
-            className: errors.qr_code ? "border-red-500" : "",
+            className: errors.qr_code ? "border-destructive" : "",
             placeholder: "Enter unique code",
           }),
-          errors.qr_code && React.createElement("p", { className: "text-sm text-red-500" }, errors.qr_code),
+          errors.qr_code && React.createElement("p", { className: "text-sm text-destructive" }, errors.qr_code),
         ),
         // Location
         React.createElement(
@@ -1633,12 +1633,12 @@ const SampleForm = ({ sample, bundles = [], onSave, onCancel }) => {
         ),
         React.createElement(
           "div",
-          { className: "flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200" },
+          { className: "flex items-center justify-between p-4 bg-primary/10 rounded-lg border border-primary/30" },
           React.createElement(
             "div",
             null,
             React.createElement(Label, { htmlFor: "fire_sale", className: "text-base font-medium" }, t("sample.fireSale")),
-            React.createElement("p", { className: "text-sm text-slate-500" }, "Mark this item for fire sale pricing"),
+            React.createElement("p", { className: "text-sm text-muted-foreground" }, "Mark this item for fire sale pricing"),
           ),
           React.createElement(Switch, {
             id: "fire_sale",
@@ -1728,10 +1728,10 @@ const BundleForm = ({ bundle, onSave, onCancel }) => {
             id: "name",
             value: formData.name,
             onChange: (e) => setFormData((prev) => ({ ...prev, name: e.target.value })),
-            className: errors.name ? "border-red-500" : "",
+            className: errors.name ? "border-destructive" : "",
             placeholder: "e.g., Summer Collection",
           }),
-          errors.name && React.createElement("p", { className: "text-sm text-red-500" }, errors.name),
+          errors.name && React.createElement("p", { className: "text-sm text-destructive" }, errors.name),
         ),
         // QR Code
         React.createElement(
@@ -1742,10 +1742,10 @@ const BundleForm = ({ bundle, onSave, onCancel }) => {
             id: "qr_code",
             value: formData.qr_code,
             onChange: (e) => setFormData((prev) => ({ ...prev, qr_code: e.target.value })),
-            className: errors.qr_code ? "border-red-500" : "",
+            className: errors.qr_code ? "border-destructive" : "",
             placeholder: "Enter unique bundle code",
           }),
-          errors.qr_code && React.createElement("p", { className: "text-sm text-red-500" }, errors.qr_code),
+          errors.qr_code && React.createElement("p", { className: "text-sm text-destructive" }, errors.qr_code),
         ),
         // Location
         React.createElement(
@@ -1848,20 +1848,20 @@ const SampleDetails = () => {
   if (isLoading) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
-      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+      { className: "min-h-screen bg-background flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-muted-foreground" }),
     );
   }
 
   if (!sample) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      { className: "min-h-screen bg-background flex items-center justify-center" },
       React.createElement(
         "div",
         { className: "text-center" },
-        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
-        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("sample.notFound")),
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-warning mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-foreground mb-2" }, t("sample.notFound")),
         React.createElement(
           Link,
           { to: createPageUrl("Samples") },
@@ -1873,11 +1873,11 @@ const SampleDetails = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     // Header
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
@@ -1886,7 +1886,7 @@ const SampleDetails = () => {
           { className: "flex items-center justify-between" },
           React.createElement(
             Link,
-            { to: createPageUrl("Samples"), className: "flex items-center gap-2 text-slate-600 hover:text-slate-900" },
+            { to: createPageUrl("Samples"), className: "flex items-center gap-2 text-muted-foreground hover:text-foreground" },
             React.createElement(ArrowLeft, { className: "w-4 h-4" }),
             React.createElement("span", null, t("sample.titlePlural")),
           ),
@@ -1911,7 +1911,7 @@ const SampleDetails = () => {
                 { asChild: true },
                 React.createElement(
                   Button,
-                  { variant: "outline", size: "sm", className: "text-red-600 hover:text-red-700 hover:bg-red-50" },
+                  { variant: "outline", size: "sm", className: "text-destructive hover:text-destructive hover:bg-destructive/10" },
                   React.createElement(Trash2, { className: "w-4 h-4 mr-2" }),
                   t("actions.delete"),
                 ),
@@ -1931,7 +1931,7 @@ const SampleDetails = () => {
                   React.createElement(AlertDialogCancel, { onClick: () => setShowDeleteDialog(false) }, t("actions.cancel")),
                   React.createElement(
                     AlertDialogAction,
-                    { onClick: handleDelete, className: "bg-red-600 hover:bg-red-700" },
+                    { onClick: handleDelete, className: "bg-destructive hover:bg-destructive/90" },
                     t("actions.delete"),
                   ),
                 ),
@@ -1981,8 +1981,8 @@ const SampleDetails = () => {
               React.createElement(
                 CardContent,
                 { className: "p-6 md:w-2/3" },
-                React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mb-1" }, sample.name),
-                React.createElement("p", { className: "text-lg text-slate-500 mb-4" }, sample.brand),
+                React.createElement("h1", { className: "text-2xl font-bold text-foreground mb-1" }, sample.name),
+                React.createElement("p", { className: "text-lg text-muted-foreground mb-4" }, sample.brand),
                 React.createElement("div", { className: "mb-4" }, React.createElement(QRCodeDisplay, { code: sample.qr_code })),
                 React.createElement(
                   "div",
@@ -1990,7 +1990,7 @@ const SampleDetails = () => {
                   sample.location
                     ? React.createElement(
                         "div",
-                        { className: "flex items-center gap-1 text-slate-600" },
+                        { className: "flex items-center gap-1 text-muted-foreground" },
                         React.createElement(MapPin, { className: "w-4 h-4" }),
                         sample.location,
                       )
@@ -2000,7 +2000,7 @@ const SampleDetails = () => {
                         Link,
                         {
                           to: createPageUrl(`BundleDetails?id=${bundle.id}`),
-                          className: "flex items-center gap-1 text-indigo-600 hover:text-indigo-800",
+                          className: "flex items-center gap-1 text-accent hover:text-accent/80",
                         },
                         React.createElement(Package, { className: "w-4 h-4" }),
                         bundle.name,
@@ -2031,7 +2031,7 @@ const SampleDetails = () => {
                       href: sample.tiktok_affiliate_link,
                       target: "_blank",
                       rel: "noopener noreferrer",
-                      className: "inline-flex items-center gap-2 mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors",
+                      className: "inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors",
                     },
                     "TikTok Affiliate Link ",
                     React.createElement(ExternalLink, { className: "w-4 h-4" }),
@@ -2048,7 +2048,7 @@ const SampleDetails = () => {
                 React.createElement(
                   CardContent,
                   null,
-                  React.createElement("p", { className: "text-slate-600 whitespace-pre-wrap" }, sample.notes),
+                  React.createElement("p", { className: "text-muted-foreground whitespace-pre-wrap" }, sample.notes),
                 ),
               )
             : null,
@@ -2069,11 +2069,11 @@ const SampleDetails = () => {
                 ? React.createElement(
                     "div",
                     { className: "flex items-center gap-3" },
-                    React.createElement(User, { className: "w-4 h-4 text-slate-400" }),
+                    React.createElement(User, { className: "w-4 h-4 text-muted-foreground" }),
                     React.createElement(
                       "div",
                       null,
-                      React.createElement("p", { className: "text-sm text-slate-500" }, t("sample.checkedOutTo")),
+                      React.createElement("p", { className: "text-sm text-muted-foreground" }, t("sample.checkedOutTo")),
                       React.createElement("p", { className: "font-medium" }, sample.checked_out_to),
                     ),
                   )
@@ -2082,11 +2082,11 @@ const SampleDetails = () => {
                 ? React.createElement(
                     "div",
                     { className: "flex items-center gap-3" },
-                    React.createElement(Calendar, { className: "w-4 h-4 text-slate-400" }),
+                    React.createElement(Calendar, { className: "w-4 h-4 text-muted-foreground" }),
                     React.createElement(
                       "div",
                       null,
-                      React.createElement("p", { className: "text-sm text-slate-500" }, t("sample.checkedOutAt")),
+                      React.createElement("p", { className: "text-sm text-muted-foreground" }, t("sample.checkedOutAt")),
                       React.createElement("p", { className: "font-medium" }, formatDate(sample.checked_out_at)),
                     ),
                   )
@@ -2095,11 +2095,11 @@ const SampleDetails = () => {
                 ? React.createElement(
                     "div",
                     { className: "flex items-center gap-3" },
-                    React.createElement(Calendar, { className: "w-4 h-4 text-slate-400" }),
+                    React.createElement(Calendar, { className: "w-4 h-4 text-muted-foreground" }),
                     React.createElement(
                       "div",
                       null,
-                      React.createElement("p", { className: "text-sm text-slate-500" }, t("sample.checkedInAt")),
+                      React.createElement("p", { className: "text-sm text-muted-foreground" }, t("sample.checkedInAt")),
                       React.createElement("p", { className: "font-medium" }, formatDate(sample.checked_in_at)),
                     ),
                   )
@@ -2115,7 +2115,7 @@ const SampleDetails = () => {
               CardContent,
               null,
               transactions.length === 0
-                ? React.createElement("p", { className: "text-sm text-slate-400 text-center py-4" }, "No activity yet")
+                ? React.createElement("p", { className: "text-sm text-muted-foreground text-center py-4" }, "No activity yet")
                 : React.createElement(
                     "div",
                     { className: "space-y-3" },
@@ -2125,7 +2125,7 @@ const SampleDetails = () => {
                         { key: tx.id, className: "flex items-start gap-3 text-sm" },
                         React.createElement("div", {
                           className: `w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                            tx.action === "checkout" ? "bg-amber-500" : tx.action === "checkin" ? "bg-emerald-500" : "bg-blue-500"
+                            tx.action === "checkout" ? "bg-warning" : tx.action === "checkin" ? "bg-success" : "bg-accent"
                           }`,
                         }),
                         React.createElement(
@@ -2134,7 +2134,7 @@ const SampleDetails = () => {
                           React.createElement("p", { className: "font-medium capitalize" }, tx.action),
                           React.createElement(
                             "p",
-                            { className: "text-slate-500" },
+                            { className: "text-muted-foreground" },
                             `${formatDate(tx.created_date)}${tx.operator ? ` by ${tx.operator}` : ""}`,
                           ),
                         ),
@@ -2169,10 +2169,10 @@ const SampleCreate = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
@@ -2180,12 +2180,12 @@ const SampleCreate = () => {
           Link,
           {
             to: createPageUrl("Samples"),
-            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+            className: "flex items-center gap-2 text-muted-foreground hover:text-foreground",
           },
           React.createElement(ArrowLeft, { className: "w-4 h-4" }),
           React.createElement("span", null, t("sample.titlePlural")),
         ),
-        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("sample.createNew")),
+        React.createElement("h1", { className: "text-2xl font-bold text-foreground mt-4" }, t("sample.createNew")),
       ),
     ),
     React.createElement(
@@ -2233,20 +2233,20 @@ const SampleEdit = () => {
   if (isLoading) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
-      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+      { className: "min-h-screen bg-background flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-muted-foreground" }),
     );
   }
 
   if (!sample) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      { className: "min-h-screen bg-background flex items-center justify-center" },
       React.createElement(
         "div",
         { className: "text-center" },
-        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
-        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("sample.notFound")),
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-warning mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-foreground mb-2" }, t("sample.notFound")),
         React.createElement(
           Link,
           { to: createPageUrl("Samples") },
@@ -2258,10 +2258,10 @@ const SampleEdit = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
@@ -2269,12 +2269,12 @@ const SampleEdit = () => {
           Link,
           {
             to: createPageUrl(`SampleDetails?id=${sampleId}`),
-            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+            className: "flex items-center gap-2 text-muted-foreground hover:text-foreground",
           },
           React.createElement(ArrowLeft, { className: "w-4 h-4" }),
           React.createElement("span", null, "Back to Sample"),
         ),
-        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("sample.editSample")),
+        React.createElement("h1", { className: "text-2xl font-bold text-foreground mt-4" }, t("sample.editSample")),
       ),
     ),
     React.createElement(
@@ -2305,10 +2305,10 @@ const BundleCreate = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
@@ -2316,12 +2316,12 @@ const BundleCreate = () => {
           Link,
           {
             to: createPageUrl("Bundles"),
-            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+            className: "flex items-center gap-2 text-muted-foreground hover:text-foreground",
           },
           React.createElement(ArrowLeft, { className: "w-4 h-4" }),
           React.createElement("span", null, t("bundle.titlePlural")),
         ),
-        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("bundle.createNew")),
+        React.createElement("h1", { className: "text-2xl font-bold text-foreground mt-4" }, t("bundle.createNew")),
       ),
     ),
     React.createElement(
@@ -2363,20 +2363,20 @@ const BundleEdit = () => {
   if (isLoading) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
-      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+      { className: "min-h-screen bg-background flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-muted-foreground" }),
     );
   }
 
   if (!bundle) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      { className: "min-h-screen bg-background flex items-center justify-center" },
       React.createElement(
         "div",
         { className: "text-center" },
-        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
-        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("bundle.notFound")),
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-warning mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-foreground mb-2" }, t("bundle.notFound")),
         React.createElement(
           Link,
           { to: createPageUrl("Bundles") },
@@ -2388,10 +2388,10 @@ const BundleEdit = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
@@ -2399,12 +2399,12 @@ const BundleEdit = () => {
           Link,
           {
             to: createPageUrl(`BundleDetails?id=${bundleId}`),
-            className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+            className: "flex items-center gap-2 text-muted-foreground hover:text-foreground",
           },
           React.createElement(ArrowLeft, { className: "w-4 h-4" }),
           React.createElement("span", null, "Back to Bundle"),
         ),
-        React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mt-4" }, t("bundle.editBundle")),
+        React.createElement("h1", { className: "text-2xl font-bold text-foreground mt-4" }, t("bundle.editBundle")),
       ),
     ),
     React.createElement(
@@ -2483,20 +2483,20 @@ const BundleDetails = () => {
   if (isLoading) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
-      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-slate-400" }),
+      { className: "min-h-screen bg-background flex items-center justify-center" },
+      React.createElement(Loader2, { className: "w-8 h-8 animate-spin text-muted-foreground" }),
     );
   }
 
   if (!bundle) {
     return React.createElement(
       "div",
-      { className: "min-h-screen bg-slate-50 flex items-center justify-center" },
+      { className: "min-h-screen bg-background flex items-center justify-center" },
       React.createElement(
         "div",
         { className: "text-center" },
-        React.createElement(AlertTriangle, { className: "w-12 h-12 text-amber-500 mx-auto mb-4" }),
-        React.createElement("h2", { className: "text-xl font-semibold text-slate-900 mb-2" }, t("bundle.notFound")),
+        React.createElement(AlertTriangle, { className: "w-12 h-12 text-warning mx-auto mb-4" }),
+        React.createElement("h2", { className: "text-xl font-semibold text-foreground mb-2" }, t("bundle.notFound")),
         React.createElement(
           Link,
           { to: createPageUrl("Bundles") },
@@ -2508,11 +2508,11 @@ const BundleDetails = () => {
 
   return React.createElement(
     "div",
-    { className: "min-h-screen bg-slate-50" },
+    { className: "min-h-screen bg-background" },
     // Header
     React.createElement(
       "div",
-      { className: "bg-white border-b border-slate-200" },
+      { className: "bg-card border-b border-border" },
       React.createElement(
         "div",
         { className: "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
@@ -2523,7 +2523,7 @@ const BundleDetails = () => {
             Link,
             {
               to: createPageUrl("Bundles"),
-              className: "flex items-center gap-2 text-slate-600 hover:text-slate-900",
+              className: "flex items-center gap-2 text-muted-foreground hover:text-foreground",
             },
             React.createElement(ArrowLeft, { className: "w-4 h-4" }),
             React.createElement("span", null, t("bundle.titlePlural")),
@@ -2552,7 +2552,7 @@ const BundleDetails = () => {
                   {
                     variant: "outline",
                     size: "sm",
-                    className: "text-red-600 hover:text-red-700 hover:bg-red-50",
+                    className: "text-destructive hover:text-destructive hover:bg-destructive/10",
                   },
                   React.createElement(Trash2, { className: "w-4 h-4 mr-2" }),
                   t("actions.delete"),
@@ -2584,7 +2584,7 @@ const BundleDetails = () => {
                     AlertDialogAction,
                     {
                       onClick: () => deleteMutation.mutate(),
-                      className: "bg-red-600 hover:bg-red-700",
+                      className: "bg-destructive hover:bg-destructive/90",
                     },
                     t("actions.delete"),
                   ),
@@ -2620,20 +2620,20 @@ const BundleDetails = () => {
             React.createElement(
               "div",
               { className: "flex-1" },
-              React.createElement("h1", { className: "text-2xl font-bold text-slate-900 mb-2" }, bundle.name),
+              React.createElement("h1", { className: "text-2xl font-bold text-foreground mb-2" }, bundle.name),
               React.createElement(
                 "div",
                 { className: "flex flex-wrap gap-4 mb-4" },
                 bundle.location &&
                   React.createElement(
                     "div",
-                    { className: "flex items-center gap-1 text-slate-600" },
+                    { className: "flex items-center gap-1 text-muted-foreground" },
                     React.createElement(MapPin, { className: "w-4 h-4" }),
                     bundle.location,
                   ),
                 React.createElement(
                   "span",
-                  { className: "text-slate-500" },
+                  { className: "text-muted-foreground" },
                   `${bundleSamples.length} ${bundleSamples.length === 1 ? "sample" : "samples"}`,
                 ),
               ),
@@ -2641,7 +2641,7 @@ const BundleDetails = () => {
               bundle.notes &&
                 React.createElement(
                   "p",
-                  { className: "mt-4 text-slate-600 p-4 bg-slate-50 rounded-lg" },
+                  { className: "mt-4 text-muted-foreground p-4 bg-background rounded-lg" },
                   bundle.notes,
                 ),
             ),
@@ -2701,11 +2701,11 @@ const BundleDetails = () => {
             ? React.createElement(
                 "div",
                 { className: "text-center py-12" },
-                React.createElement(Package, { className: "w-12 h-12 text-slate-300 mx-auto mb-4" }),
-                React.createElement("p", { className: "text-slate-500" }, t("bundle.noSamples")),
+                React.createElement(Package, { className: "w-12 h-12 text-muted-foreground mx-auto mb-4" }),
+                React.createElement("p", { className: "text-muted-foreground" }, t("bundle.noSamples")),
                 React.createElement(
                   "p",
-                  { className: "text-sm text-slate-400 mt-1" },
+                  { className: "text-sm text-muted-foreground mt-1" },
                   "Add samples using the dropdown above",
                 ),
               )
@@ -2733,12 +2733,12 @@ const BundleDetails = () => {
                               { className: "flex-1" },
                               React.createElement(
                                 "h4",
-                                { className: "font-medium text-slate-900" },
+                                { className: "font-medium text-foreground" },
                                 sample.name,
                               ),
                               React.createElement(
                                 "p",
-                                { className: "text-sm text-slate-500" },
+                                { className: "text-sm text-muted-foreground" },
                                 sample.brand,
                               ),
                             ),
@@ -2754,7 +2754,7 @@ const BundleDetails = () => {
                         size: "icon",
                         onClick: () => removeSampleMutation.mutate(sample.id),
                         disabled: removeSampleMutation.isPending,
-                        className: "text-slate-400 hover:text-red-500",
+                        className: "text-muted-foreground hover:text-destructive",
                       },
                       React.createElement(X, { className: "w-4 h-4" }),
                     ),
@@ -2776,7 +2776,7 @@ const PlaceholderPage = ({ title }) =>
       Card,
       { className: "p-8 text-center" },
       React.createElement("h1", { className: "text-2xl font-bold mb-4" }, title),
-      React.createElement("p", { className: "text-slate-500" }, "This page is under construction."),
+      React.createElement("p", { className: "text-muted-foreground" }, "This page is under construction."),
     ),
   );
 

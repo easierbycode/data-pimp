@@ -227,12 +227,47 @@ async function handleFetchDemo(): Promise<Response> {
 
 function renderSPAShell(): Response {
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070a12" />
   <title>Inventory Manager - Data Pimp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Register the shadcn semantic color tokens the Kiosk uses (bg-card,
+    // text-foreground, bg-primary, border-border, ...) against the dark theme
+    // CSS variables below, so it matches the Inventory app (admin.thirsty.store).
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"] },
+          borderColor: { DEFAULT: "hsl(var(--border) / <alpha-value>)" },
+          colors: {
+            border: "hsl(var(--border) / <alpha-value>)",
+            input: "hsl(var(--input) / <alpha-value>)",
+            ring: "hsl(var(--ring) / <alpha-value>)",
+            background: "hsl(var(--background) / <alpha-value>)",
+            foreground: "hsl(var(--foreground) / <alpha-value>)",
+            primary: { DEFAULT: "hsl(var(--primary) / <alpha-value>)", foreground: "hsl(var(--primary-foreground) / <alpha-value>)" },
+            secondary: { DEFAULT: "hsl(var(--secondary) / <alpha-value>)", foreground: "hsl(var(--secondary-foreground) / <alpha-value>)" },
+            destructive: { DEFAULT: "hsl(var(--destructive) / <alpha-value>)", foreground: "hsl(var(--destructive-foreground) / <alpha-value>)" },
+            muted: { DEFAULT: "hsl(var(--muted) / <alpha-value>)", foreground: "hsl(var(--muted-foreground) / <alpha-value>)" },
+            accent: { DEFAULT: "hsl(var(--accent) / <alpha-value>)", foreground: "hsl(var(--accent-foreground) / <alpha-value>)" },
+            success: { DEFAULT: "hsl(var(--success) / <alpha-value>)", foreground: "hsl(var(--success-foreground) / <alpha-value>)" },
+            warning: { DEFAULT: "hsl(var(--warning) / <alpha-value>)", foreground: "hsl(var(--warning-foreground) / <alpha-value>)" },
+            popover: { DEFAULT: "hsl(var(--popover) / <alpha-value>)", foreground: "hsl(var(--popover-foreground) / <alpha-value>)" },
+            card: { DEFAULT: "hsl(var(--card) / <alpha-value>)", foreground: "hsl(var(--card-foreground) / <alpha-value>)" },
+          },
+          borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
+        },
+      },
+    };
+  </script>
 
   <script type="importmap">
   {
@@ -250,20 +285,50 @@ function renderSPAShell(): Response {
   </script>
 
   <style>
+    /* Dark theme tokens, ported from the Inventory app (tiktok-sample-tracker
+       src/index.css). Defined on :root so they apply regardless of the dark
+       class; Tailwind's tokens above resolve hsl(var(--...)) against these. */
+    :root {
+      color-scheme: dark;
+      --background: 222 47% 5%;
+      --foreground: 210 40% 96%;
+      --card: 218 24.4% 8.8%;
+      --card-foreground: 210 40% 96%;
+      --popover: 220 45% 8%;
+      --popover-foreground: 210 40% 96%;
+      --primary: 30 97% 61%;
+      --primary-foreground: 222 47% 5%;
+      --secondary: 38 92% 50%;
+      --secondary-foreground: 222 47% 5%;
+      --muted: 217 33% 17%;
+      --muted-foreground: 220 20% 75%;
+      --accent: 199 89% 60%;
+      --accent-foreground: 222 47% 5%;
+      --destructive: 0 72% 71%;
+      --destructive-foreground: 0 60% 15%;
+      --success: 142 71% 45%;
+      --success-foreground: 144 61% 10%;
+      --warning: 48 96% 53%;
+      --warning-foreground: 220 20% 10%;
+      --border: 217 32% 15%;
+      --input: 217 32% 15%;
+      --ring: 30 97% 61%;
+      --radius: 0.5rem;
+    }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+    ::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin { animation: spin 1s linear infinite; }
   </style>
 </head>
-<body>
+<body class="bg-background text-foreground antialiased">
   <div id="root">
-    <div class="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div class="min-h-screen bg-background flex items-center justify-center">
       <div class="text-center">
-        <div class="w-16 h-16 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-slate-600">Loading Inventory Manager...</p>
+        <div class="w-16 h-16 border-4 border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-muted-foreground">Loading Inventory Manager...</p>
       </div>
     </div>
   </div>
