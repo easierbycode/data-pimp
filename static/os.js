@@ -43,6 +43,9 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-kiosk" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#54c4f5"/><stop offset="1" stop-color="#1f8fd1"/>
       </linearGradient>
+      <linearGradient id="g-member" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fb7185"/><stop offset="1" stop-color="#e11d48"/>
+      </linearGradient>
     </defs>
   </svg>`;
 
@@ -138,6 +141,17 @@ const ICONS = {
         <path d="M12 21v-1"/>
       </g>
     </svg>`,
+
+  // Lucide "user" glyph on a rose tile — the member-facing app.
+  member: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-member)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <g transform="translate(14 14) scale(1.5)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </g>
+    </svg>`,
 };
 
 /* ------------------------------------------------------------ app model -- */
@@ -209,6 +223,26 @@ const FOLDERS = [
         allow: "fullscreen",
         external: true,
         // Phone-shaped window to suit the mobile demo.
+        width: 430,
+        height: 780,
+      },
+    ],
+  },
+  {
+    id: "member",
+    name: "Member",
+    icon: ICONS.folder,
+    items: [
+      {
+        id: "tokscrape-dashboard",
+        name: "Member",
+        icon: ICONS.member,
+        // The TokScrape member dashboard — a third-party origin, so it gets the
+        // top-navigation-blocking sandbox like the other external apps.
+        url: "https://easierbycode.com/tok-scrape/mobile-app/www/",
+        allow: "fullscreen",
+        external: true,
+        // Phone-shaped window — it's a Cordova mobile app (matches Samples).
         width: 430,
         height: 780,
       },
