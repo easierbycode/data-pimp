@@ -359,20 +359,20 @@ function renderOSShell(): Response {
     <link rel="stylesheet" href="/os.css">
   </head>
   <body>
-    <div id="menubar" class="menubar">
-      <div class="menubar-left">
-        <span class="brand"><span class="brand-mark">◆</span> Thirsty&nbsp;OS</span>
-        <span id="active-app" class="active-app" aria-live="polite" aria-atomic="true">Finder</span>
-      </div>
-      <div class="menubar-right">
-        <span id="menubar-status" class="mb-status"></span>
-        <span id="clock" class="clock tnum"></span>
-      </div>
-    </div>
     <main id="desktop" class="desktop" aria-label="Desktop">
       <div id="desktop-icons" class="desktop-icons" aria-label="Desktop items"></div>
     </main>
-    <div id="dock" class="dock" aria-label="Dock"></div>
+    <footer id="taskbar" class="taskbar" aria-label="Taskbar">
+      <div class="taskbar-left">
+        <span class="brand"><span class="brand-mark">◆</span> Thirsty&nbsp;OS</span>
+        <span id="active-app" class="active-app" aria-live="polite" aria-atomic="true">Finder</span>
+        <span id="menubar-status" class="mb-status"></span>
+      </div>
+      <div id="dock" class="dock" aria-label="Dock"></div>
+      <div class="taskbar-right">
+        <span id="clock" class="clock tnum"></span>
+      </div>
+    </footer>
     <script type="module" src="/os.js"></script>
   </body>
 </html>`;

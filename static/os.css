@@ -23,8 +23,8 @@
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --accent-line: color-mix(in oklab, var(--accent) 38%, transparent);
 
-  --menubar-h: 30px;
-  --dock-h: 78px;
+  --menubar-h: 0px;   /* no top bar — the bottom taskbar holds brand/app/clock */
+  --dock-h: 60px;     /* bottom taskbar height; doubles as maximize clearance */
 
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Figtree', system-ui, sans-serif;
@@ -69,29 +69,36 @@ button {
   cursor: pointer;
 }
 
-/* ---------- menu bar ---------- */
+/* ---------- taskbar (bottom: brand · active app · dock · clock) ---------- */
 
-.menubar {
+.taskbar {
   position: fixed;
-  inset: 0 0 auto 0;
-  height: var(--menubar-h);
+  inset: auto 0 0 0;
+  height: var(--dock-h);
   z-index: 9000;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 14px;
+  gap: 14px;
+  padding: 0 16px;
   font-size: 13px;
-  background: color-mix(in oklab, var(--bg) 62%, transparent);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--bg) 70%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -14px 36px -20px rgba(0, 0, 0, 0.7);
 }
 
-.menubar-left,
-.menubar-right {
+.taskbar-left,
+.taskbar-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.taskbar-right {
+  justify-content: flex-end;
 }
 
 .brand {
@@ -101,6 +108,8 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .brand-mark {
@@ -111,6 +120,9 @@ button {
 .active-app {
   font-weight: 600;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mb-status {
@@ -119,12 +131,15 @@ button {
   font-weight: 600;
   opacity: 0;
   transition: opacity 0.3s;
+  white-space: nowrap;
 }
 
 .clock {
   color: var(--text-dim);
   font-weight: 600;
   font-size: 12.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ---------- desktop ---------- */
@@ -566,31 +581,16 @@ body.wm-busy {
 
 /* ---------- dock ---------- */
 
+/* Lives inside the taskbar now: a centered row of open-window tiles. The
+   taskbar provides the glass surface; the dock is just the flex track. */
 .dock {
-  position: fixed;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
-  z-index: 8000;
   display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  max-width: calc(100vw - 24px);
+  flex-wrap: nowrap;
   gap: 8px;
-  padding: 8px 12px;
-  min-height: 58px;
-  border-radius: 20px;
-  background: color-mix(in oklab, var(--surface-2) 78%, transparent);
-  border: 1px solid var(--line);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7);
-  transition: opacity 0.2s;
-}
-
-.dock:empty {
-  opacity: 0;
+  padding: 0 4px;
+  min-width: 0;
 }
 
 .dock-item {
@@ -679,6 +679,14 @@ body.wm-busy {
   .dock-item {
     width: 40px;
     height: 40px;
+  }
+  .taskbar {
+    gap: 10px;
+    padding: 0 10px;
+  }
+  /* Reclaim width for the dock; the active app already shows in the title bar. */
+  .active-app {
+    display: none;
   }
 }
 
