@@ -260,6 +260,22 @@ button {
   border-radius: 0;
 }
 
+/* snap-to-edge preview — the translucent half shown while dragging to a side */
+.snap-preview {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent-line);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+  opacity: 0;
+  transition: opacity 0.12s ease, left 0.12s ease, width 0.12s ease;
+}
+
+.snap-preview.show {
+  opacity: 1;
+}
+
 /* titlebar */
 
 .titlebar {

@@ -208,7 +208,9 @@ const FOLDERS = [
         url: "https://easierbycode.com/tok-scrape/mobile-demo/www/",
         allow: "fullscreen",
         external: true,
-        // Phone-shaped window to suit the mobile demo.
+        // Phone-shaped window to suit the mobile demo. `mobile` keeps its width
+        // fixed when snapped to a screen half (see snapWindow).
+        mobile: true,
         width: 430,
         height: 780,
       },
@@ -229,6 +231,8 @@ const FOLDERS = [
         allow: "fullscreen",
         external: true,
         // Phone-shaped window — it's a Cordova mobile app (matches Samples).
+        // `mobile` keeps its width fixed when snapped to a screen half.
+        mobile: true,
         width: 430,
         height: 780,
       },
@@ -361,7 +365,7 @@ function clampIntoView(win) {
   win.el.style.top = y + "px";
 }
 
-function createWindow({ id, title, icon, bodyHTML, width, height, launcher }) {
+function createWindow({ id, title, icon, bodyHTML, width, height, launcher, mobile }) {
   const d = deskRect();
   const min = minSize(d);
   const w = Math.max(min.w, Math.min(width, d.width - 24));
@@ -408,6 +412,8 @@ function createWindow({ id, title, icon, bodyHTML, width, height, launcher }) {
     icon,
     minimized: false,
     maximized: false,
+    snapped: null, // null | "left" | "right" — current half-screen tiling
+    mobile: !!mobile, // phone-shaped app: keep its width when snapping
     prevRect: null,
     dockEl: null,
     launcher: launcher || null,
@@ -519,10 +525,73 @@ function toggleMax(win) {
   focusWindow(win.id);
 }
 
+// Tile a window to the left or right half of the desktop. Re-snapping the same
+// side restores the pre-snap geometry. Mobile (phone-shaped) apps keep their
+// width — they're just parked against that edge at full height. `freeRect` lets
+// a drag-snap pass the geometry to restore to (its position before the drag).
+function snapWindow(win, side, freeRect) {
+  const d = deskRect();
+  // Same-side snap toggles back to the floating geometry.
+  if (win.snapped === side && !win.maximized) return restoreSnap(win);
+  // Capture the floating rect once, before the first tile from a free state.
+  // (Coming from maximized, prevRect already holds the pre-maximize rect.)
+  if (!win.snapped && !win.maximized) {
+    win.prevRect = freeRect || {
+      left: win.el.offsetLeft,
+      top: win.el.offsetTop,
+      width: win.el.offsetWidth,
+      height: win.el.offsetHeight,
+    };
+  }
+  // Phone width is read before maximize state is cleared, so a maximized phone
+  // falls back to its real (pre-maximize) width rather than the full screen.
+  const phoneW = win.maximized && win.prevRect ? win.prevRect.width : win.el.offsetWidth;
+  if (win.maximized) {
+    win.el.classList.remove("maximized");
+    win.maximized = false;
+  }
+  const w = win.mobile ? phoneW : Math.round(d.width / 2);
+  Object.assign(win.el.style, {
+    left: (side === "left" ? 0 : d.width - w) + "px",
+    top: "0px",
+    width: w + "px",
+    height: d.height - dockClearance() + "px",
+  });
+  win.snapped = side;
+  focusWindow(win.id);
+}
+
+// Undo a snap (or maximize), returning the window to its saved floating rect.
+function restoreSnap(win) {
+  win.snapped = null;
+  const r = win.prevRect;
+  if (!r) return;
+  Object.assign(win.el.style, {
+    left: r.left + "px",
+    top: r.top + "px",
+    width: r.width + "px",
+    height: r.height + "px",
+  });
+  clampIntoView(win); // a stale prevRect can't strand the window off-screen
+  focusWindow(win.id);
+}
+
 // Keyboard move (Arrow) / resize (Shift+Arrow) for the focused window.
 function keyMoveResize(win, e) {
-  if (win.maximized || !e.key.startsWith("Arrow")) return;
+  if (!e.key.startsWith("Arrow")) return;
+  // Ctrl+Alt+Arrow → window tiling: snap halves, maximize, or restore. Handled
+  // before the maximized guard so Down can un-maximize.
+  if (e.ctrlKey && e.altKey) {
+    e.preventDefault();
+    if (e.key === "ArrowLeft") snapWindow(win, "left");
+    else if (e.key === "ArrowRight") snapWindow(win, "right");
+    else if (e.key === "ArrowUp" && !win.maximized) toggleMax(win);
+    else if (e.key === "ArrowDown") win.maximized ? toggleMax(win) : restoreSnap(win);
+    return;
+  }
+  if (win.maximized) return;
   e.preventDefault();
+  win.snapped = null; // an arrow nudge floats the window off its tiled half
   const d = deskRect();
   const STEP = 24;
   const dx = e.key === "ArrowLeft" ? -STEP : e.key === "ArrowRight" ? STEP : 0;
@@ -559,6 +628,33 @@ function release(el, pointerId) {
   } catch { /* ignore */ }
 }
 
+// A single reusable highlight previewing the half a dragged window will tile
+// into when dropped near a side edge (Aero-/Rectangle-style snapping).
+let snapPreview = null;
+function showSnapPreview(win, side) {
+  const d = deskRect();
+  if (!snapPreview) {
+    snapPreview = document.createElement("div");
+    snapPreview.className = "snap-preview";
+    desktop.appendChild(snapPreview);
+  }
+  const w = win.mobile ? win.el.offsetWidth : Math.round(d.width / 2);
+  Object.assign(snapPreview.style, {
+    left: (side === "left" ? 0 : d.width - w) + "px",
+    top: "0px",
+    width: w + "px",
+    height: d.height - dockClearance() + "px",
+    zIndex: String(Math.max(1, zidx(win) - 1)), // sit just behind the window
+  });
+  snapPreview.classList.add("show");
+}
+function hideSnapPreview() {
+  if (snapPreview) snapPreview.classList.remove("show");
+}
+
+// Distance (px) from a side edge that arms a left/right half snap.
+const SNAP_EDGE = 28;
+
 function enableDrag(win, handle) {
   handle.addEventListener("pointerdown", (e) => {
     if (e.target.closest(".light") || e.button !== 0) return;
@@ -568,6 +664,17 @@ function enableDrag(win, handle) {
     const r = win.el.getBoundingClientRect();
     const offX = e.clientX - r.left;
     const offY = e.clientY - r.top;
+    // Grabbing a tiled window floats it again; remember where to restore to so
+    // a later snap can undo back to the original floating geometry.
+    const wasSnapped = win.snapped;
+    const startRect = {
+      left: win.el.offsetLeft,
+      top: win.el.offsetTop,
+      width: win.el.offsetWidth,
+      height: win.el.offsetHeight,
+    };
+    win.snapped = null;
+    let snapSide = null;
     capture(handle, e.pointerId);
     handle.classList.add("grabbing");
     document.body.classList.add("wm-busy");
@@ -581,6 +688,11 @@ function enableDrag(win, handle) {
       y = Math.min(d.height - 44, Math.max(0, y));
       win.el.style.left = x + "px";
       win.el.style.top = y + "px";
+      // Arm a half-snap when the pointer reaches a side edge.
+      const px = ev.clientX - d.left;
+      snapSide = px <= SNAP_EDGE ? "left" : px >= d.width - SNAP_EDGE ? "right" : null;
+      if (snapSide) showSnapPreview(win, snapSide);
+      else hideSnapPreview();
     };
     // Listeners live on globalThis (not `handle`) so a window closed mid-drag
     // still gets its teardown — no leaked listeners, no stuck wm-busy cursor.
@@ -588,10 +700,14 @@ function enableDrag(win, handle) {
       release(handle, ev ? ev.pointerId : e.pointerId);
       handle.classList.remove("grabbing");
       document.body.classList.remove("wm-busy");
+      hideSnapPreview();
       globalThis.removeEventListener("pointermove", move);
       globalThis.removeEventListener("pointerup", end);
       globalThis.removeEventListener("pointercancel", end);
       win._endGesture = null;
+      if (snapSide) {
+        snapWindow(win, snapSide, wasSnapped && win.prevRect ? win.prevRect : startRect);
+      }
     };
     win._endGesture = end;
     globalThis.addEventListener("pointermove", move);
@@ -605,6 +721,7 @@ function enableResize(win, handle) {
     if (e.button !== 0) return;
     e.stopPropagation();
     if (win.maximized) return;
+    win.snapped = null; // a hand-resized window is no longer cleanly tiled
     focusWindow(win.id);
 
     const startW = win.el.offsetWidth;
@@ -681,6 +798,7 @@ function openApp(item) {
     bodyHTML: `<div class="window-loader"><div class="spinner"></div><span></span></div>`,
     width: item.width || 1024,
     height: item.height || 720,
+    mobile: item.mobile,
     launcher,
   });
   win.el.querySelector(".window-loader span").textContent = `Opening ${item.name}…`;
