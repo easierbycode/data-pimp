@@ -2829,7 +2829,7 @@ if (typeof exports$1 === "object" && exports$1 !== null && "default" in exports$
   exports$1.default;
 }
 exports$1.__esModule;
-let BUILD_ID = "f6027bd227092e77c262b26dfed07393e014dcd5";
+let BUILD_ID = "b7c4aaa52f810f6fe54d6c3d2da91d275a0d83e5";
 const DENO_DEPLOYMENT_ID = void 0;
 function setBuildId(id) {
   BUILD_ID = id;
@@ -2839,9 +2839,9 @@ const {
 } = globalThis;
 const noColor = typeof Deno$1?.noColor === "boolean" ? Deno$1.noColor : false;
 let enabled = !noColor;
-function code(open2, close) {
+function code(open, close) {
   return {
-    open: `\x1B[${open2.join(";")}m`,
+    open: `\x1B[${open.join(";")}m`,
     close: `\x1B[${close}m`,
     regexp: new RegExp(`\\x1b\\[${close}m`, "g")
   };
@@ -2864,7 +2864,7 @@ function rgb8(str, color) {
 function bgRgb8(str, color) {
   return run(str, code([48, 5, clampAndTruncate(color)], 49));
 }
-var n$1, l$3, u$3, t$2, i$3, r$2, o$3, e$1, f$3, c$3, s$3, a$3, h$2, p$3, v$2, y$2, d$2 = {}, w$2 = [], _$1 = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i, g$1 = Array.isArray;
+var n$1, l$3, u$3, t$2, i$3, r$2, o$3, e$1, f$3, c$3, s$3, a$3, h$1, p$3, v$2, y$2, d$1 = {}, w$2 = [], _$1 = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i, g$1 = Array.isArray;
 function m$2(n2, l2) {
   for (var u2 in l2) n2[u2] = l2[u2];
   return n2;
@@ -2910,7 +2910,7 @@ function $$1(n2, l2) {
 function I$1(n2) {
   if (n2.__P && n2.__d) {
     var u2 = n2.__v, t2 = u2.__e, i2 = [], r2 = [], o2 = m$2({}, u2);
-    o2.__v = u2.__v + 1, l$3.vnode && l$3.vnode(o2), q$1(n2.__P, o2, u2, n2.__n, n2.__P.namespaceURI, 32 & u2.__u ? [t2] : null, i2, null == t2 ? $$1(u2) : t2, !!(32 & u2.__u), r2), o2.__v = u2.__v, o2.__.__k[o2.__i] = o2, D$2(i2, o2, r2), u2.__e = u2.__ = null, o2.__e != t2 && P$1(o2);
+    o2.__v = u2.__v + 1, l$3.vnode && l$3.vnode(o2), q$1(n2.__P, o2, u2, n2.__n, n2.__P.namespaceURI, 32 & u2.__u ? [t2] : null, i2, null == t2 ? $$1(u2) : t2, !!(32 & u2.__u), r2), o2.__v = u2.__v, o2.__.__k[o2.__i] = o2, D$1(i2, o2, r2), u2.__e = u2.__ = null, o2.__e != t2 && P$1(o2);
   }
 }
 function P$1(n2) {
@@ -2930,7 +2930,7 @@ function H$1() {
 }
 function L(n2, l2, u2, t2, i2, r2, o2, e2, f2, c2, s2) {
   var a2, h2, p2, v2, y2, _2, g2, m2 = t2 && t2.__k || w$2, b2 = l2.length;
-  for (f2 = T$1(u2, l2, m2, f2, b2), a2 = 0; a2 < b2; a2++) null != (p2 = u2.__k[a2]) && (h2 = -1 != p2.__i && m2[p2.__i] || d$2, p2.__i = a2, _2 = q$1(n2, p2, h2, i2, r2, o2, e2, f2, c2, s2), v2 = p2.__e, p2.ref && h2.ref != p2.ref && (h2.ref && J$1(h2.ref, null, p2), s2.push(p2.ref, p2.__c || v2, p2)), null == y2 && null != v2 && (y2 = v2), (g2 = !!(4 & p2.__u)) || h2.__k === p2.__k ? (f2 = j$1(p2, f2, n2, g2), g2 && h2.__e && (h2.__e = null)) : "function" == typeof p2.type && void 0 !== _2 ? f2 = _2 : v2 && (f2 = v2.nextSibling), p2.__u &= -7);
+  for (f2 = T$1(u2, l2, m2, f2, b2), a2 = 0; a2 < b2; a2++) null != (p2 = u2.__k[a2]) && (h2 = -1 != p2.__i && m2[p2.__i] || d$1, p2.__i = a2, _2 = q$1(n2, p2, h2, i2, r2, o2, e2, f2, c2, s2), v2 = p2.__e, p2.ref && h2.ref != p2.ref && (h2.ref && J$1(h2.ref, null, p2), s2.push(p2.ref, p2.__c || v2, p2)), null == y2 && null != v2 && (y2 = v2), (g2 = !!(4 & p2.__u)) || h2.__k === p2.__k ? (f2 = j$1(p2, f2, n2, g2), g2 && h2.__e && (h2.__e = null)) : "function" == typeof p2.type && void 0 !== _2 ? f2 = _2 : v2 && (f2 = v2.nextSibling), p2.__u &= -7);
   return u2.__e = y2, f2;
 }
 function T$1(n2, l2, u2, t2, i2) {
@@ -2972,7 +2972,7 @@ function N$1(n2, l2, u2, t2, i2) {
       if ("string" == typeof t2 && (n2.style.cssText = t2 = ""), t2) for (l2 in t2) u2 && l2 in u2 || z$2(n2.style, l2, "");
       if (u2) for (l2 in u2) t2 && u2[l2] == t2[l2] || z$2(n2.style, l2, u2[l2]);
     }
-  } else if ("o" == l2[0] && "n" == l2[1]) r2 = l2 != (l2 = l2.replace(a$3, "$1")), o2 = l2.toLowerCase(), l2 = o2 in n2 || "onFocusOut" == l2 || "onFocusIn" == l2 ? o2.slice(2) : l2.slice(2), n2.l || (n2.l = {}), n2.l[l2 + r2] = u2, u2 ? t2 ? u2[s$3] = t2[s$3] : (u2[s$3] = h$2, n2.addEventListener(l2, r2 ? v$2 : p$3, r2)) : n2.removeEventListener(l2, r2 ? v$2 : p$3, r2);
+  } else if ("o" == l2[0] && "n" == l2[1]) r2 = l2 != (l2 = l2.replace(a$3, "$1")), o2 = l2.toLowerCase(), l2 = o2 in n2 || "onFocusOut" == l2 || "onFocusIn" == l2 ? o2.slice(2) : l2.slice(2), n2.l || (n2.l = {}), n2.l[l2 + r2] = u2, u2 ? t2 ? u2[s$3] = t2[s$3] : (u2[s$3] = h$1, n2.addEventListener(l2, r2 ? v$2 : p$3, r2)) : n2.removeEventListener(l2, r2 ? v$2 : p$3, r2);
   else {
     if ("http://www.w3.org/2000/svg" == i2) l2 = l2.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
     else if ("width" != l2 && "height" != l2 && "href" != l2 && "list" != l2 && "form" != l2 && "tabIndex" != l2 && "download" != l2 && "rowSpan" != l2 && "colSpan" != l2 && "role" != l2 && "popover" != l2 && l2 in n2) try {
@@ -2987,7 +2987,7 @@ function V$1(n2) {
   return function(u2) {
     if (this.l) {
       var t2 = this.l[u2.type + n2];
-      if (null == u2[c$3]) u2[c$3] = h$2++;
+      if (null == u2[c$3]) u2[c$3] = h$1++;
       else if (u2[c$3] < t2[s$3]) return;
       return t2(l$3.event ? l$3.event(u2) : u2);
     }
@@ -3033,7 +3033,7 @@ function q$1(n2, u2, t2, i2, r2, o2, e2, f2, c2, s2) {
 function B$2(n2) {
   n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B$2));
 }
-function D$2(n2, u2, t2) {
+function D$1(n2, u2, t2) {
   for (var i2 = 0; i2 < t2.length; i2++) J$1(t2[i2], t2[++i2], t2[++i2]);
   l$3.__c && l$3.__c(u2, n2), n2.some(function(u3) {
     try {
@@ -3049,7 +3049,7 @@ function E(n2) {
   return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g$1(n2) ? n2.map(E) : m$2({}, n2);
 }
 function G(u2, t2, i2, r2, o2, e2, f2, c2, s2) {
-  var a2, h2, p2, v2, y2, w2, _2, m2 = i2.props || d$2, k2 = t2.props, x2 = t2.type;
+  var a2, h2, p2, v2, y2, w2, _2, m2 = i2.props || d$1, k2 = t2.props, x2 = t2.type;
   if ("svg" == x2 ? o2 = "http://www.w3.org/2000/svg" : "math" == x2 ? o2 = "http://www.w3.org/1998/Math/MathML" : o2 || (o2 = "http://www.w3.org/1999/xhtml"), null != e2) {
     for (a2 = 0; a2 < e2.length; a2++) if ((y2 = e2[a2]) && "setAttribute" in y2 == !!x2 && (x2 ? y2.localName == x2 : 3 == y2.nodeType)) {
       u2 = y2, e2[a2] = null;
@@ -3138,7 +3138,7 @@ n$1 = w$2.slice, l$3 = {
   this.__v && (this.__e = true, n2 && this.__h.push(n2), A$2(this));
 }, C$2.prototype.render = S, i$3 = [], o$3 = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e$1 = function(n2, l2) {
   return n2.__v.__b - l2.__v.__b;
-}, H$1.__r = 0, f$3 = Math.random().toString(8), c$3 = "__d" + f$3, s$3 = "__a" + f$3, a$3 = /(PointerCapture)$|Capture$/i, h$2 = 0, p$3 = V$1(false), v$2 = V$1(true), y$2 = 0;
+}, H$1.__r = 0, f$3 = Math.random().toString(8), c$3 = "__d" + f$3, s$3 = "__a" + f$3, a$3 = /(PointerCapture)$|Capture$/i, h$1 = 0, p$3 = V$1(false), v$2 = V$1(true), y$2 = 0;
 var t$1 = /["&<]/;
 function n(r2) {
   if (0 === r2.length || false === t$1.test(r2)) return r2;
@@ -3818,43 +3818,6 @@ function p$1(n2, t2) {
   });
   return n2 >= u2.__.length && u2.__.push({}), u2.__[n2];
 }
-function d$1(n2) {
-  return o$1 = 1, h$1(D$1, n2);
-}
-function h$1(n2, u2, i2) {
-  var o2 = p$1(t++, 2);
-  if (o2.t = n2, !o2.__c && (o2.__ = [D$1(void 0, u2), function(n3) {
-    var t2 = o2.__N ? o2.__N[0] : o2.__[0], r2 = o2.t(t2, n3);
-    t2 !== r2 && (o2.__N = [r2, o2.__[1]], o2.__c.setState({}));
-  }], o2.__c = r$1, !r$1.__f)) {
-    var f2 = function(n3, t2, r2) {
-      if (!o2.__c.__H) return true;
-      var u3 = o2.__c.__H.__.filter(function(n4) {
-        return n4.__c;
-      });
-      if (u3.every(function(n4) {
-        return !n4.__N;
-      })) return !c2 || c2.call(this, n3, t2, r2);
-      var i3 = o2.__c.props !== n3;
-      return u3.some(function(n4) {
-        if (n4.__N) {
-          var t3 = n4.__[0];
-          n4.__ = n4.__N, n4.__N = void 0, t3 !== n4.__[0] && (i3 = true);
-        }
-      }), c2 && c2.call(this, n3, t2, r2) || i3;
-    };
-    r$1.__f = true;
-    var c2 = r$1.shouldComponentUpdate, e2 = r$1.componentWillUpdate;
-    r$1.componentWillUpdate = function(n3, t2, r2) {
-      if (this.__e) {
-        var u3 = c2;
-        c2 = void 0, f2(n3, t2, r2), c2 = u3;
-      }
-      e2 && e2.call(this, n3, t2, r2);
-    }, r$1.shouldComponentUpdate = f2;
-  }
-  return o2.__N || o2.__;
-}
 function y$1(n2, u2) {
   var i2 = p$1(t++, 3);
   !c$1.__s && C$1(i2.__H, u2) && (i2.__ = n2, i2.u = u2, r$1.__H.__h.push(i2));
@@ -3942,9 +3905,6 @@ function C$1(n2, t2) {
   return !n2 || n2.length !== t2.length || t2.some(function(t3, r2) {
     return t3 !== n2[r2];
   });
-}
-function D$1(n2, t2) {
-  return "function" == typeof t2 ? t2(n2) : t2;
 }
 const options = l$3;
 class RenderState {
@@ -5588,14 +5548,14 @@ function getOrCreateSegment(root2, path, includeLast) {
   let current = root2;
   const segments = patternToSegments(path, root2.pattern, includeLast);
   for (let i2 = 0; i2 < segments.length; i2++) {
-    const seg2 = segments[i2];
-    if (seg2 === root2.pattern) {
+    const seg = segments[i2];
+    if (seg === root2.pattern) {
       current = root2;
     } else {
-      let child = current.children.get(seg2);
+      let child = current.children.get(seg);
       if (child === void 0) {
-        child = newSegment(seg2, current);
-        current.children.set(seg2, child);
+        child = newSegment(seg, current);
+        current.children.set(seg, child);
       }
       current = child;
     }
@@ -5612,12 +5572,12 @@ function segmentToMiddlewares(segment) {
   }
   const root2 = stack.at(-1);
   for (let i2 = stack.length - 1; i2 >= 0; i2--) {
-    const seg2 = stack[i2];
+    const seg = stack[i2];
     const {
       layout,
       app: app2,
       errorRoute
-    } = seg2;
+    } = seg;
     result.push(async function segmentMiddleware(ctx) {
       const internals = getInternals(ctx);
       const prevApp = internals.app;
@@ -5655,8 +5615,8 @@ function segmentToMiddlewares(segment) {
         internals.layouts = prevLayouts;
       }
     });
-    if (seg2.middlewares.length > 0) {
-      result.push(...seg2.middlewares);
+    if (seg.middlewares.length > 0) {
+      result.push(...seg.middlewares);
     }
   }
   return result;
@@ -6591,7 +6551,7 @@ function AffiliateDashboard({
         unmount: svelteUnmount
       }, {
         default: Dashboard
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/AffiliateDashboard-BqCyKbdM.mjs")]);
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/AffiliateDashboard-Dg7LlQ3A.mjs")]);
       if (cancelled || !ref.current) return;
       const instance = mount(Dashboard, {
         target: ref.current,
@@ -6718,7 +6678,7 @@ function CommunityHub({
         unmount: svelteUnmount
       }, {
         default: Hub
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/CommunityHub-BNkHdOcG.mjs")]);
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/CommunityHub-oPVg5YyO.mjs")]);
       if (cancelled || !ref.current) return;
       const instance = mount(Hub, {
         target: ref.current,
@@ -6740,6 +6700,480 @@ function CommunityHub({
 const CommunityHub$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: CommunityHub
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$c = ["<div ", ' class="svelte-island-root"></div>'];
+function MemberDashboardV2() {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Dashboard
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/MemberDashboardV2-t-vfAnrG.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Dashboard, {
+        target: ref.current
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, []);
+  return a$2($$_tpl_1$c, l$2("ref", ref));
+}
+const MemberDashboardV2$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: MemberDashboardV2
+}, Symbol.toStringTag, { value: "Module" }));
+const product = (id, name, metrics) => ({
+  "Product ID": id,
+  "Product name": name,
+  "Product link": `https://shop.tiktok.com/view/product/${id}?source=liveDashboard&region=US`,
+  Metrics: metrics
+});
+const SELLER_LIVE_PAYLOAD = {
+  page: "LIVE Dashboard",
+  shop: "boosteddealsdaily",
+  roomId: "7630167109884611358",
+  duration: "1h1m37s",
+  sessionRange: "Apr 18 11:26:53 - Apr 18 12:28:30 UTC-07:00",
+  scrapedAt: "2026-04-25T08:46:22.109Z",
+  gmv: "1428",
+  sideKpis: {
+    "Items sold": "37",
+    "Viewers": "1.74K"
+  },
+  performance: [{
+    name: "Impressions",
+    value: "21.87K"
+  }, {
+    name: "Views",
+    value: "1.92K"
+  }, {
+    name: "GMV per hour",
+    value: "$13.54"
+  }, {
+    name: "Impressions per hour",
+    value: "21.3K"
+  }, {
+    name: "Show GPM",
+    value: "0.64"
+  }, {
+    name: "Avg. viewing duration per view",
+    value: "11s"
+  }, {
+    name: "Comment rate",
+    value: "0.74%"
+  }, {
+    name: "Follow rate",
+    value: "0.05%"
+  }, {
+    name: "Tap-through rate (via LIVE preview)",
+    value: "0.78%"
+  }, {
+    name: "Tap-through rate",
+    value: "8.79%"
+  }, {
+    name: "LIVE CTR",
+    value: "3.43%"
+  }, {
+    name: "Order rate (SKU orders)",
+    value: "0.05%"
+  }, {
+    name: "Share rate",
+    value: "0.11%"
+  }, {
+    name: "Like rate",
+    value: "26.19%"
+  }, {
+    name: "> 1 min. views",
+    value: "44"
+  }, {
+    name: "GMV Max ROI",
+    value: "7.06"
+  }],
+  trafficSources: [{
+    Channel: "For You feed",
+    GMV: "62%",
+    Impressions: "90.32%",
+    Views: "75.45%"
+  }, {
+    Channel: "LIVE swipe",
+    GMV: "18%",
+    Impressions: "6.08%",
+    Views: "16.91%"
+  }, {
+    Channel: "LIVE preview",
+    GMV: "10%",
+    Impressions: "1.65%",
+    Views: "3.17%"
+  }, {
+    Channel: "Others' video prof…",
+    GMV: "4%",
+    Impressions: "0.12%",
+    Views: "1.32%"
+  }, {
+    Channel: "Video profile taps",
+    GMV: "3%",
+    Impressions: "0.48%",
+    Views: "0.05%"
+  }, {
+    Channel: "LIVE feed",
+    GMV: "2%",
+    Impressions: "1.94%",
+    Views: "2.39%"
+  }, {
+    Channel: "Other",
+    GMV: "1%",
+    Impressions: "0.41%",
+    Views: "0.71%"
+  }],
+  products: [product("1731194857673101831", "Zero Sugar Best Seller Trio — Pre, Post, Probiotic + Apple Cider Vinegar", ["", "1284", "3.21%", "$412.50", "98", "31", "Beauty"]), product("1729718141631565851", "[Dr.Melaxin Official] Calcium Multi Balm Eye Care Routine Korean Skin Care", ["", "812", "2.94%", "$248.18", "60", "22", "Beauty"]), product("1729444047203963674", "EZ BOMBS BirriaBombs 2 Bombs Per Pack — Authentic Mexican Seasoning", ["", "640", "5.16%", "$197.42", "55", "18", "Food"]), product("1731976483732624045", "Micro Ingredients NMN Complex 1,000mg — NAD+ Precursor Supplement", ["", "513", "2.21%", "$152.90", "33", "14", "Wellness"]), product("1729401873273951198", "15 Day Cleanse — Gut and Colon Support, Caffeine Free", ["", "402", "1.84%", "$118.32", "27", "11", "Wellness"]), product("1730812931231298471", "Shilajit Resin Pure Himalayan — Energy & Focus 30g Jar", ["", "356", "2.07%", "$98.71", "21", "9", "Wellness"]), product("1731554912034817233", "Korean Glass Skin Toner Pads — Snail Mucin + Niacinamide", ["", "298", "1.92%", "$74.20", "18", "6", "Beauty"]), product("1729998712309432109", "Magnesium Glycinate 500mg — Sleep + Stress Support", ["", "245", "1.51%", "$58.90", "15", "5", "Wellness"])]
+};
+const seller_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  SELLER_LIVE_PAYLOAD
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$b = ["<div ", ' class="svelte-island-root"></div>'];
+function SellerDashboard({
+  payload = SELLER_LIVE_PAYLOAD
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Dashboard
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/SellerDashboard-D89KHagZ.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Dashboard, {
+        target: ref.current,
+        props: {
+          payload
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [payload]);
+  return a$2($$_tpl_1$b, l$2("ref", ref));
+}
+const SellerDashboard$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: SellerDashboard
+}, Symbol.toStringTag, { value: "Module" }));
+const SETTINGS_DATA = {
+  user: {
+    name: "Daniel Nguyen",
+    email: "daniel@easierbycode.com",
+    notificationEmail: "",
+    initials: "DN"
+  },
+  connectedAccounts: [{
+    provider: "google",
+    name: "Google",
+    linked: true
+  }, {
+    provider: "discord",
+    name: "Discord",
+    linked: false
+  }],
+  sessions: [{
+    id: "sess_current",
+    device: "Chrome on macOS",
+    lastActive: "Active now",
+    current: true
+  }, {
+    id: "sess_phone",
+    device: "Safari on iPhone",
+    lastActive: "2 hours ago",
+    current: false
+  }],
+  plan: {
+    name: "LifePreneur Pro",
+    status: "active",
+    price: "$49 / month",
+    renewsOn: "July 13, 2026",
+    features: ["Unlimited product scrapes", "Live + Streamer dashboards", "Premium training content", "Priority support"]
+  }
+};
+const settings_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  SETTINGS_DATA
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$a = ["<div ", ' class="svelte-island-root"></div>'];
+function Settings({
+  data = SETTINGS_DATA
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: SettingsComponent
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/Settings-ks269aVL.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(SettingsComponent, {
+        target: ref.current,
+        props: {
+          data
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [data]);
+  return a$2($$_tpl_1$a, l$2("ref", ref));
+}
+const Settings$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: Settings
+}, Symbol.toStringTag, { value: "Module" }));
+const tile = (name, value, delta, currency = "") => ({
+  name,
+  value,
+  currency,
+  compareKey: "creatorcompass_video_analysis_vs_last_28d_us",
+  delta
+});
+const video = (thumb2, title, posted, duration, metrics) => ({
+  Thumbnail: thumb2,
+  Title: title,
+  Posted: posted,
+  Duration: duration,
+  Metrics: metrics.map(([name, value]) => ({
+    name,
+    value
+  }))
+});
+const thumb = (hue, label) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 270'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='hsl(${hue},85%,55%)'/><stop offset='100%' stop-color='#1a1916'/></linearGradient></defs><rect width='480' height='270' fill='url(%23g)'/><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' font-family='system-ui' font-size='28' font-weight='700' fill='white'>${label}</text></svg>`)}`;
+const STREAMER_PAYLOAD = {
+  page: "video analysis",
+  dateLabel: "Last 28 days",
+  dateRange: {
+    start: "Mar 01, 2026",
+    end: "Mar 28, 2026"
+  },
+  scrapedAt: "2026-04-26T04:22:20.530Z",
+  metrics: [tile("GMV", "12,847.39", "+18.42%", "$"), tile("Items sold", "412", "+22.10%"), tile("Views", "84,210", "+47.30%"), tile("New followers", "1,309", "+12.65%"), tile("Videos", "23", "+9.52%")],
+  videos: [video(thumb(20, "Brainista Yerba"), "Brainista Yerba Magic 5-1 Capsules #tiktokshopcybermonday #tiktokshopblackfriday", "2025/11/18 22:45", "19s", [["GMV", "$1,284.50"], ["Views", "12,431"], ["Items sold", "47"], ["CTR", "3.21%"], ["Completion", "62.40%"], ["New followers", "78"]]), video(thumb(40, "Yerba Magic 2"), "Brainista Yerba Magic 5-1 Capsules — quick recipe demo", "2025/11/18 22:44", "18s", [["GMV", "$914.80"], ["Views", "9,210"], ["Items sold", "32"], ["CTR", "2.94%"], ["Completion", "59.10%"], ["New followers", "53"]]), video(thumb(330, "Cyber Monday"), "Cyber Monday flash bundle — Brainista Yerba + Shilajit", "2025/11/30 10:12", "27s", [["GMV", "$2,418.90"], ["Views", "21,302"], ["Items sold", "82"], ["CTR", "4.18%"], ["Completion", "71.80%"], ["New followers", "194"]]), video(thumb(190, "Shilajit Resin"), "Shilajit Resin pure — energy + focus 30g jar", "2025/12/02 18:30", "22s", [["GMV", "$1,742.00"], ["Views", "16,815"], ["Items sold", "59"], ["CTR", "3.61%"], ["Completion", "65.20%"], ["New followers", "112"]]), video(thumb(280, "Cleanse"), "15 Day Cleanse — gut & colon support, caffeine free", "2025/12/05 09:44", "31s", [["GMV", "$1,128.40"], ["Views", "11,924"], ["Items sold", "41"], ["CTR", "2.84%"], ["Completion", "57.30%"], ["New followers", "67"]]), video(thumb(60, "NMN Complex"), "Micro Ingredients NMN Complex 1,000mg — NAD+ precursor demo", "2025/12/10 14:21", "24s", [["GMV", "$1,510.20"], ["Views", "13,701"], ["Items sold", "48"], ["CTR", "3.07%"], ["Completion", "60.10%"], ["New followers", "85"]]), video(thumb(160, "Korean Toner"), "Korean glass-skin toner pads — snail mucin + niacinamide", "2025/12/14 19:08", "21s", [["GMV", "$842.10"], ["Views", "8,612"], ["Items sold", "29"], ["CTR", "2.41%"], ["Completion", "58.40%"], ["New followers", "44"]]), video(thumb(220, "Magnesium"), "Magnesium Glycinate 500mg — sleep & stress support", "2025/12/18 21:52", "20s", [["GMV", "$721.80"], ["Views", "7,415"], ["Items sold", "26"], ["CTR", "2.18%"], ["Completion", "55.90%"], ["New followers", "39"]])]
+};
+const streamer_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  STREAMER_PAYLOAD
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$9 = ["<div ", ' class="svelte-island-root"></div>'];
+function StreamerDashboard({
+  payload = STREAMER_PAYLOAD
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Dashboard
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/StreamerDashboard-CyZhu48c.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Dashboard, {
+        target: ref.current,
+        props: {
+          payload
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [payload]);
+  return a$2($$_tpl_1$9, l$2("ref", ref));
+}
+const StreamerDashboard$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: StreamerDashboard
+}, Symbol.toStringTag, { value: "Module" }));
+const VIDEO_CATEGORIES = ["Getting Started", "Advanced Strategies", "Case Studies", "Tools & Resources"];
+const placeholder = (text) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23f54e00'/><stop offset='100%' stop-color='%231a1916'/></linearGradient></defs><rect width='320' height='180' fill='url(%23g)'/><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' font-family='system-ui' font-size='18' fill='white'>${text}</text></svg>`)}`;
+const VIDEOS$1 = [{
+  id: "v1",
+  title: "TikTok Shop Affiliate 101",
+  thumbnail: placeholder("Affiliate 101"),
+  duration: "12:30",
+  views: 3421,
+  category: "Getting Started",
+  description: "Set up your seller profile and choose your first ten product picks.",
+  isMock: true
+}, {
+  id: "v2",
+  title: "Picking Winning Products",
+  thumbnail: placeholder("Winning Products"),
+  duration: "08:14",
+  views: 5210,
+  category: "Getting Started",
+  description: "Filters, momentum signals, and red flags to avoid.",
+  isMock: true
+}, {
+  id: "v3",
+  title: "Hooks That Convert",
+  thumbnail: placeholder("Hooks"),
+  duration: "15:02",
+  views: 8920,
+  category: "Advanced Strategies",
+  description: "Three hook archetypes that consistently land in TikTok ads.",
+  isMock: true
+}, {
+  id: "v4",
+  title: "Scaling From $1K to $10K/Day",
+  thumbnail: placeholder("Scaling"),
+  duration: "22:48",
+  views: 14302,
+  category: "Advanced Strategies",
+  description: "How to push spend without losing CTR or ROAS.",
+  isMock: true
+}, {
+  id: "v5",
+  title: "$100K Beauty Drop",
+  thumbnail: placeholder("Beauty Drop"),
+  duration: "11:55",
+  views: 6411,
+  category: "Case Studies",
+  description: "Behind-the-scenes of the spring beauty launch.",
+  isMock: true
+}, {
+  id: "v6",
+  title: "Cold Start Postmortem",
+  thumbnail: placeholder("Cold Start"),
+  duration: "18:20",
+  views: 4280,
+  category: "Case Studies",
+  description: "What we learned from a brand new account in week one.",
+  isMock: true
+}, {
+  id: "v7",
+  title: "The Creator Stack We Use",
+  thumbnail: placeholder("Creator Stack"),
+  duration: "09:12",
+  views: 2901,
+  category: "Tools & Resources",
+  description: "Tools for editing, scheduling, and analytics.",
+  isMock: true
+}, {
+  id: "v8",
+  title: "Spreadsheet Templates",
+  thumbnail: placeholder("Templates"),
+  duration: "06:48",
+  views: 1822,
+  category: "Tools & Resources",
+  description: "Plug-and-play sheets for tracking GMV and commission.",
+  isMock: true
+}];
+const video_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  VIDEOS: VIDEOS$1,
+  VIDEO_CATEGORIES
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$8 = ["<div ", ' class="svelte-island-root"></div>'];
+function StreamingLibrary({
+  initialVideos = VIDEOS$1
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Library
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/StreamingLibrary-dFoLU8ZR.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Library, {
+        target: ref.current,
+        props: {
+          initialVideos
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [initialVideos]);
+  return a$2($$_tpl_1$8, l$2("ref", ref));
+}
+const StreamingLibrary$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: StreamingLibrary
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$7 = ["<div ", ' class="svelte-island-root"></div>'];
+function SvelteCounter({
+  initial = 0,
+  label = "Svelte counter"
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Counter
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/Counter-DyMWHnEF.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Counter, {
+        target: ref.current,
+        props: {
+          initial,
+          label
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [initial, label]);
+  return a$2($$_tpl_1$7, l$2("ref", ref));
+}
+const SvelteCounter$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: SvelteCounter
 }, Symbol.toStringTag, { value: "Module" }));
 const ACCOUNTS = [{
   id: "blackfridaybrian",
@@ -6913,7 +7347,7 @@ const PRODUCTS = [{
   trend: 0.41,
   accounts: ["blackfridaybrian"]
 }];
-const VIDEOS$1 = [{
+const VIDEOS = [{
   id: "v1",
   brand: "Salary",
   caption: "POV: the retinol serum that fixed my 3am skin",
@@ -6980,1128 +7414,8 @@ const dashboard_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defi
   POWER_DEAL,
   PRODUCTS,
   STREAK,
-  VIDEOS: VIDEOS$1,
-  acctById
-}, Symbol.toStringTag, { value: "Module" }));
-const root$1 = "_root_1sqb8_1";
-const topbar = "_topbar_1sqb8_165";
-const topbarMain = "_topbarMain_1sqb8_193";
-const dotBrand = "_dotBrand_1sqb8_207";
-const brandText = "_brandText_1sqb8_223";
-const brandTextAccent = "_brandTextAccent_1sqb8_241";
-const title = "_title_1sqb8_249";
-const actions = "_actions_1sqb8_263";
-const btn = "_btn_1sqb8_277";
-const btnIcon = "_btnIcon_1sqb8_333";
-const avatar = "_avatar_1sqb8_367";
-const page = "_page_1sqb8_399";
-const acctBar = "_acctBar_1sqb8_435";
-const acctSelect = "_acctSelect_1sqb8_463";
-const acctTrigger = "_acctTrigger_1sqb8_471";
-const acctTriggerLabel = "_acctTriggerLabel_1sqb8_509";
-const acctTriggerK = "_acctTriggerK_1sqb8_523";
-const acctTriggerV = "_acctTriggerV_1sqb8_537";
-const acctCaret = "_acctCaret_1sqb8_555";
-const open = "_open_1sqb8_565";
-const acctPanel = "_acctPanel_1sqb8_573";
-const acctRow = "_acctRow_1sqb8_619";
-const acctRowActive = "_acctRowActive_1sqb8_657";
-const acctRowName = "_acctRowName_1sqb8_665";
-const acctRowHandle = "_acctRowHandle_1sqb8_675";
-const acctCheck = "_acctCheck_1sqb8_687";
-const acctDot = "_acctDot_1sqb8_699";
-const acctChip = "_acctChip_1sqb8_719";
-const streak = "_streak_1sqb8_759";
-const streakCard = "_streakCard_1sqb8_787";
-const streakNum = "_streakNum_1sqb8_839";
-const streakMeta = "_streakMeta_1sqb8_859";
-const streakMetaK = "_streakMetaK_1sqb8_871";
-const streakMetaV = "_streakMetaV_1sqb8_885";
-const streakFlame = "_streakFlame_1sqb8_895";
-const trendCard = "_trendCard_1sqb8_905";
-const trendNum = "_trendNum_1sqb8_925";
-const trendArrow = "_trendArrow_1sqb8_939";
-const trendArrowDown = "_trendArrowDown_1sqb8_961";
-const trendLabel = "_trendLabel_1sqb8_971";
-const kpis = "_kpis_1sqb8_993";
-const kpi = "_kpi_1sqb8_993";
-const kpiLabel = "_kpiLabel_1sqb8_1069";
-const kpiLabelIcon = "_kpiLabelIcon_1sqb8_1091";
-const kpiVal = "_kpiVal_1sqb8_1115";
-const kpiDelta = "_kpiDelta_1sqb8_1133";
-const kpiSpark = "_kpiSpark_1sqb8_1165";
-const section = "_section_1sqb8_1179";
-const sectionHead = "_sectionHead_1sqb8_1199";
-const sectionTitle = "_sectionTitle_1sqb8_1215";
-const pill = "_pill_1sqb8_1237";
-const sectionActions = "_sectionActions_1sqb8_1261";
-const scopePill = "_scopePill_1sqb8_1273";
-const tbl = "_tbl_1sqb8_1311";
-const num = "_num_1sqb8_1387";
-const money = "_money_1sqb8_1399";
-const brand = "_brand_1sqb8_223";
-const sub = "_sub_1sqb8_1419";
-const rank = "_rank_1sqb8_1443";
-const gold = "_gold_1sqb8_1473";
-const badges = "_badges_1sqb8_1487";
-const badge = "_badge_1sqb8_1487";
-const badgeOverflow = "_badgeOverflow_1sqb8_1541";
-const badgeTip = "_badgeTip_1sqb8_1561";
-const videos = "_videos_1sqb8_1613";
-const video$1 = "_video_1sqb8_1613";
-const videoThumb = "_videoThumb_1sqb8_1693";
-const videoThumbStripes = "_videoThumbStripes_1sqb8_1729";
-const videoBadges = "_videoBadges_1sqb8_1749";
-const videoBody = "_videoBody_1sqb8_1761";
-const videoBrand = "_videoBrand_1sqb8_1775";
-const videoHot = "_videoHot_1sqb8_1787";
-const videoCaption = "_videoCaption_1sqb8_1805";
-const videoStats = "_videoStats_1sqb8_1827";
-const videoStatK = "_videoStatK_1sqb8_1845";
-const videoStatV = "_videoStatV_1sqb8_1859";
-const powerDeal = "_powerDeal_1sqb8_1873";
-const powerDealK = "_powerDealK_1sqb8_1937";
-const powerDealTitle = "_powerDealTitle_1sqb8_1953";
-const powerDealSub = "_powerDealSub_1sqb8_1967";
-const powerDealBadge = "_powerDealBadge_1sqb8_1979";
-const seg = "_seg_1sqb8_2013";
-const segActive = "_segActive_1sqb8_2057";
-const spark = "_spark_1sqb8_2071";
-const legend = "_legend_1sqb8_2081";
-const delta = "_delta_1sqb8_2095";
-const deltaUp = "_deltaUp_1sqb8_2103";
-const deltaDown = "_deltaDown_1sqb8_2111";
-const styles$1 = {
-  root: root$1,
-  topbar,
-  topbarMain,
-  dotBrand,
-  brandText,
-  brandTextAccent,
-  title,
-  actions,
-  btn,
-  btnIcon,
-  avatar,
-  page,
-  acctBar,
-  acctSelect,
-  acctTrigger,
-  acctTriggerLabel,
-  acctTriggerK,
-  acctTriggerV,
-  acctCaret,
-  open,
-  acctPanel,
-  acctRow,
-  acctRowActive,
-  acctRowName,
-  acctRowHandle,
-  acctCheck,
-  acctDot,
-  acctChip,
-  streak,
-  streakCard,
-  streakNum,
-  streakMeta,
-  streakMetaK,
-  streakMetaV,
-  streakFlame,
-  trendCard,
-  trendNum,
-  trendArrow,
-  trendArrowDown,
-  trendLabel,
-  kpis,
-  kpi,
-  kpiLabel,
-  kpiLabelIcon,
-  kpiVal,
-  kpiDelta,
-  kpiSpark,
-  section,
-  sectionHead,
-  sectionTitle,
-  pill,
-  sectionActions,
-  scopePill,
-  tbl,
-  num,
-  money,
-  brand,
-  sub,
-  rank,
-  gold,
-  badges,
-  badge,
-  badgeOverflow,
-  badgeTip,
-  videos,
-  video: video$1,
-  videoThumb,
-  videoThumbStripes,
-  videoBadges,
-  videoBody,
-  videoBrand,
-  videoHot,
-  videoCaption,
-  videoStats,
-  videoStatK,
-  videoStatV,
-  powerDeal,
-  powerDealK,
-  powerDealTitle,
-  powerDealSub,
-  powerDealBadge,
-  seg,
-  segActive,
-  spark,
-  legend,
-  delta,
-  deltaUp,
-  deltaDown
-};
-const $$_tpl_1$c = ["<div ", ' class="svelte-island-root"></div>'];
-function SvelteCounter({
-  initial = 0,
-  label = "Svelte counter"
-}) {
-  const ref = A$1(null);
-  y$1(() => {
-    if (!IS_BROWSER || !ref.current) return;
-    let unmount;
-    let cancelled = false;
-    (async () => {
-      const [{
-        mount,
-        unmount: svelteUnmount
-      }, {
-        default: Counter
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/Counter-DyMWHnEF.mjs")]);
-      if (cancelled || !ref.current) return;
-      const instance = mount(Counter, {
-        target: ref.current,
-        props: {
-          initial,
-          label
-        }
-      });
-      unmount = () => svelteUnmount(instance);
-    })();
-    return () => {
-      cancelled = true;
-      unmount?.();
-    };
-  }, [initial, label]);
-  return a$2($$_tpl_1$c, l$2("ref", ref));
-}
-const SvelteCounter$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: SvelteCounter
-}, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$b = ["<span ", ">", "", "<span ", ">", "</span></span>"];
-const $$_tpl_2$6 = ["<span ", " ", " ", " ", ">", "</span>"];
-const $$_tpl_3$4 = ["<span ", " ", ">+", "</span>"];
-const $$_tpl_4$3 = ["<header ", "><div ", "><span ", "></span><div><div ", ">Tok<span ", ">Scrape</span></div><h1 ", ">Dashboard</h1></div></div><div ", '><button type="button" ', ' title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg></button><button type="button" ', ' title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.8l-.1-.1a1.7 1.7 0 0 0-2.8 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"></path></svg></button><button type="button" ', ' title="Profile" aria-label="Profile"><span ', ">DN</span></button></div></header>"];
-const $$_tpl_5$2 = ["<div ", " ", '><button type="button" ', " ", "><span ", " ", "></span><span ", "><span ", ">Viewing</span><span ", ">", "", "</span></span><span ", ">▾</span></button>", "</div>"];
-const $$_tpl_6$2 = ["<span ", ">· ", " accounts</span>"];
-const $$_tpl_7$2 = ["<div ", " ", " ", ' role="listbox"><h4>Aggregate</h4><button type="button" ', " ", "><span ", " ", "></span><span ", ">All Accounts</span><span ", ">", " creators</span><span ", ">", "</span></button><h4>Accounts</h4>", "</div>"];
-const $$_tpl_8$2 = ["<button ", ' type="button" ', " ", "><span ", " ", "></span><span ", ">", "</span><span ", ">", "</span><span ", ">", "</span></button>"];
-const $$_tpl_9 = ["<div ", "><div ", "><div ", ">", "</div><div ", "><span ", ">Daily posting streak</span><span ", ">", " days · best ", "</span></div><span ", ' role="img" aria-label="streak">🔥</span></div><div ', ' title="Videos posted this month vs last month"><span ', ">", "</span><span ", '><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">', "</svg></span><span ", " ", ">", "</span><span ", "><strong>This month</strong><br>vs last month</span></div></div>"];
-const $$_tpl_10$1 = ['<path d="M6 15l6-6 6 6"></path>'];
-const $$_tpl_11$1 = ['<path d="M6 9l6 6 6-6"></path>'];
-const $$_tpl_12 = ["<svg ", " ", ' preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient ', ' x1="0" x2="0" y1="0" y2="1"><stop offset="0%" ', ' stop-opacity="0.35"></stop><stop offset="100%" ', ' stop-opacity="0"></stop></linearGradient></defs><path ', " ", "></path><path ", ' fill="none" ', ' stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path></svg>'];
-const $$_tpl_13 = ["<div ", ">", "</div>"];
-const $$_tpl_14 = ["<div ", " ", "><div ", "><span ", ">", "</span>", "</div><div ", ">", "</div><div ", "><span ", ">", "</span> vs prev period</div><div ", ">", "</div></div>"];
-const $$_tpl_15 = ["<span ", "><span ", " ", "></span>", "</span>"];
-const $$_tpl_16 = ["<section ", "><div ", "><h2 ", ">Products <span ", ">by brand</span></h2><div ", ">", "</div></div><div ", "><table ", "><thead><tr><th ", ">#</th><th>Brand</th><th ", ">Accounts</th><th ", ">GMV</th><th ", "># Units</th><th ", ">Commission</th><th ", " ", ">Trend</th></tr></thead><tbody>", "</tbody></table></div></section>"];
-const $$_tpl_17 = ["<tr ", "><td><span ", ">", "</span></td><td><div ", ">", "</div><div ", ">", "</div></td><td>", "</td><td ", ">", "</td><td ", ">", "</td><td ", ">", "</td><td ", "><span ", " ", ">", "</span></td></tr>"];
-const $$_tpl_18 = ["<section ", "><div ", "><h2 ", ">Videos <span ", ">top performing</span></h2><div ", '><button type="button" ', " ", ">View all →</button></div></div><div ", ">", "</div></section>"];
-const $$_tpl_19 = ["<article ", " ", "><div ", "><div ", '></div><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg><div ', ">", "</div></div><div ", "><div ", ">", "", "</div><div ", ">", "</div><div ", "><div><div ", ">GMV</div><div ", ">", "</div></div><div><div ", ">Views</div><div ", ">", "</div></div><div><div ", ">Com.</div><div ", ">", "</div></div></div></div></article>"];
-const $$_tpl_20 = ["<span ", ">🔥 HOT</span>"];
-const $$_tpl_21 = ["<div ", ">", "<div><div ", ">Today&#39;s Power Deal</div><div ", ">", "</div><div ", ">", "</div></div><div ", ">View →</div></div>"];
-const $$_tpl_22 = ["<div ", ">", "<main ", "><div ", ">", "<div ", ">", "</div></div>", "", "", "", "", "<section ", "><div ", "><h2 ", ">Accounts <span ", ">legend</span></h2></div><div ", ">", "</div></section><section ", "><div ", "><h2 ", ">Svelte Island <span ", ">react + svelte side-by-side</span></h2></div>", "</section></main></div>"];
-const $$_tpl_23 = ['<button type="button" ', " ", " ", ">", "</button>"];
-const $$_tpl_24 = ["<span ", " ", "><span ", " ", "></span>", "</span>"];
-const fmtMoney = (n2) => {
-  if (n2 == null || Number.isNaN(n2)) return "—";
-  if (n2 >= 1e3) {
-    return `$${(n2 / 1e3).toLocaleString(void 0, {
-      maximumFractionDigits: 1
-    })}k`;
-  }
-  return `$${Math.round(n2).toLocaleString()}`;
-};
-const fmtMoneyFull = (n2) => `$${Math.round(n2).toLocaleString()}`;
-const fmtInt = (n2) => {
-  if (n2 == null || Number.isNaN(n2)) return "—";
-  if (n2 >= 1e6) {
-    return `${(n2 / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (n2 >= 1e3) return `${(n2 / 1e3).toFixed(1).replace(/\.0$/, "")}K`;
-  return n2.toLocaleString();
-};
-const pct = (n2) => `${n2 >= 0 ? "+" : ""}${Math.round(n2 * 100)}%`;
-function joinCls(...cls) {
-  return cls.filter(Boolean).join(" ");
-}
-function AccountBadges({
-  accountIds,
-  max = 4,
-  size = 24,
-  title: title2
-}) {
-  const shown = accountIds.slice(0, max);
-  const overflow = accountIds.length - shown.length;
-  const names = accountIds.map((id) => acctById(id)?.name).filter(Boolean).join(", ");
-  return a$2($$_tpl_1$b, l$2("class", styles$1.badges), s$2(shown.map((id) => {
-    const a2 = acctById(id);
-    if (!a2) return null;
-    return a$2($$_tpl_2$6, l$2("key", id), l$2("class", styles$1.badge), l$2("style", {
-      background: a2.color,
-      width: size,
-      height: size
-    }), l$2("aria-label", a2.name), s$2(a2.initials));
-  })), s$2(overflow > 0 && a$2($$_tpl_3$4, l$2("class", joinCls(styles$1.badge, styles$1.badgeOverflow)), l$2("style", {
-    width: size,
-    height: size
-  }), s$2(overflow))), l$2("class", styles$1.badgeTip), s$2(title2 || names));
-}
-function Topbar() {
-  return a$2($$_tpl_4$3, l$2("class", styles$1.topbar), l$2("class", styles$1.topbarMain), l$2("class", styles$1.dotBrand), l$2("class", styles$1.brandText), l$2("class", styles$1.brandTextAccent), l$2("class", styles$1.title), l$2("class", styles$1.actions), l$2("class", joinCls(styles$1.btn, styles$1.btnIcon)), l$2("class", joinCls(styles$1.btn, styles$1.btnIcon)), l$2("class", joinCls(styles$1.btn, styles$1.btnIcon)), l$2("class", styles$1.avatar));
-}
-function AccountSelector({
-  selected,
-  onSelect
-}) {
-  const [open2, setOpen] = d$1(false);
-  const ref = A$1(null);
-  y$1(() => {
-    function handler2(e2) {
-      if (ref.current && !ref.current.contains(e2.target)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("click", handler2);
-    return () => document.removeEventListener("click", handler2);
-  }, []);
-  const current = selected === "__all" ? ALL_ACCOUNT : acctById(selected) ?? ALL_ACCOUNT;
-  return a$2($$_tpl_5$2, l$2("class", joinCls(styles$1.acctSelect, open2 && styles$1.open)), l$2("ref", ref), l$2("class", styles$1.acctTrigger), l$2("onclick", () => setOpen((v2) => !v2)), l$2("class", styles$1.acctDot), l$2("style", {
-    background: current.color
-  }), l$2("class", styles$1.acctTriggerLabel), l$2("class", styles$1.acctTriggerK), l$2("class", styles$1.acctTriggerV), s$2(current.name), s$2(selected === "__all" && a$2($$_tpl_6$2, l$2("style", {
-    color: "var(--muted-foreground)",
-    fontWeight: 500,
-    fontSize: 12
-  }), s$2(ACCOUNTS.length))), l$2("class", styles$1.acctCaret), s$2(open2 && a$2($$_tpl_7$2, l$2("class", styles$1.acctPanel), l$2("onclick", (e2) => e2.stopPropagation()), l$2("onkeydown", (e2) => {
-    if (e2.key === "Escape") setOpen(false);
-  }), l$2("class", joinCls(styles$1.acctRow, selected === "__all" && styles$1.acctRowActive)), l$2("onclick", () => {
-    onSelect("__all");
-    setOpen(false);
-  }), l$2("class", styles$1.acctDot), l$2("style", {
-    background: ALL_ACCOUNT.color
-  }), l$2("class", styles$1.acctRowName), l$2("class", styles$1.acctRowHandle), s$2(ACCOUNTS.length), l$2("class", styles$1.acctCheck), s$2(selected === "__all" ? "✓" : ""), s$2(ACCOUNTS.map((a2) => a$2($$_tpl_8$2, l$2("key", a2.id), l$2("class", joinCls(styles$1.acctRow, selected === a2.id && styles$1.acctRowActive)), l$2("onclick", () => {
-    onSelect(a2.id);
-    setOpen(false);
-  }), l$2("class", styles$1.acctDot), l$2("style", {
-    background: a2.color
-  }), l$2("class", styles$1.acctRowName), s$2(a2.name), l$2("class", styles$1.acctRowHandle), s$2(a2.handle), l$2("class", styles$1.acctCheck), s$2(selected === a2.id ? "✓" : "")))))));
-}
-function StreakRow() {
-  const up = MONTH_COMPARE.thisMonth > MONTH_COMPARE.prevMonth;
-  return a$2($$_tpl_9, l$2("class", styles$1.streak), l$2("class", styles$1.streakCard), l$2("class", styles$1.streakNum), s$2(STREAK.days), l$2("class", styles$1.streakMeta), l$2("class", styles$1.streakMetaK), l$2("class", styles$1.streakMetaV), s$2(STREAK.days), s$2(STREAK.bestDays), l$2("class", styles$1.streakFlame), l$2("class", styles$1.trendCard), l$2("class", styles$1.trendNum), s$2(MONTH_COMPARE.thisMonth), l$2("class", joinCls(styles$1.trendArrow, !up && styles$1.trendArrowDown)), s$2(up ? a$2($$_tpl_10$1) : a$2($$_tpl_11$1)), l$2("class", styles$1.trendNum), l$2("style", {
-    opacity: 0.5
-  }), s$2(MONTH_COMPARE.prevMonth), l$2("class", styles$1.trendLabel));
-}
-function Sparkline({
-  data,
-  color = "var(--primary)",
-  gradId
-}) {
-  const w2 = 120;
-  const h2 = 34;
-  const pad = 2;
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const span = max - min || 1;
-  const step = (w2 - pad * 2) / (data.length - 1);
-  const pts = data.map((v2, i2) => [pad + i2 * step, h2 - pad - (v2 - min) / span * (h2 - pad * 2)]);
-  const line = pts.map(([x2, y2], i2) => `${i2 === 0 ? "M" : "L"}${x2.toFixed(1)} ${y2.toFixed(1)}`).join(" ");
-  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)} ${h2 - pad} L${pts[0][0].toFixed(1)} ${h2 - pad} Z`;
-  return a$2($$_tpl_12, l$2("class", styles$1.spark), l$2("viewBox", `0 0 ${w2} ${h2}`), l$2("id", gradId), l$2("stop-color", color), l$2("stop-color", color), l$2("d", area), l$2("fill", `url(#${gradId})`), l$2("d", line), l$2("stroke", color));
-}
-function KpiTiles({
-  kpi: kpi2,
-  scopeColor
-}) {
-  const tiles = [{
-    key: "gmv",
-    label: "GMV",
-    icon: "$",
-    val: fmtMoneyFull(kpi2.gmv.value),
-    delta: kpi2.gmv.delta,
-    spark: kpi2.gmv.spark
-  }, {
-    key: "videos",
-    label: "# Videos",
-    icon: "▶",
-    val: fmtInt(kpi2.videos.value),
-    delta: kpi2.videos.delta,
-    spark: kpi2.videos.spark
-  }, {
-    key: "commission",
-    label: "Commission",
-    icon: "%",
-    val: fmtMoneyFull(kpi2.commission.value),
-    delta: kpi2.commission.delta,
-    spark: kpi2.commission.spark
-  }];
-  return a$2($$_tpl_13, l$2("class", styles$1.kpis), s$2(tiles.map((t2) => a$2($$_tpl_14, l$2("class", styles$1.kpi), l$2("key", t2.key), l$2("class", styles$1.kpiLabel), l$2("class", styles$1.kpiLabelIcon), s$2(t2.icon), s$2(t2.label), l$2("class", styles$1.kpiVal), s$2(t2.val), l$2("class", styles$1.kpiDelta), l$2("class", joinCls(styles$1.delta, t2.delta >= 0 ? styles$1.deltaUp : styles$1.deltaDown)), s$2(pct(t2.delta)), l$2("class", styles$1.kpiSpark), u$2(Sparkline, {
-    data: t2.spark,
-    color: scopeColor,
-    gradId: `spark-${t2.key}`
-  })))));
-}
-function ScopePill({
-  scope
-}) {
-  const s2 = scope === "__all" ? ALL_ACCOUNT : acctById(scope) ?? ALL_ACCOUNT;
-  return a$2($$_tpl_15, l$2("class", styles$1.scopePill), l$2("class", styles$1.acctDot), l$2("style", {
-    background: s2.color
-  }), s$2(s2.name));
-}
-function ProductsTable({
-  products,
-  scope
-}) {
-  return a$2($$_tpl_16, l$2("class", styles$1.section), l$2("class", styles$1.sectionHead), l$2("class", styles$1.sectionTitle), l$2("class", styles$1.pill), l$2("class", styles$1.sectionActions), u$2(ScopePill, {
-    scope
-  }), l$2("style", {
-    overflowX: "auto"
-  }), l$2("class", styles$1.tbl), l$2("style", {
-    width: 32
-  }), l$2("style", {
-    width: 120
-  }), l$2("class", styles$1.num), l$2("class", styles$1.num), l$2("class", styles$1.num), l$2("class", styles$1.num), l$2("style", {
-    width: 70
-  }), s$2(products.map((p2, i2) => a$2($$_tpl_17, l$2("key", p2.id), l$2("class", joinCls(styles$1.rank, i2 < 3 && styles$1.gold)), s$2(i2 + 1), l$2("class", styles$1.brand), s$2(p2.brand), l$2("class", styles$1.sub), s$2(p2.category), u$2(AccountBadges, {
-    accountIds: p2.accounts
-  }), l$2("class", joinCls(styles$1.num, styles$1.money)), s$2(fmtMoneyFull(p2.gmv)), l$2("class", styles$1.num), s$2(p2.units), l$2("class", joinCls(styles$1.num, styles$1.money)), s$2(fmtMoneyFull(p2.commission)), l$2("class", styles$1.num), l$2("class", p2.trend >= 0 ? styles$1.deltaUp : styles$1.deltaDown), l$2("style", {
-    fontWeight: 700
-  }), s$2(pct(p2.trend))))));
-}
-function VideosGrid({
-  videos: videos2
-}) {
-  return a$2($$_tpl_18, l$2("class", styles$1.section), l$2("class", styles$1.sectionHead), l$2("class", styles$1.sectionTitle), l$2("class", styles$1.pill), l$2("class", styles$1.sectionActions), l$2("class", styles$1.btn), l$2("style", {
-    fontSize: 12
-  }), l$2("class", styles$1.videos), s$2(videos2.map((v2) => a$2($$_tpl_19, l$2("class", styles$1.video), l$2("key", v2.id), l$2("class", styles$1.videoThumb), l$2("class", styles$1.videoThumbStripes), l$2("class", styles$1.videoBadges), u$2(AccountBadges, {
-    accountIds: v2.accounts,
-    size: 20,
-    max: 3
-  }), l$2("class", styles$1.videoBody), l$2("class", styles$1.videoBrand), s$2(v2.brand), s$2(v2.hot && a$2($$_tpl_20, l$2("class", styles$1.videoHot))), l$2("class", styles$1.videoCaption), s$2(v2.caption), l$2("class", styles$1.videoStats), l$2("class", styles$1.videoStatK), l$2("class", styles$1.videoStatV), s$2(fmtMoney(v2.gmv)), l$2("class", styles$1.videoStatK), l$2("class", styles$1.videoStatV), s$2(fmtInt(v2.views)), l$2("class", styles$1.videoStatK), l$2("class", styles$1.videoStatV), s$2(fmtMoney(v2.commission))))));
-}
-function PowerDeal() {
-  return a$2($$_tpl_21, l$2("class", styles$1.powerDeal), u$2(AccountBadges, {
-    accountIds: POWER_DEAL.accounts,
-    size: 30
-  }), l$2("class", styles$1.powerDealK), l$2("class", styles$1.powerDealTitle), s$2(POWER_DEAL.title), l$2("class", styles$1.powerDealSub), s$2(POWER_DEAL.sub), l$2("class", styles$1.powerDealBadge));
-}
-function MemberDashboardV2() {
-  const [scope, setScope] = d$1("__all");
-  const [period, setPeriod] = d$1("7d");
-  const {
-    kpi: kpi2,
-    products,
-    videos: videos2,
-    scopeColor
-  } = T(() => {
-    if (scope === "__all") {
-      return {
-        kpi: KPI_ALL,
-        products: PRODUCTS,
-        videos: VIDEOS$1,
-        scopeColor: "var(--primary)"
-      };
-    }
-    const a2 = acctById(scope);
-    const alloc = KPI_BY_ACCT[scope] ?? {
-      gmv: 0,
-      videos: 0,
-      commission: 0
-    };
-    const gmvW = alloc.gmv / KPI_ALL.gmv.value;
-    const vidW = alloc.videos / KPI_ALL.videos.value;
-    const comW = alloc.commission / KPI_ALL.commission.value;
-    return {
-      kpi: {
-        gmv: {
-          value: alloc.gmv,
-          delta: 0.14,
-          spark: KPI_ALL.gmv.spark.map((v2) => Math.round(v2 * gmvW * 10) / 10)
-        },
-        videos: {
-          value: alloc.videos,
-          delta: 0.09,
-          spark: KPI_ALL.videos.spark.map((v2) => Math.round(v2 * vidW * 10) / 10)
-        },
-        commission: {
-          value: alloc.commission,
-          delta: 0.17,
-          spark: KPI_ALL.commission.spark.map((v2) => Math.round(v2 * comW * 10) / 10)
-        }
-      },
-      products: PRODUCTS.filter((p2) => p2.accounts.includes(scope)),
-      videos: VIDEOS$1.filter((v2) => v2.accounts.includes(scope)),
-      scopeColor: a2?.color ?? "var(--primary)"
-    };
-  }, [scope]);
-  const periods = ["7d", "30d", "90d", "all"];
-  const periodLabels = {
-    "7d": "7d",
-    "30d": "30d",
-    "90d": "90d",
-    all: "All"
-  };
-  return a$2($$_tpl_22, l$2("class", styles$1.root), u$2(Topbar, null), l$2("class", styles$1.page), l$2("class", styles$1.acctBar), u$2(AccountSelector, {
-    selected: scope,
-    onSelect: setScope
-  }), l$2("class", styles$1.seg), s$2(periods.map((p2) => a$2($$_tpl_23, l$2("key", p2), l$2("class", p2 === period ? styles$1.segActive : void 0), l$2("onclick", () => setPeriod(p2)), s$2(periodLabels[p2])))), u$2(StreakRow, null), u$2(KpiTiles, {
-    kpi: kpi2,
-    scopeColor
-  }), u$2(PowerDeal, null), u$2(ProductsTable, {
-    products,
-    scope
-  }), u$2(VideosGrid, {
-    videos: videos2
-  }), l$2("class", styles$1.section), l$2("class", styles$1.sectionHead), l$2("class", styles$1.sectionTitle), l$2("class", styles$1.pill), l$2("class", styles$1.legend), s$2(ACCOUNTS.map((a2) => a$2($$_tpl_24, l$2("key", a2.id), l$2("class", styles$1.acctChip), l$2("class", styles$1.acctDot), l$2("style", {
-    background: a2.color
-  }), s$2(a2.name)))), l$2("class", styles$1.section), l$2("class", styles$1.sectionHead), l$2("class", styles$1.sectionTitle), l$2("class", styles$1.pill), u$2(SvelteCounter, {
-    initial: 5,
-    label: "Compiled by Svelte 5"
-  }));
-}
-const MemberDashboardV2$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: MemberDashboardV2
-}, Symbol.toStringTag, { value: "Module" }));
-const product = (id, name, metrics) => ({
-  "Product ID": id,
-  "Product name": name,
-  "Product link": `https://shop.tiktok.com/view/product/${id}?source=liveDashboard&region=US`,
-  Metrics: metrics
-});
-const SELLER_LIVE_PAYLOAD = {
-  page: "LIVE Dashboard",
-  shop: "boosteddealsdaily",
-  roomId: "7630167109884611358",
-  duration: "1h1m37s",
-  sessionRange: "Apr 18 11:26:53 - Apr 18 12:28:30 UTC-07:00",
-  scrapedAt: "2026-04-25T08:46:22.109Z",
-  gmv: "1428",
-  sideKpis: {
-    "Items sold": "37",
-    "Viewers": "1.74K"
-  },
-  performance: [{
-    name: "Impressions",
-    value: "21.87K"
-  }, {
-    name: "Views",
-    value: "1.92K"
-  }, {
-    name: "GMV per hour",
-    value: "$13.54"
-  }, {
-    name: "Impressions per hour",
-    value: "21.3K"
-  }, {
-    name: "Show GPM",
-    value: "0.64"
-  }, {
-    name: "Avg. viewing duration per view",
-    value: "11s"
-  }, {
-    name: "Comment rate",
-    value: "0.74%"
-  }, {
-    name: "Follow rate",
-    value: "0.05%"
-  }, {
-    name: "Tap-through rate (via LIVE preview)",
-    value: "0.78%"
-  }, {
-    name: "Tap-through rate",
-    value: "8.79%"
-  }, {
-    name: "LIVE CTR",
-    value: "3.43%"
-  }, {
-    name: "Order rate (SKU orders)",
-    value: "0.05%"
-  }, {
-    name: "Share rate",
-    value: "0.11%"
-  }, {
-    name: "Like rate",
-    value: "26.19%"
-  }, {
-    name: "> 1 min. views",
-    value: "44"
-  }, {
-    name: "GMV Max ROI",
-    value: "7.06"
-  }],
-  trafficSources: [{
-    Channel: "For You feed",
-    GMV: "62%",
-    Impressions: "90.32%",
-    Views: "75.45%"
-  }, {
-    Channel: "LIVE swipe",
-    GMV: "18%",
-    Impressions: "6.08%",
-    Views: "16.91%"
-  }, {
-    Channel: "LIVE preview",
-    GMV: "10%",
-    Impressions: "1.65%",
-    Views: "3.17%"
-  }, {
-    Channel: "Others' video prof…",
-    GMV: "4%",
-    Impressions: "0.12%",
-    Views: "1.32%"
-  }, {
-    Channel: "Video profile taps",
-    GMV: "3%",
-    Impressions: "0.48%",
-    Views: "0.05%"
-  }, {
-    Channel: "LIVE feed",
-    GMV: "2%",
-    Impressions: "1.94%",
-    Views: "2.39%"
-  }, {
-    Channel: "Other",
-    GMV: "1%",
-    Impressions: "0.41%",
-    Views: "0.71%"
-  }],
-  products: [product("1731194857673101831", "Zero Sugar Best Seller Trio — Pre, Post, Probiotic + Apple Cider Vinegar", ["", "1284", "3.21%", "$412.50", "98", "31", "Beauty"]), product("1729718141631565851", "[Dr.Melaxin Official] Calcium Multi Balm Eye Care Routine Korean Skin Care", ["", "812", "2.94%", "$248.18", "60", "22", "Beauty"]), product("1729444047203963674", "EZ BOMBS BirriaBombs 2 Bombs Per Pack — Authentic Mexican Seasoning", ["", "640", "5.16%", "$197.42", "55", "18", "Food"]), product("1731976483732624045", "Micro Ingredients NMN Complex 1,000mg — NAD+ Precursor Supplement", ["", "513", "2.21%", "$152.90", "33", "14", "Wellness"]), product("1729401873273951198", "15 Day Cleanse — Gut and Colon Support, Caffeine Free", ["", "402", "1.84%", "$118.32", "27", "11", "Wellness"]), product("1730812931231298471", "Shilajit Resin Pure Himalayan — Energy & Focus 30g Jar", ["", "356", "2.07%", "$98.71", "21", "9", "Wellness"]), product("1731554912034817233", "Korean Glass Skin Toner Pads — Snail Mucin + Niacinamide", ["", "298", "1.92%", "$74.20", "18", "6", "Beauty"]), product("1729998712309432109", "Magnesium Glycinate 500mg — Sleep + Stress Support", ["", "245", "1.51%", "$58.90", "15", "5", "Wellness"])]
-};
-const seller_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  SELLER_LIVE_PAYLOAD
-}, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$a = ["<div ", ' class="svelte-island-root"></div>'];
-function SellerDashboard({
-  payload = SELLER_LIVE_PAYLOAD
-}) {
-  const ref = A$1(null);
-  y$1(() => {
-    if (!IS_BROWSER || !ref.current) return;
-    let unmount;
-    let cancelled = false;
-    (async () => {
-      const [{
-        mount,
-        unmount: svelteUnmount
-      }, {
-        default: Dashboard
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/SellerDashboard-REhGiHSp.mjs")]);
-      if (cancelled || !ref.current) return;
-      const instance = mount(Dashboard, {
-        target: ref.current,
-        props: {
-          payload
-        }
-      });
-      unmount = () => svelteUnmount(instance);
-    })();
-    return () => {
-      cancelled = true;
-      unmount?.();
-    };
-  }, [payload]);
-  return a$2($$_tpl_1$a, l$2("ref", ref));
-}
-const SellerDashboard$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: SellerDashboard
-}, Symbol.toStringTag, { value: "Module" }));
-const SETTINGS_DATA = {
-  user: {
-    name: "Daniel Nguyen",
-    email: "daniel@easierbycode.com",
-    notificationEmail: "",
-    initials: "DN"
-  },
-  connectedAccounts: [{
-    provider: "google",
-    name: "Google",
-    linked: true
-  }, {
-    provider: "discord",
-    name: "Discord",
-    linked: false
-  }],
-  sessions: [{
-    id: "sess_current",
-    device: "Chrome on macOS",
-    lastActive: "Active now",
-    current: true
-  }, {
-    id: "sess_phone",
-    device: "Safari on iPhone",
-    lastActive: "2 hours ago",
-    current: false
-  }],
-  plan: {
-    name: "LifePreneur Pro",
-    status: "active",
-    price: "$49 / month",
-    renewsOn: "July 13, 2026",
-    features: ["Unlimited product scrapes", "Live + Streamer dashboards", "Premium training content", "Priority support"]
-  }
-};
-const settings_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  SETTINGS_DATA
-}, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$9 = ["<div ", ' class="svelte-island-root"></div>'];
-function Settings({
-  data = SETTINGS_DATA
-}) {
-  const ref = A$1(null);
-  y$1(() => {
-    if (!IS_BROWSER || !ref.current) return;
-    let unmount;
-    let cancelled = false;
-    (async () => {
-      const [{
-        mount,
-        unmount: svelteUnmount
-      }, {
-        default: SettingsComponent
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/Settings-xM7eYnNI.mjs")]);
-      if (cancelled || !ref.current) return;
-      const instance = mount(SettingsComponent, {
-        target: ref.current,
-        props: {
-          data
-        }
-      });
-      unmount = () => svelteUnmount(instance);
-    })();
-    return () => {
-      cancelled = true;
-      unmount?.();
-    };
-  }, [data]);
-  return a$2($$_tpl_1$9, l$2("ref", ref));
-}
-const Settings$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: Settings
-}, Symbol.toStringTag, { value: "Module" }));
-const tile = (name, value, delta2, currency = "") => ({
-  name,
-  value,
-  currency,
-  compareKey: "creatorcompass_video_analysis_vs_last_28d_us",
-  delta: delta2
-});
-const video = (thumb2, title2, posted, duration, metrics) => ({
-  Thumbnail: thumb2,
-  Title: title2,
-  Posted: posted,
-  Duration: duration,
-  Metrics: metrics.map(([name, value]) => ({
-    name,
-    value
-  }))
-});
-const thumb$1 = (hue, label) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 270'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='hsl(${hue},85%,55%)'/><stop offset='100%' stop-color='#1a1916'/></linearGradient></defs><rect width='480' height='270' fill='url(%23g)'/><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' font-family='system-ui' font-size='28' font-weight='700' fill='white'>${label}</text></svg>`)}`;
-const STREAMER_PAYLOAD = {
-  page: "video analysis",
-  dateLabel: "Last 28 days",
-  dateRange: {
-    start: "Mar 01, 2026",
-    end: "Mar 28, 2026"
-  },
-  scrapedAt: "2026-04-26T04:22:20.530Z",
-  metrics: [tile("GMV", "12,847.39", "+18.42%", "$"), tile("Items sold", "412", "+22.10%"), tile("Views", "84,210", "+47.30%"), tile("New followers", "1,309", "+12.65%"), tile("Videos", "23", "+9.52%")],
-  videos: [video(thumb$1(20, "Brainista Yerba"), "Brainista Yerba Magic 5-1 Capsules #tiktokshopcybermonday #tiktokshopblackfriday", "2025/11/18 22:45", "19s", [["GMV", "$1,284.50"], ["Views", "12,431"], ["Items sold", "47"], ["CTR", "3.21%"], ["Completion", "62.40%"], ["New followers", "78"]]), video(thumb$1(40, "Yerba Magic 2"), "Brainista Yerba Magic 5-1 Capsules — quick recipe demo", "2025/11/18 22:44", "18s", [["GMV", "$914.80"], ["Views", "9,210"], ["Items sold", "32"], ["CTR", "2.94%"], ["Completion", "59.10%"], ["New followers", "53"]]), video(thumb$1(330, "Cyber Monday"), "Cyber Monday flash bundle — Brainista Yerba + Shilajit", "2025/11/30 10:12", "27s", [["GMV", "$2,418.90"], ["Views", "21,302"], ["Items sold", "82"], ["CTR", "4.18%"], ["Completion", "71.80%"], ["New followers", "194"]]), video(thumb$1(190, "Shilajit Resin"), "Shilajit Resin pure — energy + focus 30g jar", "2025/12/02 18:30", "22s", [["GMV", "$1,742.00"], ["Views", "16,815"], ["Items sold", "59"], ["CTR", "3.61%"], ["Completion", "65.20%"], ["New followers", "112"]]), video(thumb$1(280, "Cleanse"), "15 Day Cleanse — gut & colon support, caffeine free", "2025/12/05 09:44", "31s", [["GMV", "$1,128.40"], ["Views", "11,924"], ["Items sold", "41"], ["CTR", "2.84%"], ["Completion", "57.30%"], ["New followers", "67"]]), video(thumb$1(60, "NMN Complex"), "Micro Ingredients NMN Complex 1,000mg — NAD+ precursor demo", "2025/12/10 14:21", "24s", [["GMV", "$1,510.20"], ["Views", "13,701"], ["Items sold", "48"], ["CTR", "3.07%"], ["Completion", "60.10%"], ["New followers", "85"]]), video(thumb$1(160, "Korean Toner"), "Korean glass-skin toner pads — snail mucin + niacinamide", "2025/12/14 19:08", "21s", [["GMV", "$842.10"], ["Views", "8,612"], ["Items sold", "29"], ["CTR", "2.41%"], ["Completion", "58.40%"], ["New followers", "44"]]), video(thumb$1(220, "Magnesium"), "Magnesium Glycinate 500mg — sleep & stress support", "2025/12/18 21:52", "20s", [["GMV", "$721.80"], ["Views", "7,415"], ["Items sold", "26"], ["CTR", "2.18%"], ["Completion", "55.90%"], ["New followers", "39"]])]
-};
-const streamer_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  STREAMER_PAYLOAD
-}, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$8 = ["<div ", ' class="svelte-island-root"></div>'];
-function StreamerDashboard({
-  payload = STREAMER_PAYLOAD
-}) {
-  const ref = A$1(null);
-  y$1(() => {
-    if (!IS_BROWSER || !ref.current) return;
-    let unmount;
-    let cancelled = false;
-    (async () => {
-      const [{
-        mount,
-        unmount: svelteUnmount
-      }, {
-        default: Dashboard
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/StreamerDashboard-r4U0VZvZ.mjs")]);
-      if (cancelled || !ref.current) return;
-      const instance = mount(Dashboard, {
-        target: ref.current,
-        props: {
-          payload
-        }
-      });
-      unmount = () => svelteUnmount(instance);
-    })();
-    return () => {
-      cancelled = true;
-      unmount?.();
-    };
-  }, [payload]);
-  return a$2($$_tpl_1$8, l$2("ref", ref));
-}
-const StreamerDashboard$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: StreamerDashboard
-}, Symbol.toStringTag, { value: "Module" }));
-const VIDEO_CATEGORIES = ["Getting Started", "Advanced Strategies", "Case Studies", "Tools & Resources"];
-const placeholder = (text) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23f54e00'/><stop offset='100%' stop-color='%231a1916'/></linearGradient></defs><rect width='320' height='180' fill='url(%23g)'/><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' font-family='system-ui' font-size='18' fill='white'>${text}</text></svg>`)}`;
-const VIDEOS = [{
-  id: "v1",
-  title: "TikTok Shop Affiliate 101",
-  thumbnail: placeholder("Affiliate 101"),
-  duration: "12:30",
-  views: 3421,
-  category: "Getting Started",
-  description: "Set up your seller profile and choose your first ten product picks.",
-  isMock: true
-}, {
-  id: "v2",
-  title: "Picking Winning Products",
-  thumbnail: placeholder("Winning Products"),
-  duration: "08:14",
-  views: 5210,
-  category: "Getting Started",
-  description: "Filters, momentum signals, and red flags to avoid.",
-  isMock: true
-}, {
-  id: "v3",
-  title: "Hooks That Convert",
-  thumbnail: placeholder("Hooks"),
-  duration: "15:02",
-  views: 8920,
-  category: "Advanced Strategies",
-  description: "Three hook archetypes that consistently land in TikTok ads.",
-  isMock: true
-}, {
-  id: "v4",
-  title: "Scaling From $1K to $10K/Day",
-  thumbnail: placeholder("Scaling"),
-  duration: "22:48",
-  views: 14302,
-  category: "Advanced Strategies",
-  description: "How to push spend without losing CTR or ROAS.",
-  isMock: true
-}, {
-  id: "v5",
-  title: "$100K Beauty Drop",
-  thumbnail: placeholder("Beauty Drop"),
-  duration: "11:55",
-  views: 6411,
-  category: "Case Studies",
-  description: "Behind-the-scenes of the spring beauty launch.",
-  isMock: true
-}, {
-  id: "v6",
-  title: "Cold Start Postmortem",
-  thumbnail: placeholder("Cold Start"),
-  duration: "18:20",
-  views: 4280,
-  category: "Case Studies",
-  description: "What we learned from a brand new account in week one.",
-  isMock: true
-}, {
-  id: "v7",
-  title: "The Creator Stack We Use",
-  thumbnail: placeholder("Creator Stack"),
-  duration: "09:12",
-  views: 2901,
-  category: "Tools & Resources",
-  description: "Tools for editing, scheduling, and analytics.",
-  isMock: true
-}, {
-  id: "v8",
-  title: "Spreadsheet Templates",
-  thumbnail: placeholder("Templates"),
-  duration: "06:48",
-  views: 1822,
-  category: "Tools & Resources",
-  description: "Plug-and-play sheets for tracking GMV and commission.",
-  isMock: true
-}];
-const video_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
   VIDEOS,
-  VIDEO_CATEGORIES
-}, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$7 = ['<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>'];
-const $$_tpl_2$5 = ['<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'];
-const $$_tpl_3$3 = ['<circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon>'];
-const $$_tpl_4$2 = ['<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>'];
-const $$_tpl_5$1 = ['<circle cx="9" cy="7" r="4"></circle><path d="M2 21v-2a4 4 0 0 1 4-4h6"></path><circle cx="18" cy="15" r="3"></circle><path d="M18 10v2"></path><path d="M18 18v2"></path><path d="M22 15h-2"></path><path d="M16 15h-2"></path><path d="m21 12-1.5 1.5"></path><path d="M16.5 16.5 15 18"></path><path d="m21 18-1.5-1.5"></path><path d="M16.5 13.5 15 12"></path>'];
-const $$_tpl_6$1 = ['<path d="m9 18 6-6-6-6"></path>'];
-const $$_tpl_7$1 = ['<path d="m15 18-6-6 6-6"></path>'];
-const $$_tpl_8$1 = ['<polygon points="6 3 20 12 6 21 6 3"></polygon>'];
-const $$_tpl_10 = ['<circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>'];
-const $$_tpl_11 = ['<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'];
-function svgProps(extra) {
-  return {
-    width: 24,
-    height: 24,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    "stroke-width": 2,
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-    "aria-hidden": true,
-    ...extra
-  };
-}
-function LayoutIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_1$7)
-  });
-}
-function UsersIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_2$5)
-  });
-}
-function PlayCircleIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_3$3)
-  });
-}
-function LinkIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_4$2)
-  });
-}
-function UserCog2Icon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_5$1)
-  });
-}
-function ChevronRightIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_6$1)
-  });
-}
-function ChevronLeftIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_7$1)
-  });
-}
-function PlayIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_8$1)
-  });
-}
-function SearchIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_10)
-  });
-}
-function XIcon(props) {
-  return u$2("svg", {
-    ...svgProps(props),
-    children: a$2($$_tpl_11)
-  });
-}
-const searchForm = "_searchForm_19b10_1";
-const searchRow = "_searchRow_19b10_9";
-const searchInputWrap = "_searchInputWrap_19b10_21";
-const searchIcon = "_searchIcon_19b10_33";
-const searchInput = "_searchInput_19b10_21";
-const searchClear = "_searchClear_19b10_93";
-const searchClearIcon = "_searchClearIcon_19b10_127";
-const searchSubmit = "_searchSubmit_19b10_137";
-const searchSummary = "_searchSummary_19b10_179";
-const searchTerm = "_searchTerm_19b10_191";
-const searchClearLink = "_searchClearLink_19b10_201";
-const rows = "_rows_19b10_229";
-const row = "_row_19b10_229";
-const rowTitle = "_rowTitle_19b10_251";
-const rowScrollWrap = "_rowScrollWrap_19b10_279";
-const scrollBtn = "_scrollBtn_19b10_287";
-const scrollBtnLeft = "_scrollBtnLeft_19b10_335";
-const scrollBtnRight = "_scrollBtnRight_19b10_357";
-const scrollBtnInner = "_scrollBtnInner_19b10_379";
-const scrollBtnIcon = "_scrollBtnIcon_19b10_431";
-const cards = "_cards_19b10_443";
-const card = "_card_19b10_443";
-const thumbWrap = "_thumbWrap_19b10_523";
-const thumb = "_thumb_19b10_523";
-const mockBadge = "_mockBadge_19b10_585";
-const durationBadge = "_durationBadge_19b10_609";
-const playOverlay = "_playOverlay_19b10_635";
-const playBtn = "_playBtn_19b10_663";
-const playIcon = "_playIcon_19b10_697";
-const meta = "_meta_19b10_711";
-const cardTitle = "_cardTitle_19b10_721";
-const cardViews = "_cardViews_19b10_741";
-const styles = {
-  searchForm,
-  searchRow,
-  searchInputWrap,
-  searchIcon,
-  searchInput,
-  searchClear,
-  searchClearIcon,
-  searchSubmit,
-  searchSummary,
-  searchTerm,
-  searchClearLink,
-  rows,
-  row,
-  rowTitle,
-  rowScrollWrap,
-  scrollBtn,
-  scrollBtnLeft,
-  scrollBtnRight,
-  scrollBtnInner,
-  scrollBtnIcon,
-  cards,
-  card,
-  thumbWrap,
-  thumb,
-  mockBadge,
-  durationBadge,
-  playOverlay,
-  playBtn,
-  playIcon,
-  meta,
-  cardTitle,
-  cardViews
-};
-const $$_tpl_1$6 = ["<form ", " ", "><div ", "><div ", ">", "<input ", ' type="text" placeholder="Search courses..." ', " ", " ", ">", '</div><button type="submit" ', " ", ">Search</button></div>", "</form><div ", ">", "</div>"];
-const $$_tpl_2$4 = ['<button type="button" ', " ", ' aria-label="Clear search">', "</button>"];
-const $$_tpl_3$2 = ["<p ", ">Showing results for <span ", ">&quot;", '&quot;</span> — <button type="button" ', " ", ">clear</button></p>"];
-const $$_tpl_4$1 = ["<div ", "><h2 ", ">", "</h2><div ", ">", "", "<div ", " ", " ", ">", "</div></div></div>"];
-const $$_tpl_5 = ['<button type="button" ', " ", ' aria-label="Scroll left"><span ', ">", "</span></button>"];
-const $$_tpl_6 = ['<button type="button" ', " ", ' aria-label="Scroll right"><span ', ">", "</span></button>"];
-const $$_tpl_7 = ['<button type="button" ', "><div ", ">", "", "<span ", ">", "</span><span ", "><span ", ">", "</span></span></div><div ", "><h3 ", ">", "</h3><p ", ">", " views</p></div></button>"];
-const $$_tpl_8 = ["<span ", ">MOCK</span>"];
-function StreamingLibrary({
-  initialVideos = VIDEOS
-}) {
-  const [searchQuery, setSearchQuery] = d$1("");
-  const [activeSearch, setActiveSearch] = d$1("");
-  const inputRef = A$1(null);
-  const filtered = T(() => {
-    if (!activeSearch.trim()) return initialVideos;
-    const q2 = activeSearch.trim().toLowerCase();
-    return initialVideos.filter((v2) => v2.title.toLowerCase().includes(q2) || v2.description?.toLowerCase().includes(q2) || v2.category.toLowerCase().includes(q2));
-  }, [initialVideos, activeSearch]);
-  const byCategory = T(() => {
-    const map = {
-      "Getting Started": [],
-      "Advanced Strategies": [],
-      "Case Studies": [],
-      "Tools & Resources": []
-    };
-    for (const v2 of filtered) {
-      if (v2.category in map) {
-        map[v2.category].push(v2);
-      }
-    }
-    return map;
-  }, [filtered]);
-  function handleClear() {
-    setSearchQuery("");
-    setActiveSearch("");
-    inputRef.current?.focus();
-  }
-  return a$2($$_tpl_1$6, l$2("class", styles.searchForm), l$2("onsubmit", (e2) => {
-    e2.preventDefault();
-    setActiveSearch(searchQuery);
-  }), l$2("class", styles.searchRow), l$2("class", styles.searchInputWrap), u$2(SearchIcon, {
-    class: styles.searchIcon
-  }), l$2("ref", inputRef), l$2("value", searchQuery), l$2("oninput", (e2) => setSearchQuery(e2.target.value)), l$2("class", styles.searchInput), s$2(searchQuery && a$2($$_tpl_2$4, l$2("onclick", handleClear), l$2("class", styles.searchClear), u$2(XIcon, {
-    class: styles.searchClearIcon
-  }))), !searchQuery.trim() ? "disabled" : "", l$2("class", styles.searchSubmit), s$2(activeSearch && a$2($$_tpl_3$2, l$2("class", styles.searchSummary), l$2("class", styles.searchTerm), s$2(activeSearch), l$2("onclick", handleClear), l$2("class", styles.searchClearLink))), l$2("class", styles.rows), s$2(VIDEO_CATEGORIES.map((cat) => {
-    const videos2 = byCategory[cat];
-    if (videos2.length === 0) return null;
-    return u$2(VideoRow, {
-      title: cat,
-      videos: videos2
-    }, cat);
-  })));
-}
-function VideoRow({
-  title: title2,
-  videos: videos2
-}) {
-  const scrollRef = A$1(null);
-  const [showLeft, setShowLeft] = d$1(false);
-  const [showRight, setShowRight] = d$1(true);
-  function scroll(direction) {
-    const el = scrollRef.current;
-    if (!el) return;
-    const amount = el.clientWidth * 0.8;
-    el.scrollTo({
-      left: direction === "left" ? el.scrollLeft - amount : el.scrollLeft + amount,
-      behavior: "smooth"
-    });
-  }
-  function handleScroll() {
-    const el = scrollRef.current;
-    if (!el) return;
-    setShowLeft(el.scrollLeft > 0);
-    setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
-  }
-  return a$2($$_tpl_4$1, l$2("class", styles.row), l$2("class", styles.rowTitle), s$2(title2), l$2("class", styles.rowScrollWrap), s$2(showLeft && a$2($$_tpl_5, l$2("onclick", () => scroll("left")), l$2("class", [styles.scrollBtn, styles.scrollBtnLeft].join(" ")), l$2("class", styles.scrollBtnInner), u$2(ChevronLeftIcon, {
-    class: styles.scrollBtnIcon
-  }))), s$2(showRight && a$2($$_tpl_6, l$2("onclick", () => scroll("right")), l$2("class", [styles.scrollBtn, styles.scrollBtnRight].join(" ")), l$2("class", styles.scrollBtnInner), u$2(ChevronRightIcon, {
-    class: styles.scrollBtnIcon
-  }))), l$2("ref", scrollRef), l$2("onscroll", handleScroll), l$2("class", styles.cards), s$2(videos2.map((video2) => u$2(VideoCard, {
-    video: video2
-  }, video2.id))));
-}
-function VideoCard({
-  video: video2
-}) {
-  return a$2($$_tpl_7, l$2("class", styles.card), l$2("class", styles.thumbWrap), u$2("img", {
-    src: video2.thumbnail,
-    alt: video2.title,
-    loading: "lazy",
-    class: styles.thumb
-  }), s$2(video2.isMock && a$2($$_tpl_8, l$2("class", styles.mockBadge))), l$2("class", styles.durationBadge), s$2(video2.duration), l$2("class", styles.playOverlay), l$2("class", styles.playBtn), u$2(PlayIcon, {
-    class: styles.playIcon
-  }), l$2("class", styles.meta), l$2("class", styles.cardTitle), s$2(video2.title), l$2("class", styles.cardViews), s$2(video2.views.toLocaleString()));
-}
-const StreamingLibrary$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: StreamingLibrary
+  acctById
 }, Symbol.toStringTag, { value: "Module" }));
 function normalizePathname(pathname) {
   return "/" + pathname.split("/").filter(Boolean).map(encodeURIComponent).join("/");
@@ -8260,6 +7574,55 @@ const fsRoute_0 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePro
   handler: handler$1,
   handlers: handlers$1
 }, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$6 = ['<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>'];
+const $$_tpl_2$4 = ['<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'];
+const $$_tpl_3$2 = ['<circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon>'];
+const $$_tpl_4$1 = ['<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>'];
+const $$_tpl_5 = ['<circle cx="9" cy="7" r="4"></circle><path d="M2 21v-2a4 4 0 0 1 4-4h6"></path><circle cx="18" cy="15" r="3"></circle><path d="M18 10v2"></path><path d="M18 18v2"></path><path d="M22 15h-2"></path><path d="M16 15h-2"></path><path d="m21 12-1.5 1.5"></path><path d="M16.5 16.5 15 18"></path><path d="m21 18-1.5-1.5"></path><path d="M16.5 13.5 15 12"></path>'];
+function svgProps(extra) {
+  return {
+    width: 24,
+    height: 24,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": 2,
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": true,
+    ...extra
+  };
+}
+function LayoutIcon(props) {
+  return u$2("svg", {
+    ...svgProps(props),
+    children: a$2($$_tpl_1$6)
+  });
+}
+function UsersIcon(props) {
+  return u$2("svg", {
+    ...svgProps(props),
+    children: a$2($$_tpl_2$4)
+  });
+}
+function PlayCircleIcon(props) {
+  return u$2("svg", {
+    ...svgProps(props),
+    children: a$2($$_tpl_3$2)
+  });
+}
+function LinkIcon(props) {
+  return u$2("svg", {
+    ...svgProps(props),
+    children: a$2($$_tpl_4$1)
+  });
+}
+function UserCog2Icon(props) {
+  return u$2("svg", {
+    ...svgProps(props),
+    children: a$2($$_tpl_5)
+  });
+}
 const $$_tpl_1$5 = ['<nav class="lp-bottom-nav" aria-label="Mobile"><div class="lp-bottom-nav__row">', "</div></nav>"];
 const $$_tpl_2$3 = ['<span class="lp-bottom-nav__label">', "</span>"];
 const $$_tpl_3$1 = ['<span class="lp-bottom-nav__indicator" aria-hidden="true"></span>'];
@@ -8445,18 +7808,18 @@ const fsRoute_2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePro
   handler,
   handlers
 }, Symbol.toStringTag, { value: "Module" }));
-const clientEntry = "./assets/client-entry-blrhZwAh.js";
-const version = "f6027bd227092e77c262b26dfed07393e014dcd5";
+const clientEntry = "./assets/client-entry-CM2RyLkS.js";
+const version = "b7c4aaa52f810f6fe54d6c3d2da91d275a0d83e5";
 const islands = /* @__PURE__ */ new Map();
 const islandPreparer = new IslandPreparer();
-islandPreparer.prepare(islands, AffiliateDashboard$1, "/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", "AffiliateDashboard", []);
-islandPreparer.prepare(islands, CommunityHub$1, "/assets/fresh-island__CommunityHub-BVq62wKf.js", "CommunityHub", []);
-islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", "MemberDashboardV2", ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css"]);
-islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-CHRWyE_N.js", "SellerDashboard", []);
-islandPreparer.prepare(islands, Settings$1, "/assets/fresh-island__Settings-CkzKQrhd.js", "Settings", []);
-islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", "StreamerDashboard", []);
-islandPreparer.prepare(islands, StreamingLibrary$1, "/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "StreamingLibrary", ["/assets/fresh-island__StreamingLibrary-CQS91C9B.css"]);
-islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", "SvelteCounter", []);
+islandPreparer.prepare(islands, AffiliateDashboard$1, "/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", "AffiliateDashboard", []);
+islandPreparer.prepare(islands, CommunityHub$1, "/assets/fresh-island__CommunityHub-aSpPsfF3.js", "CommunityHub", []);
+islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-BLeeh300.js", "MemberDashboardV2", []);
+islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-f0yS9jzi.js", "SellerDashboard", []);
+islandPreparer.prepare(islands, Settings$1, "/assets/fresh-island__Settings-BqRAVsxB.js", "Settings", []);
+islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-NUY332x6.js", "StreamerDashboard", []);
+islandPreparer.prepare(islands, StreamingLibrary$1, "/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", "StreamingLibrary", []);
+islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-CUHml4Vz.js", "SvelteCounter", []);
 islandPreparer.prepare(islands, affiliate_data, "/assets/fresh-island__affiliate_data-CYPLxRkB.js", "affiliate_data", []);
 islandPreparer.prepare(islands, community_data, "/assets/fresh-island__community_data-JE0zTdqe.js", "community_data", []);
 islandPreparer.prepare(islands, dashboard_data, "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "dashboard_data", []);
@@ -8465,41 +7828,44 @@ islandPreparer.prepare(islands, settings_data, "/assets/fresh-island__settings_d
 islandPreparer.prepare(islands, streamer_data, "/assets/fresh-island__streamer_data-4sDqHWvM.js", "streamer_data", []);
 islandPreparer.prepare(islands, video_data, "/assets/fresh-island__video_data-D_vsId99.js", "video_data", []);
 const staticFiles = /* @__PURE__ */ new Map([
-  ["/assets/attributes-B3KTS6wW.js", { "name": "/assets/attributes-B3KTS6wW.js", "hash": "f206f3732c054a566224f6797170c9f5e9a7c6df91c4b6ab877f52ccc83b019f", "filePath": "client/assets/attributes-B3KTS6wW.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/attributes-nRW27AGM.js", { "name": "/assets/attributes-nRW27AGM.js", "hash": "5256621eea69daebd6069dcd8b232ba71e3d82a9a5a198e3df3be12e4ca05458", "filePath": "client/assets/attributes-nRW27AGM.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/class-BNyz5uVo.js", { "name": "/assets/class-BNyz5uVo.js", "hash": "f1f0af1e16f6f26d6f5d1587a05662df0664d83db9052619cab4b307f46bf81f", "filePath": "client/assets/class-BNyz5uVo.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/attributes-DIevTI5r.js", { "name": "/assets/attributes-DIevTI5r.js", "hash": "ba7120d11a793ed1f06e834eb85934ffdbf78514cdce5ae36a7e982fff51b833", "filePath": "client/assets/attributes-DIevTI5r.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/attributes-FGaRnBl4.js", { "name": "/assets/attributes-FGaRnBl4.js", "hash": "706290b23cff0f7efec41fec2f9bf96cdb6e4239ab2b636b567db09e34136a3d", "filePath": "client/assets/attributes-FGaRnBl4.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/class-BlHeLkZn.js", { "name": "/assets/class-BlHeLkZn.js", "hash": "6ece9dcb7474aec09b43c0026e6f85d868b7ed581b44de1c8083ec854796b9a5", "filePath": "client/assets/class-BlHeLkZn.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/disclose-version-DsnmJJEf.js", { "name": "/assets/disclose-version-DsnmJJEf.js", "hash": "46cda377122e2fc4f29f307c56e4d6b61c84226e18b5afff348cdd4f92b4bcea", "filePath": "client/assets/disclose-version-DsnmJJEf.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/hooks.module-CYpEODgW.js", { "name": "/assets/hooks.module-CYpEODgW.js", "hash": "2d2b62c32be272d69b518da44f6b079819a4ff26ff9c8147e0f8187e6430efc9", "filePath": "client/assets/hooks.module-CYpEODgW.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/index-client-Ovfc8qDH.js", { "name": "/assets/index-client-Ovfc8qDH.js", "hash": "0e3283a3eeb3f649c6177867eca86a5736552c42b15ef36f8d86416ffaacaa0d", "filePath": "client/assets/index-client-Ovfc8qDH.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/jsxRuntime.module-Tf6DB-up.js", { "name": "/assets/jsxRuntime.module-Tf6DB-up.js", "hash": "7c91716580cfa2deb5baec08ca75fbe33b30052e2115beb202a5feb6c7fcb8a2", "filePath": "client/assets/jsxRuntime.module-Tf6DB-up.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/preload-helper-BXl3LOEh.js", { "name": "/assets/preload-helper-BXl3LOEh.js", "hash": "d887044e7c17fd90344fc4f74f53cac686584daf2a458ab2136d36f1946e9ab6", "filePath": "client/assets/preload-helper-BXl3LOEh.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/props-CGKiXt0D.js", { "name": "/assets/props-CGKiXt0D.js", "hash": "d5353a4016f03a659a7ec3b152f7fcfd29a567e326b086d9215f089f9d59aa4b", "filePath": "client/assets/props-CGKiXt0D.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/shared-CeLQ5b_K.js", { "name": "/assets/shared-CeLQ5b_K.js", "hash": "6f16072bf7e7ff6e17c4fe9b65f1ba4fbf9195e28634da76ba5b08bbda4cf089", "filePath": "client/assets/shared-CeLQ5b_K.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/style-B73YVu7n.js", { "name": "/assets/style-B73YVu7n.js", "hash": "4bc1a4ac65901774be7dfe560bc894612aaa1f0449cc75dea1151bef54ee2abf", "filePath": "client/assets/style-B73YVu7n.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/AffiliateDashboard-BSLBvivf.js", { "name": "/assets/AffiliateDashboard-BSLBvivf.js", "hash": "fe512e02c7d19316bdfd76b0f51cc3ee5699d514f30846621f4299d401bcfb6b", "filePath": "client/assets/AffiliateDashboard-BSLBvivf.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/each-CScPxkyS.js", { "name": "/assets/each-CScPxkyS.js", "hash": "2143a034ea8dcf575511dc8813d18b7e490d2b9ee07af36e0353fef59ce00b3d", "filePath": "client/assets/each-CScPxkyS.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/index-client-CEXvax8p.js", { "name": "/assets/index-client-CEXvax8p.js", "hash": "39ea496ed77edd49a7f2c4b78cfc7c1c2f514e1d974b9353a7ae2a6a7a82e061", "filePath": "client/assets/index-client-CEXvax8p.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/input-VB00M25y.js", { "name": "/assets/input-VB00M25y.js", "hash": "5f7bda1b2eab0761d910f2088e6de6aec3391bc38b4246e28bd0a1af532b1814", "filePath": "client/assets/input-VB00M25y.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/jsxRuntime.module-CkI6F0EC.js", { "name": "/assets/jsxRuntime.module-CkI6F0EC.js", "hash": "988952037380fa2f9c2ac1f85573b1bbc9eadb792be956c40e5bd449d95807a7", "filePath": "client/assets/jsxRuntime.module-CkI6F0EC.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/props-BuYonK9I.js", { "name": "/assets/props-BuYonK9I.js", "hash": "479b4b4e53fb0bff3f84f5c5f914adc97dd8fa8fc16926b2f36369ebbd33688a", "filePath": "client/assets/props-BuYonK9I.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/shared-C7rkmzk3.js", { "name": "/assets/shared-C7rkmzk3.js", "hash": "69f4bb5c67bdb54606fc88ddbc275a795cb7255b345eca067fe22dbfdee3d1e5", "filePath": "client/assets/shared-C7rkmzk3.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/style-IYWitRe3.js", { "name": "/assets/style-IYWitRe3.js", "hash": "7b13731061b5825db57d89abe74cf38b78bdb5c762b51dc3b7ad4effb1ee6dbc", "filePath": "client/assets/style-IYWitRe3.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/this-Dacqbvme.js", { "name": "/assets/this-Dacqbvme.js", "hash": "c7eeb54765534f78c7b3cee7702cc3e3ea1990d0ad9e77af59176eb490affb21", "filePath": "client/assets/this-Dacqbvme.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/AffiliateDashboard-D6yR5Gq4.js", { "name": "/assets/AffiliateDashboard-D6yR5Gq4.js", "hash": "1d9df13ef6418dc101060ead6fbac8d29841015a117f6b3f24e1afd1395622ca", "filePath": "client/assets/AffiliateDashboard-D6yR5Gq4.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/AffiliateDashboard-BhAPSsb2.css", { "name": "/assets/AffiliateDashboard-BhAPSsb2.css", "hash": "300b3385f90dcbec98dab6f9d44ed32d57f475d82a09c0a1ea839666a6123e23", "filePath": "client/assets/AffiliateDashboard-BhAPSsb2.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/CommunityHub-BQr4TQeF.js", { "name": "/assets/CommunityHub-BQr4TQeF.js", "hash": "c929bcdd4212fc48b0fc9c4d3da8390523fc5274e7fb109e4996fded385d9d87", "filePath": "client/assets/CommunityHub-BQr4TQeF.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/CommunityHub-Db8aP0xb.js", { "name": "/assets/CommunityHub-Db8aP0xb.js", "hash": "90f527ff350bbdc006151e6c9f55fe966185903767a2e60dfb658124402c9553", "filePath": "client/assets/CommunityHub-Db8aP0xb.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/CommunityHub-BUK6YNDQ.css", { "name": "/assets/CommunityHub-BUK6YNDQ.css", "hash": "9f3f7b00a49228198001fb02590ccdfbbefbdebd70f5ca0886d65bb996b52024", "filePath": "client/assets/CommunityHub-BUK6YNDQ.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/Counter-DAO_vu_f.js", { "name": "/assets/Counter-DAO_vu_f.js", "hash": "83bc17e99d31137989358b4bc05d5a7e555bb1f85c99a6f4eb9b8b0adaaf6d89", "filePath": "client/assets/Counter-DAO_vu_f.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/Counter-_rk8OS2l.js", { "name": "/assets/Counter-_rk8OS2l.js", "hash": "15b2167021c33b395784dca59d043e42fb9b9d4c418ebe9e57cc608668d2b574", "filePath": "client/assets/Counter-_rk8OS2l.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/Counter-BzMMCu5M.css", { "name": "/assets/Counter-BzMMCu5M.css", "hash": "ac12073838bf12e41e4704641f717da9fd875d0394278153c1232be8465b9b44", "filePath": "client/assets/Counter-BzMMCu5M.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/SellerDashboard-BsHem2U9.js", { "name": "/assets/SellerDashboard-BsHem2U9.js", "hash": "8c073080d561b705e0d82ca21b8307e7e3e6b3018d18def05c23663e7ed1068e", "filePath": "client/assets/SellerDashboard-BsHem2U9.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/MemberDashboardV2-C9m9s28d.js", { "name": "/assets/MemberDashboardV2-C9m9s28d.js", "hash": "9d599720ecf69b90023c943e8fca9bbf99501a90111fd4dd853870dfd8b04606", "filePath": "client/assets/MemberDashboardV2-C9m9s28d.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/MemberDashboardV2-B0j9RAeR.css", { "name": "/assets/MemberDashboardV2-B0j9RAeR.css", "hash": "a18e5f001f7006aeaec4ce9c3208ca625e6b8fae18e85d811d4bb3f3738694bf", "filePath": "client/assets/MemberDashboardV2-B0j9RAeR.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/SellerDashboard-DkFpkXRp.js", { "name": "/assets/SellerDashboard-DkFpkXRp.js", "hash": "55248dc6a630b1bd2f75a5848301ede743c65c0878a541efc57151760f7ef6d9", "filePath": "client/assets/SellerDashboard-DkFpkXRp.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/SellerDashboard-Csa5HYtt.css", { "name": "/assets/SellerDashboard-Csa5HYtt.css", "hash": "2aa9621daa4b44f38fc30e991e7c54633f96d225eabb99753ff60c2bb64d2679", "filePath": "client/assets/SellerDashboard-Csa5HYtt.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/Settings-Co-T5P0R.js", { "name": "/assets/Settings-Co-T5P0R.js", "hash": "e8929ed009d61b3c59cfe730a8021e1932e7c775293a669e2d31196f6aceccba", "filePath": "client/assets/Settings-Co-T5P0R.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/Settings-D-fEewcc.js", { "name": "/assets/Settings-D-fEewcc.js", "hash": "1f5e4554394bb40fbc43598312b01e6e21a844377c4502e2a73a4e52db82581f", "filePath": "client/assets/Settings-D-fEewcc.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/Settings-7h8DXcS_.css", { "name": "/assets/Settings-7h8DXcS_.css", "hash": "f14d73e104a16acaeb0abe3ebe5f2bb695816dfdea8858637cc220776b231070", "filePath": "client/assets/Settings-7h8DXcS_.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/StreamerDashboard-D7gc3JCu.js", { "name": "/assets/StreamerDashboard-D7gc3JCu.js", "hash": "56f22efddca6bb9589e6294220331b8fbe76f15a31000b23cd12ce14f5380beb", "filePath": "client/assets/StreamerDashboard-D7gc3JCu.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/StreamerDashboard-CwphrScA.js", { "name": "/assets/StreamerDashboard-CwphrScA.js", "hash": "d98749f9d62ff5a7e7fbd02419fd05140a031d718a981470181ecea7a0f8eae6", "filePath": "client/assets/StreamerDashboard-CwphrScA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/StreamerDashboard-D51W5TNU.css", { "name": "/assets/StreamerDashboard-D51W5TNU.css", "hash": "b9576974b2e76733295a4bca25ad408ea4d91e49ffb74776fffe0979c2ff66d2", "filePath": "client/assets/StreamerDashboard-D51W5TNU.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/client-entry-blrhZwAh.js", { "name": "/assets/client-entry-blrhZwAh.js", "hash": "361f4bb5dfbef7e5a0810e8389e40c5d893d6d2a11befced1a386267a6e6faee", "filePath": "client/assets/client-entry-blrhZwAh.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/StreamingLibrary-8w0kCgOA.js", { "name": "/assets/StreamingLibrary-8w0kCgOA.js", "hash": "a94b434564235914834c2389f96f41d87dde22a2ef4cfb7e03afedf9ceb3ea2f", "filePath": "client/assets/StreamingLibrary-8w0kCgOA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/StreamingLibrary-uBF5V3AV.css", { "name": "/assets/StreamingLibrary-uBF5V3AV.css", "hash": "86553012152150cb9a26765160705ac796fd22af5fc9c0dc5b1ddfb3466c379f", "filePath": "client/assets/StreamingLibrary-uBF5V3AV.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/client-entry-CM2RyLkS.js", { "name": "/assets/client-entry-CM2RyLkS.js", "hash": "960222d165d350fe282abb6d101624e244c3cc83d0006847e62bf5a0435a57ba", "filePath": "client/assets/client-entry-CM2RyLkS.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/client-entry-C2u1hPs-.css", { "name": "/assets/client-entry-C2u1hPs-.css", "hash": "eaca71e1892e6098ae353e3bb558a66f6be1be4b7bb78d3999c7e4e8ee90dc52", "filePath": "client/assets/client-entry-C2u1hPs-.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", { "name": "/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", "hash": "e640f9e9cea1a3dc278393f651b5c7e7db02f001218320a7047655794cea5eda", "filePath": "client/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__CommunityHub-BVq62wKf.js", { "name": "/assets/fresh-island__CommunityHub-BVq62wKf.js", "hash": "3ae10f772003e335b14e641aea8c1505d5c35acbf8e830c39ed0b242a3f5579c", "filePath": "client/assets/fresh-island__CommunityHub-BVq62wKf.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", { "name": "/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", "hash": "83cdb8e51a307e6106c6dedab907df65dcee65e126b9e9f312a5e89ed733628b", "filePath": "client/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", { "name": "/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", "hash": "ad52e4ad86b16b29a32026aadf284e52fad858d2ce564c5255e517ae1d37296c", "filePath": "client/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SellerDashboard-CHRWyE_N.js", { "name": "/assets/fresh-island__SellerDashboard-CHRWyE_N.js", "hash": "e61bec89c11bee60580e3931f0e9148370026758e6eddc924b846493fe6f59a9", "filePath": "client/assets/fresh-island__SellerDashboard-CHRWyE_N.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__Settings-CkzKQrhd.js", { "name": "/assets/fresh-island__Settings-CkzKQrhd.js", "hash": "cf8434aa24bd11e151240da559eca15b45088378f7f2b8e240496f1eaf173795", "filePath": "client/assets/fresh-island__Settings-CkzKQrhd.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", { "name": "/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", "hash": "25182ed289bb29bfe21b2fc32016e31ee8a2208ab65d39e4127010d6217bf07a", "filePath": "client/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", { "name": "/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "hash": "4e84133b9d7b4dcd9ce1b9c8ffbf5f9ab2b3a4488f50c6413daee7d016bde162", "filePath": "client/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamingLibrary-CQS91C9B.css", { "name": "/assets/fresh-island__StreamingLibrary-CQS91C9B.css", "hash": "ade63d5eba0000a6c29b1e89dbfdca9e49dd131aec77bddcc51b41e7cf1584df", "filePath": "client/assets/fresh-island__StreamingLibrary-CQS91C9B.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", { "name": "/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", "hash": "a3f087249fd14c4250757326bd0add092d6fda4992421378c7f3510029959e74", "filePath": "client/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", { "name": "/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", "hash": "e475d3f2486020d4e82c279c58e404b7811976f85bc7c898abbd525797f25441", "filePath": "client/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__CommunityHub-aSpPsfF3.js", { "name": "/assets/fresh-island__CommunityHub-aSpPsfF3.js", "hash": "6a9c4edf9ceacc2d6733691f496bb5a1a85c158f1b82dc8afeab1cb4259fc735", "filePath": "client/assets/fresh-island__CommunityHub-aSpPsfF3.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__MemberDashboardV2-BLeeh300.js", { "name": "/assets/fresh-island__MemberDashboardV2-BLeeh300.js", "hash": "8b8cf1b7b4f0f0ae9cc50e37ba13ca2dc3a7ab124f0700a68fd7e3db3ab0e1e9", "filePath": "client/assets/fresh-island__MemberDashboardV2-BLeeh300.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SellerDashboard-f0yS9jzi.js", { "name": "/assets/fresh-island__SellerDashboard-f0yS9jzi.js", "hash": "56a559878141340691616553d93875d4b97e053811e254683fdf48639071e340", "filePath": "client/assets/fresh-island__SellerDashboard-f0yS9jzi.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__Settings-BqRAVsxB.js", { "name": "/assets/fresh-island__Settings-BqRAVsxB.js", "hash": "1757206ad3ffbb86ffac7758df767075673aa57583662fc4799e3dc8d24bf74e", "filePath": "client/assets/fresh-island__Settings-BqRAVsxB.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__StreamerDashboard-NUY332x6.js", { "name": "/assets/fresh-island__StreamerDashboard-NUY332x6.js", "hash": "d24d26d88924e41796326726aa2e4f63cac34d0ec06b4d999ed7aeb65c29140b", "filePath": "client/assets/fresh-island__StreamerDashboard-NUY332x6.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", { "name": "/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", "hash": "0466c3c283e8a7f179a79d8680325ee5edc1ac33034edf8fb8318e628f4e3066", "filePath": "client/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SvelteCounter-CUHml4Vz.js", { "name": "/assets/fresh-island__SvelteCounter-CUHml4Vz.js", "hash": "1f83e4fa2d19bff94981d67b245e4b2957838bbe6c772512cce5be3117baf576", "filePath": "client/assets/fresh-island__SvelteCounter-CUHml4Vz.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__affiliate_data-CYPLxRkB.js", { "name": "/assets/fresh-island__affiliate_data-CYPLxRkB.js", "hash": "8c7a72abca537a7e49b9933898ce724720fb0062c82bcf2c450be2d5135c82f6", "filePath": "client/assets/fresh-island__affiliate_data-CYPLxRkB.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__community_data-JE0zTdqe.js", { "name": "/assets/fresh-island__community_data-JE0zTdqe.js", "hash": "e3f9227c5ee0b8d205a2c0bb4e5ff6075f0024ac09755bf77bd0397f740aae55", "filePath": "client/assets/fresh-island__community_data-JE0zTdqe.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__dashboard_data-deSZZ4aA.js", { "name": "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "hash": "277b1f05e67106a8f85467a4ba8f4592fa1a1ad462f497ae6f8aee9b66b13058", "filePath": "client/assets/fresh-island__dashboard_data-deSZZ4aA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
@@ -8566,18 +7932,29 @@ export {
   AffiliateDashboard as A,
   CommunityHub as C,
   Head as H,
+  KPI_ALL as K,
   MemberDashboardV2 as M,
+  POWER_DEAL as P,
   StreamingLibrary as S,
+  VIDEOS as V,
   a$2 as a,
   SellerDashboard as b,
   Settings as c,
   define as d,
   _fresh_server_entry as default,
   StreamerDashboard as e,
-  SELLER_LIVE_PAYLOAD as f,
-  SETTINGS_DATA as g,
-  STREAMER_PAYLOAD as h,
+  MONTH_COMPARE as f,
+  ACCOUNTS as g,
+  STREAK as h,
+  acctById as i,
+  ALL_ACCOUNT as j,
+  PRODUCTS as k,
   l$2 as l,
+  SELLER_LIVE_PAYLOAD as m,
+  SETTINGS_DATA as n,
+  STREAMER_PAYLOAD as o,
+  VIDEOS$1 as p,
+  VIDEO_CATEGORIES as q,
   registerStaticFile,
   s$2 as s,
   u$2 as u

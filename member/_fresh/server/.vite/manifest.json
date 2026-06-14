@@ -21,8 +21,8 @@
     "file": "assets/escaping-ukrAy0Ul.mjs",
     "name": "escaping"
   },
-  "_index-g8GAdKGw.mjs": {
-    "file": "assets/index-g8GAdKGw.mjs",
+  "_index-CFTlFGQt.mjs": {
+    "file": "assets/index-CFTlFGQt.mjs",
     "name": "index",
     "imports": [
       "_escaping-ukrAy0Ul.mjs",
@@ -35,12 +35,12 @@
     "name": "utils"
   },
   "components/AffiliateDashboard.svelte": {
-    "file": "assets/AffiliateDashboard-BqCyKbdM.mjs",
+    "file": "assets/AffiliateDashboard-Dg7LlQ3A.mjs",
     "name": "AffiliateDashboard",
     "src": "components/AffiliateDashboard.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_index-g8GAdKGw.mjs",
+      "_index-CFTlFGQt.mjs",
       "_escaping-ukrAy0Ul.mjs",
       "_utils-C1AuI3vl.mjs",
       "_base64-rR4j1CBY.mjs"
@@ -50,12 +50,12 @@
     ]
   },
   "components/CommunityHub.svelte": {
-    "file": "assets/CommunityHub-BNkHdOcG.mjs",
+    "file": "assets/CommunityHub-oPVg5YyO.mjs",
     "name": "CommunityHub",
     "src": "components/CommunityHub.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_index-g8GAdKGw.mjs",
+      "_index-CFTlFGQt.mjs",
       "_escaping-ukrAy0Ul.mjs",
       "_utils-C1AuI3vl.mjs",
       "_base64-rR4j1CBY.mjs"
@@ -77,13 +77,30 @@
       "assets/Counter-BzMMCu5M.css"
     ]
   },
+  "components/MemberDashboardV2.svelte": {
+    "file": "assets/MemberDashboardV2-t-vfAnrG.mjs",
+    "name": "MemberDashboardV2",
+    "src": "components/MemberDashboardV2.svelte",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-CFTlFGQt.mjs",
+      "fresh:server_entry",
+      "components/Counter.svelte",
+      "_escaping-ukrAy0Ul.mjs",
+      "_utils-C1AuI3vl.mjs",
+      "_base64-rR4j1CBY.mjs"
+    ],
+    "css": [
+      "assets/MemberDashboardV2-B0j9RAeR.css"
+    ]
+  },
   "components/SellerDashboard.svelte": {
-    "file": "assets/SellerDashboard-REhGiHSp.mjs",
+    "file": "assets/SellerDashboard-D89KHagZ.mjs",
     "name": "SellerDashboard",
     "src": "components/SellerDashboard.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_index-g8GAdKGw.mjs",
+      "_index-CFTlFGQt.mjs",
       "_escaping-ukrAy0Ul.mjs",
       "_base64-rR4j1CBY.mjs",
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
@@ -95,12 +112,12 @@
     ]
   },
   "components/Settings.svelte": {
-    "file": "assets/Settings-xM7eYnNI.mjs",
+    "file": "assets/Settings-ks269aVL.mjs",
     "name": "Settings",
     "src": "components/Settings.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_index-g8GAdKGw.mjs",
+      "_index-CFTlFGQt.mjs",
       "fresh:server_entry",
       "_escaping-ukrAy0Ul.mjs",
       "_utils-C1AuI3vl.mjs",
@@ -111,12 +128,12 @@
     ]
   },
   "components/StreamerDashboard.svelte": {
-    "file": "assets/StreamerDashboard-r4U0VZvZ.mjs",
+    "file": "assets/StreamerDashboard-CyZhu48c.mjs",
     "name": "StreamerDashboard",
     "src": "components/StreamerDashboard.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_index-g8GAdKGw.mjs",
+      "_index-CFTlFGQt.mjs",
       "fresh:server_entry",
       "_escaping-ukrAy0Ul.mjs",
       "_utils-C1AuI3vl.mjs",
@@ -124,6 +141,22 @@
     ],
     "css": [
       "assets/StreamerDashboard-D51W5TNU.css"
+    ]
+  },
+  "components/StreamingLibrary.svelte": {
+    "file": "assets/StreamingLibrary-dFoLU8ZR.mjs",
+    "name": "StreamingLibrary",
+    "src": "components/StreamingLibrary.svelte",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index-CFTlFGQt.mjs",
+      "fresh:server_entry",
+      "_escaping-ukrAy0Ul.mjs",
+      "_utils-C1AuI3vl.mjs",
+      "_base64-rR4j1CBY.mjs"
+    ],
+    "css": [
+      "assets/StreamingLibrary-uBF5V3AV.css"
     ]
   },
   "fresh-route::_index": {
@@ -215,13 +248,17 @@
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
       "components/CommunityHub.svelte",
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
-      "components/Counter.svelte",
+      "components/MemberDashboardV2.svelte",
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
       "components/SellerDashboard.svelte",
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
       "components/Settings.svelte",
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
       "components/StreamerDashboard.svelte",
+      "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+      "components/StreamingLibrary.svelte",
+      "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
+      "components/Counter.svelte",
       "fresh-route::_index",
       "fresh-route::_saas_app_affiliate_index",
       "fresh-route::_saas_app_community_index",
@@ -232,7 +269,7 @@
       "fresh-route::_saas_app_streamer_dashboard_index"
     ],
     "css": [
-      "assets/server-entry-B7sbXjey.css"
+      "assets/server-entry-Br029Njw.css"
     ]
   },
   "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js": {
