@@ -1,4 +1,4 @@
-import { d as define, a, u, c as StreamerDashboard, l, H as Head } from "../server-entry.mjs";
+import { d as define, a, u, e as StreamerDashboard, l, H as Head } from "../server-entry.mjs";
 import { P as PageHeader } from "./PageHeader-BB8EE7sm.mjs";
 const $$_tpl_1 = ["", "", "<div ", ">", "</div>"];
 const index = define.page(function StreamerDashboardPage() {

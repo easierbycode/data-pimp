@@ -2829,7 +2829,7 @@ if (typeof exports$1 === "object" && exports$1 !== null && "default" in exports$
   exports$1.default;
 }
 exports$1.__esModule;
-let BUILD_ID = "2fedae1c9e031828bb910e129af92d31c9eed172";
+let BUILD_ID = "f6027bd227092e77c262b26dfed07393e014dcd5";
 const DENO_DEPLOYMENT_ID = void 0;
 function setBuildId(id) {
   BUILD_ID = id;
@@ -6562,6 +6562,185 @@ class IslandPreparer {
     }
   }
 }
+const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1e3).toISOString();
+const AFFILIATE_STATS = {
+  primaryLinkUrl: "https://lifepreneur.com/?via=daniel",
+  visitors: 1284,
+  conversions: 37,
+  commissionsEarned: 2148.5,
+  commissionsPending: 612,
+  commissionsPaid: 1536.5,
+  lastSyncAt: threeHoursAgo
+};
+const affiliate_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  AFFILIATE_STATS
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$e = ["<div ", ' class="svelte-island-root"></div>'];
+function AffiliateDashboard({
+  stats = AFFILIATE_STATS
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Dashboard
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/AffiliateDashboard-BqCyKbdM.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Dashboard, {
+        target: ref.current,
+        props: {
+          stats
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [stats]);
+  return a$2($$_tpl_1$e, l$2("ref", ref));
+}
+const AffiliateDashboard$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: AffiliateDashboard
+}, Symbol.toStringTag, { value: "Module" }));
+const CAN_CONNECT_DISCORD = true;
+const DISCORD_PLATFORM = {
+  id: "discord",
+  name: "Discord",
+  description: "Connect to access exclusive channels, member-only content, and real-time community support.",
+  connected: false,
+  username: null,
+  // Deep-link env vars (NEXT_PUBLIC_DISCORD_*) are not wired here — deferred.
+  url: void 0
+};
+const PLATFORMS = [DISCORD_PLATFORM];
+const announcement = (a2) => a2;
+const ANNOUNCEMENTS = [announcement({
+  id: "ann-welcome",
+  title: "Welcome to the LifePreneur community",
+  content: "You're in! This is mission control for your TikTok Shop journey — training, announcements, and the member Discord all live here. Take a minute to connect Discord and introduce yourself.",
+  fullContent: `You're in! This is mission control for your TikTok Shop journey.
+
+Everything you need is one click away: the Content Library for training, the Seller Dashboard for live GMV, and the member Discord for real-time help from the team and other sellers.
+
+First steps:
+1. Connect your Discord account on the Platforms tab.
+2. Drop an intro in #introductions — tell us your niche and your goal for the next 30 days.
+3. Watch "TikTok Shop Affiliate 101" in the Content Library.
+
+We're glad you're here. Let's build something.`,
+  date: "2026-06-12T15:00:00.000Z",
+  type: "welcome",
+  priority: "normal",
+  author: "LifePreneur Team",
+  read: false
+}), announcement({
+  id: "ann-live-bootcamp",
+  title: "Live Bootcamp: Scaling past $10K/day — this Thursday",
+  content: "Join us Thursday at 1pm ET for a live teardown of three accounts that crossed $10K/day this month. Bring questions — we'll do a 30-minute Q&A at the end.",
+  fullContent: "Join us Thursday at 1:00pm ET for our monthly Live Bootcamp.\n\nThis session is a live teardown of three creator accounts that crossed $10K/day in GMV this month. We'll walk through their hooks, their product mix, and exactly where their spend went.\n\nAgenda:\n- 0:00 — The three accounts at a glance\n- 0:15 — Hook breakdown, frame by frame\n- 0:35 — Spend and ROAS curves\n- 0:50 — Live Q&A\n\nCan't make it live? The replay lands in the Content Library within 24 hours.",
+  date: "2026-06-11T18:30:00.000Z",
+  type: "event",
+  priority: "important",
+  author: "LifePreneur Team",
+  read: false
+}), announcement({
+  id: "ann-dashboard-update",
+  title: "Seller Dashboard now shows per-session traffic mix",
+  content: "We shipped a refresh to the Seller Dashboard: every live session now breaks down GMV, impressions, and views by traffic channel so you can see exactly where your sales come from.",
+  fullContent: "We shipped a refresh to the Seller Dashboard.\n\nEvery live session now includes a traffic-mix breakdown — GMV, impressions, and views split by channel (For You feed, LIVE swipe, LIVE preview, and more). It's the fastest way to see which surfaces are actually driving sales versus just eyeballs.\n\nWe also tuned the performance panel so the most actionable metrics (GPM, tap-through rate, order rate) surface first.\n\nOpen the Seller Dashboard to take it for a spin.",
+  date: "2026-06-09T13:00:00.000Z",
+  type: "update",
+  priority: "normal",
+  author: "LifePreneur Team",
+  read: false
+}), announcement({
+  id: "ann-feature-saved-products",
+  title: "New: Save and tag products straight from the product list",
+  content: "You can now bookmark products and add your own tags right from the Seller Dashboard product list. Build watchlists for restocks, winners, and niches you're testing.",
+  fullContent: "New feature: saved products with custom tags.\n\nFrom any product row in the Seller Dashboard you can now hit Save and attach your own tags. Use it to build watchlists — restock candidates, proven winners, niches you're testing — and filter the list down to just what matters.\n\nSaved products sync across your devices, so the watchlist you build on desktop is there on your phone too.\n\nThis is the first of several quality-of-life features rolling out this month. Tell us what you'd build next in #feature-requests.",
+  date: "2026-06-07T16:45:00.000Z",
+  type: "feature",
+  priority: "normal",
+  author: "LifePreneur Team",
+  read: true
+}), announcement({
+  id: "ann-maintenance",
+  title: "Scheduled maintenance Saturday 2-4am ET",
+  content: "We'll be performing scheduled database maintenance this Saturday from 2:00 to 4:00am ET. The dashboard and Content Library may be briefly unavailable during this window.",
+  fullContent: "Heads up: scheduled maintenance is coming.\n\nThis Saturday from 2:00am to 4:00am ET we'll be performing database maintenance to keep things fast as the community grows.\n\nWhat to expect:\n- The dashboard and Content Library may be briefly unavailable.\n- The member Discord is unaffected and stays online.\n- No action is needed on your end.\n\nWe picked the lowest-traffic window to keep disruption minimal. Thanks for your patience.",
+  date: "2026-06-05T20:00:00.000Z",
+  type: "maintenance",
+  priority: "urgent",
+  author: "LifePreneur Team",
+  read: false
+}), announcement({
+  id: "ann-community-wins",
+  title: "Member wins: $1.2M in combined GMV last month",
+  content: "The community crossed $1.2M in combined GMV in May — a new record. Huge shoutout to everyone grinding. Drop your own win in #wins so we can celebrate it.",
+  fullContent: "Member wins roundup — and a new record.\n\nTogether this community crossed $1.2M in combined GMV in May. That's not us, that's you. Every hook tested, every late-night live, every product swap added up.\n\nA few standouts from #wins:\n- A first-time seller hit their first $1K day in week three.\n- A beauty-niche member 3x'd their ROAS after the hook bootcamp.\n- Two members teamed up on a bundle and sold out their first drop.\n\nGot a win, big or small? Post it in #wins — celebrating each other is half the point.",
+  date: "2026-06-02T14:15:00.000Z",
+  type: "community",
+  priority: "normal",
+  author: "LifePreneur Team",
+  read: true
+})];
+const community_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  ANNOUNCEMENTS,
+  CAN_CONNECT_DISCORD,
+  DISCORD_PLATFORM,
+  PLATFORMS
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$d = ["<div ", ' class="svelte-island-root"></div>'];
+function CommunityHub({
+  canConnectDiscord = CAN_CONNECT_DISCORD,
+  platforms = PLATFORMS,
+  announcements = ANNOUNCEMENTS
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: Hub
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/CommunityHub-BNkHdOcG.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(Hub, {
+        target: ref.current,
+        props: {
+          canConnectDiscord,
+          platforms,
+          announcements
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [canConnectDiscord, platforms, announcements]);
+  return a$2($$_tpl_1$d, l$2("ref", ref));
+}
+const CommunityHub$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: CommunityHub
+}, Symbol.toStringTag, { value: "Module" }));
 const ACCOUNTS = [{
   id: "blackfridaybrian",
   name: "Black Friday Brian",
@@ -6982,7 +7161,7 @@ const styles$1 = {
   deltaUp,
   deltaDown
 };
-const $$_tpl_1$b = ["<div ", ' class="svelte-island-root"></div>'];
+const $$_tpl_1$c = ["<div ", ' class="svelte-island-root"></div>'];
 function SvelteCounter({
   initial = 0,
   label = "Svelte counter"
@@ -7014,13 +7193,13 @@ function SvelteCounter({
       unmount?.();
     };
   }, [initial, label]);
-  return a$2($$_tpl_1$b, l$2("ref", ref));
+  return a$2($$_tpl_1$c, l$2("ref", ref));
 }
 const SvelteCounter$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: SvelteCounter
 }, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$a = ["<span ", ">", "", "<span ", ">", "</span></span>"];
+const $$_tpl_1$b = ["<span ", ">", "", "<span ", ">", "</span></span>"];
 const $$_tpl_2$6 = ["<span ", " ", " ", " ", ">", "</span>"];
 const $$_tpl_3$4 = ["<span ", " ", ">+", "</span>"];
 const $$_tpl_4$3 = ["<header ", "><div ", "><span ", "></span><div><div ", ">Tok<span ", ">Scrape</span></div><h1 ", ">Dashboard</h1></div></div><div ", '><button type="button" ', ' title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg></button><button type="button" ', ' title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.8l-.1-.1a1.7 1.7 0 0 0-2.8 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"></path></svg></button><button type="button" ', ' title="Profile" aria-label="Profile"><span ', ">DN</span></button></div></header>"];
@@ -7075,7 +7254,7 @@ function AccountBadges({
   const shown = accountIds.slice(0, max);
   const overflow = accountIds.length - shown.length;
   const names = accountIds.map((id) => acctById(id)?.name).filter(Boolean).join(", ");
-  return a$2($$_tpl_1$a, l$2("class", styles$1.badges), s$2(shown.map((id) => {
+  return a$2($$_tpl_1$b, l$2("class", styles$1.badges), s$2(shown.map((id) => {
     const a2 = acctById(id);
     if (!a2) return null;
     return a$2($$_tpl_2$6, l$2("key", id), l$2("class", styles$1.badge), l$2("style", {
@@ -7414,7 +7593,7 @@ const seller_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineP
   __proto__: null,
   SELLER_LIVE_PAYLOAD
 }, Symbol.toStringTag, { value: "Module" }));
-const $$_tpl_1$9 = ["<div ", ' class="svelte-island-root"></div>'];
+const $$_tpl_1$a = ["<div ", ' class="svelte-island-root"></div>'];
 function SellerDashboard({
   payload = SELLER_LIVE_PAYLOAD
 }) {
@@ -7429,7 +7608,7 @@ function SellerDashboard({
         unmount: svelteUnmount
       }, {
         default: Dashboard
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/SellerDashboard-dEFSkimk.mjs")]);
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/SellerDashboard-REhGiHSp.mjs")]);
       if (cancelled || !ref.current) return;
       const instance = mount(Dashboard, {
         target: ref.current,
@@ -7444,11 +7623,86 @@ function SellerDashboard({
       unmount?.();
     };
   }, [payload]);
-  return a$2($$_tpl_1$9, l$2("ref", ref));
+  return a$2($$_tpl_1$a, l$2("ref", ref));
 }
 const SellerDashboard$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: SellerDashboard
+}, Symbol.toStringTag, { value: "Module" }));
+const SETTINGS_DATA = {
+  user: {
+    name: "Daniel Nguyen",
+    email: "daniel@easierbycode.com",
+    notificationEmail: "",
+    initials: "DN"
+  },
+  connectedAccounts: [{
+    provider: "google",
+    name: "Google",
+    linked: true
+  }, {
+    provider: "discord",
+    name: "Discord",
+    linked: false
+  }],
+  sessions: [{
+    id: "sess_current",
+    device: "Chrome on macOS",
+    lastActive: "Active now",
+    current: true
+  }, {
+    id: "sess_phone",
+    device: "Safari on iPhone",
+    lastActive: "2 hours ago",
+    current: false
+  }],
+  plan: {
+    name: "LifePreneur Pro",
+    status: "active",
+    price: "$49 / month",
+    renewsOn: "July 13, 2026",
+    features: ["Unlimited product scrapes", "Live + Streamer dashboards", "Premium training content", "Priority support"]
+  }
+};
+const settings_data = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  SETTINGS_DATA
+}, Symbol.toStringTag, { value: "Module" }));
+const $$_tpl_1$9 = ["<div ", ' class="svelte-island-root"></div>'];
+function Settings({
+  data = SETTINGS_DATA
+}) {
+  const ref = A$1(null);
+  y$1(() => {
+    if (!IS_BROWSER || !ref.current) return;
+    let unmount;
+    let cancelled = false;
+    (async () => {
+      const [{
+        mount,
+        unmount: svelteUnmount
+      }, {
+        default: SettingsComponent
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/Settings-xM7eYnNI.mjs")]);
+      if (cancelled || !ref.current) return;
+      const instance = mount(SettingsComponent, {
+        target: ref.current,
+        props: {
+          data
+        }
+      });
+      unmount = () => svelteUnmount(instance);
+    })();
+    return () => {
+      cancelled = true;
+      unmount?.();
+    };
+  }, [data]);
+  return a$2($$_tpl_1$9, l$2("ref", ref));
+}
+const Settings$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: Settings
 }, Symbol.toStringTag, { value: "Module" }));
 const tile = (name, value, delta2, currency = "") => ({
   name,
@@ -7498,7 +7752,7 @@ function StreamerDashboard({
         unmount: svelteUnmount
       }, {
         default: Dashboard
-      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/StreamerDashboard-0l8Skd7N.mjs")]);
+      }] = await Promise.all([import("./assets/index-server-fy-S9KcP.mjs"), import("./assets/StreamerDashboard-r4U0VZvZ.mjs")]);
       if (cancelled || !ref.current) return;
       const instance = mount(Dashboard, {
         target: ref.current,
@@ -8191,44 +8445,66 @@ const fsRoute_2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePro
   handler,
   handlers
 }, Symbol.toStringTag, { value: "Module" }));
-const clientEntry = "./assets/client-entry-BBCcb_di.js";
-const version = "2fedae1c9e031828bb910e129af92d31c9eed172";
+const clientEntry = "./assets/client-entry-blrhZwAh.js";
+const version = "f6027bd227092e77c262b26dfed07393e014dcd5";
 const islands = /* @__PURE__ */ new Map();
 const islandPreparer = new IslandPreparer();
-islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", "MemberDashboardV2", ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css"]);
-islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-BxP_dxAx.js", "SellerDashboard", []);
-islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", "StreamerDashboard", []);
+islandPreparer.prepare(islands, AffiliateDashboard$1, "/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", "AffiliateDashboard", []);
+islandPreparer.prepare(islands, CommunityHub$1, "/assets/fresh-island__CommunityHub-BVq62wKf.js", "CommunityHub", []);
+islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", "MemberDashboardV2", ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css"]);
+islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-CHRWyE_N.js", "SellerDashboard", []);
+islandPreparer.prepare(islands, Settings$1, "/assets/fresh-island__Settings-CkzKQrhd.js", "Settings", []);
+islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", "StreamerDashboard", []);
 islandPreparer.prepare(islands, StreamingLibrary$1, "/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "StreamingLibrary", ["/assets/fresh-island__StreamingLibrary-CQS91C9B.css"]);
-islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-C9VTBA7t.js", "SvelteCounter", []);
+islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", "SvelteCounter", []);
+islandPreparer.prepare(islands, affiliate_data, "/assets/fresh-island__affiliate_data-CYPLxRkB.js", "affiliate_data", []);
+islandPreparer.prepare(islands, community_data, "/assets/fresh-island__community_data-JE0zTdqe.js", "community_data", []);
 islandPreparer.prepare(islands, dashboard_data, "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "dashboard_data", []);
 islandPreparer.prepare(islands, seller_data, "/assets/fresh-island__seller_data-UsZXe03B.js", "seller_data", []);
+islandPreparer.prepare(islands, settings_data, "/assets/fresh-island__settings_data-CdLP20J1.js", "settings_data", []);
 islandPreparer.prepare(islands, streamer_data, "/assets/fresh-island__streamer_data-4sDqHWvM.js", "streamer_data", []);
 islandPreparer.prepare(islands, video_data, "/assets/fresh-island__video_data-D_vsId99.js", "video_data", []);
 const staticFiles = /* @__PURE__ */ new Map([
-  ["/assets/attributes-CtVNZdfv.js", { "name": "/assets/attributes-CtVNZdfv.js", "hash": "98150e771943136d4ffafd7b059673c3ba092369f68318156da6b77dc4af5a92", "filePath": "client/assets/attributes-CtVNZdfv.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/disclose-version-FW-n-9_b.js", { "name": "/assets/disclose-version-FW-n-9_b.js", "hash": "711844014fa8e3ddd613c7179957d5e917f6cbff264a8e554dd2e88773767bd8", "filePath": "client/assets/disclose-version-FW-n-9_b.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/attributes-B3KTS6wW.js", { "name": "/assets/attributes-B3KTS6wW.js", "hash": "f206f3732c054a566224f6797170c9f5e9a7c6df91c4b6ab877f52ccc83b019f", "filePath": "client/assets/attributes-B3KTS6wW.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/attributes-nRW27AGM.js", { "name": "/assets/attributes-nRW27AGM.js", "hash": "5256621eea69daebd6069dcd8b232ba71e3d82a9a5a198e3df3be12e4ca05458", "filePath": "client/assets/attributes-nRW27AGM.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/class-BNyz5uVo.js", { "name": "/assets/class-BNyz5uVo.js", "hash": "f1f0af1e16f6f26d6f5d1587a05662df0664d83db9052619cab4b307f46bf81f", "filePath": "client/assets/class-BNyz5uVo.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/disclose-version-DsnmJJEf.js", { "name": "/assets/disclose-version-DsnmJJEf.js", "hash": "46cda377122e2fc4f29f307c56e4d6b61c84226e18b5afff348cdd4f92b4bcea", "filePath": "client/assets/disclose-version-DsnmJJEf.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/hooks.module-CYpEODgW.js", { "name": "/assets/hooks.module-CYpEODgW.js", "hash": "2d2b62c32be272d69b518da44f6b079819a4ff26ff9c8147e0f8187e6430efc9", "filePath": "client/assets/hooks.module-CYpEODgW.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/index-client-BPj6OXSV.js", { "name": "/assets/index-client-BPj6OXSV.js", "hash": "8999e621ae70c9d1d7720a30a658952e8e8e41e0042a3629c909557e2f3dfe34", "filePath": "client/assets/index-client-BPj6OXSV.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/index-client-Ovfc8qDH.js", { "name": "/assets/index-client-Ovfc8qDH.js", "hash": "0e3283a3eeb3f649c6177867eca86a5736552c42b15ef36f8d86416ffaacaa0d", "filePath": "client/assets/index-client-Ovfc8qDH.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/jsxRuntime.module-Tf6DB-up.js", { "name": "/assets/jsxRuntime.module-Tf6DB-up.js", "hash": "7c91716580cfa2deb5baec08ca75fbe33b30052e2115beb202a5feb6c7fcb8a2", "filePath": "client/assets/jsxRuntime.module-Tf6DB-up.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/preload-helper-BXl3LOEh.js", { "name": "/assets/preload-helper-BXl3LOEh.js", "hash": "d887044e7c17fd90344fc4f74f53cac686584daf2a458ab2136d36f1946e9ab6", "filePath": "client/assets/preload-helper-BXl3LOEh.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/shared-C-u3w8vW.js", { "name": "/assets/shared-C-u3w8vW.js", "hash": "e458003709641835895f8c58f68fb107ddf6265d6fc4f42cab982fd7dfc73c8e", "filePath": "client/assets/shared-C-u3w8vW.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/Counter-BlfzojSA.js", { "name": "/assets/Counter-BlfzojSA.js", "hash": "e61d4b1fd98442b44ce8385968036ee6aa0eb8bae9ab1c62b8fcf165f08d332a", "filePath": "client/assets/Counter-BlfzojSA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/props-CGKiXt0D.js", { "name": "/assets/props-CGKiXt0D.js", "hash": "d5353a4016f03a659a7ec3b152f7fcfd29a567e326b086d9215f089f9d59aa4b", "filePath": "client/assets/props-CGKiXt0D.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/shared-CeLQ5b_K.js", { "name": "/assets/shared-CeLQ5b_K.js", "hash": "6f16072bf7e7ff6e17c4fe9b65f1ba4fbf9195e28634da76ba5b08bbda4cf089", "filePath": "client/assets/shared-CeLQ5b_K.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/style-B73YVu7n.js", { "name": "/assets/style-B73YVu7n.js", "hash": "4bc1a4ac65901774be7dfe560bc894612aaa1f0449cc75dea1151bef54ee2abf", "filePath": "client/assets/style-B73YVu7n.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/AffiliateDashboard-BSLBvivf.js", { "name": "/assets/AffiliateDashboard-BSLBvivf.js", "hash": "fe512e02c7d19316bdfd76b0f51cc3ee5699d514f30846621f4299d401bcfb6b", "filePath": "client/assets/AffiliateDashboard-BSLBvivf.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/AffiliateDashboard-BhAPSsb2.css", { "name": "/assets/AffiliateDashboard-BhAPSsb2.css", "hash": "300b3385f90dcbec98dab6f9d44ed32d57f475d82a09c0a1ea839666a6123e23", "filePath": "client/assets/AffiliateDashboard-BhAPSsb2.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/CommunityHub-BQr4TQeF.js", { "name": "/assets/CommunityHub-BQr4TQeF.js", "hash": "c929bcdd4212fc48b0fc9c4d3da8390523fc5274e7fb109e4996fded385d9d87", "filePath": "client/assets/CommunityHub-BQr4TQeF.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/CommunityHub-BUK6YNDQ.css", { "name": "/assets/CommunityHub-BUK6YNDQ.css", "hash": "9f3f7b00a49228198001fb02590ccdfbbefbdebd70f5ca0886d65bb996b52024", "filePath": "client/assets/CommunityHub-BUK6YNDQ.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/Counter-DAO_vu_f.js", { "name": "/assets/Counter-DAO_vu_f.js", "hash": "83bc17e99d31137989358b4bc05d5a7e555bb1f85c99a6f4eb9b8b0adaaf6d89", "filePath": "client/assets/Counter-DAO_vu_f.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/Counter-BzMMCu5M.css", { "name": "/assets/Counter-BzMMCu5M.css", "hash": "ac12073838bf12e41e4704641f717da9fd875d0394278153c1232be8465b9b44", "filePath": "client/assets/Counter-BzMMCu5M.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/SellerDashboard-Bus7m2qp.js", { "name": "/assets/SellerDashboard-Bus7m2qp.js", "hash": "62356adbff1981afe710b94ae71b71971cd50a9b33f4e5f2128853b84f40681a", "filePath": "client/assets/SellerDashboard-Bus7m2qp.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/SellerDashboard-BsHem2U9.js", { "name": "/assets/SellerDashboard-BsHem2U9.js", "hash": "8c073080d561b705e0d82ca21b8307e7e3e6b3018d18def05c23663e7ed1068e", "filePath": "client/assets/SellerDashboard-BsHem2U9.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/SellerDashboard-Csa5HYtt.css", { "name": "/assets/SellerDashboard-Csa5HYtt.css", "hash": "2aa9621daa4b44f38fc30e991e7c54633f96d225eabb99753ff60c2bb64d2679", "filePath": "client/assets/SellerDashboard-Csa5HYtt.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/StreamerDashboard-h2eZR7NH.js", { "name": "/assets/StreamerDashboard-h2eZR7NH.js", "hash": "2939eed5a16a6e87092b6ac524db9ccdff5dc1d02af3ab8c0ad780a42d9342c7", "filePath": "client/assets/StreamerDashboard-h2eZR7NH.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/Settings-Co-T5P0R.js", { "name": "/assets/Settings-Co-T5P0R.js", "hash": "e8929ed009d61b3c59cfe730a8021e1932e7c775293a669e2d31196f6aceccba", "filePath": "client/assets/Settings-Co-T5P0R.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/Settings-7h8DXcS_.css", { "name": "/assets/Settings-7h8DXcS_.css", "hash": "f14d73e104a16acaeb0abe3ebe5f2bb695816dfdea8858637cc220776b231070", "filePath": "client/assets/Settings-7h8DXcS_.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/StreamerDashboard-D7gc3JCu.js", { "name": "/assets/StreamerDashboard-D7gc3JCu.js", "hash": "56f22efddca6bb9589e6294220331b8fbe76f15a31000b23cd12ce14f5380beb", "filePath": "client/assets/StreamerDashboard-D7gc3JCu.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/StreamerDashboard-D51W5TNU.css", { "name": "/assets/StreamerDashboard-D51W5TNU.css", "hash": "b9576974b2e76733295a4bca25ad408ea4d91e49ffb74776fffe0979c2ff66d2", "filePath": "client/assets/StreamerDashboard-D51W5TNU.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/client-entry-BBCcb_di.js", { "name": "/assets/client-entry-BBCcb_di.js", "hash": "7f8fa30d8632305abd2c435892a613a3b04c1d3495781f366c062abe46632091", "filePath": "client/assets/client-entry-BBCcb_di.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/client-entry-blrhZwAh.js", { "name": "/assets/client-entry-blrhZwAh.js", "hash": "361f4bb5dfbef7e5a0810e8389e40c5d893d6d2a11befced1a386267a6e6faee", "filePath": "client/assets/client-entry-blrhZwAh.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/client-entry-C2u1hPs-.css", { "name": "/assets/client-entry-C2u1hPs-.css", "hash": "eaca71e1892e6098ae353e3bb558a66f6be1be4b7bb78d3999c7e4e8ee90dc52", "filePath": "client/assets/client-entry-C2u1hPs-.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", { "name": "/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", "hash": "95b638908ebd1386cc7dd4faa2a9678f75c8b031be1cf8e7e32692df5a8ffd95", "filePath": "client/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", { "name": "/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", "hash": "e640f9e9cea1a3dc278393f651b5c7e7db02f001218320a7047655794cea5eda", "filePath": "client/assets/fresh-island__AffiliateDashboard-C8NonvYX.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__CommunityHub-BVq62wKf.js", { "name": "/assets/fresh-island__CommunityHub-BVq62wKf.js", "hash": "3ae10f772003e335b14e641aea8c1505d5c35acbf8e830c39ed0b242a3f5579c", "filePath": "client/assets/fresh-island__CommunityHub-BVq62wKf.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", { "name": "/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", "hash": "83cdb8e51a307e6106c6dedab907df65dcee65e126b9e9f312a5e89ed733628b", "filePath": "client/assets/fresh-island__MemberDashboardV2-1kmyD_qK.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", { "name": "/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", "hash": "ad52e4ad86b16b29a32026aadf284e52fad858d2ce564c5255e517ae1d37296c", "filePath": "client/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SellerDashboard-BxP_dxAx.js", { "name": "/assets/fresh-island__SellerDashboard-BxP_dxAx.js", "hash": "b1d9c39307ba49c246ae9fece5f719b9e095e3994a7b7c6cfbcfc6db79a79a8b", "filePath": "client/assets/fresh-island__SellerDashboard-BxP_dxAx.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", { "name": "/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", "hash": "537142d1b498c9a726aa114456cede6716bc9286ba6377548390552aaca154e2", "filePath": "client/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SellerDashboard-CHRWyE_N.js", { "name": "/assets/fresh-island__SellerDashboard-CHRWyE_N.js", "hash": "e61bec89c11bee60580e3931f0e9148370026758e6eddc924b846493fe6f59a9", "filePath": "client/assets/fresh-island__SellerDashboard-CHRWyE_N.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__Settings-CkzKQrhd.js", { "name": "/assets/fresh-island__Settings-CkzKQrhd.js", "hash": "cf8434aa24bd11e151240da559eca15b45088378f7f2b8e240496f1eaf173795", "filePath": "client/assets/fresh-island__Settings-CkzKQrhd.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", { "name": "/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", "hash": "25182ed289bb29bfe21b2fc32016e31ee8a2208ab65d39e4127010d6217bf07a", "filePath": "client/assets/fresh-island__StreamerDashboard-Bh1pT63j.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", { "name": "/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "hash": "4e84133b9d7b4dcd9ce1b9c8ffbf5f9ab2b3a4488f50c6413daee7d016bde162", "filePath": "client/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__StreamingLibrary-CQS91C9B.css", { "name": "/assets/fresh-island__StreamingLibrary-CQS91C9B.css", "hash": "ade63d5eba0000a6c29b1e89dbfdca9e49dd131aec77bddcc51b41e7cf1584df", "filePath": "client/assets/fresh-island__StreamingLibrary-CQS91C9B.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SvelteCounter-C9VTBA7t.js", { "name": "/assets/fresh-island__SvelteCounter-C9VTBA7t.js", "hash": "5546122bbdb06ccbd3db65019da6e09c2bbfc3e15cdd8d3afb32dfefc3f4bc14", "filePath": "client/assets/fresh-island__SvelteCounter-C9VTBA7t.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", { "name": "/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", "hash": "a3f087249fd14c4250757326bd0add092d6fda4992421378c7f3510029959e74", "filePath": "client/assets/fresh-island__SvelteCounter-EF9RqC_Q.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__affiliate_data-CYPLxRkB.js", { "name": "/assets/fresh-island__affiliate_data-CYPLxRkB.js", "hash": "8c7a72abca537a7e49b9933898ce724720fb0062c82bcf2c450be2d5135c82f6", "filePath": "client/assets/fresh-island__affiliate_data-CYPLxRkB.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__community_data-JE0zTdqe.js", { "name": "/assets/fresh-island__community_data-JE0zTdqe.js", "hash": "e3f9227c5ee0b8d205a2c0bb4e5ff6075f0024ac09755bf77bd0397f740aae55", "filePath": "client/assets/fresh-island__community_data-JE0zTdqe.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__dashboard_data-deSZZ4aA.js", { "name": "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "hash": "277b1f05e67106a8f85467a4ba8f4592fa1a1ad462f497ae6f8aee9b66b13058", "filePath": "client/assets/fresh-island__dashboard_data-deSZZ4aA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__seller_data-UsZXe03B.js", { "name": "/assets/fresh-island__seller_data-UsZXe03B.js", "hash": "20f40c29cbb4046d139b102e34867eed2bf6aad53d4a9d15a36644d890350a82", "filePath": "client/assets/fresh-island__seller_data-UsZXe03B.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__settings_data-CdLP20J1.js", { "name": "/assets/fresh-island__settings_data-CdLP20J1.js", "hash": "c4df0c86666d31dcfd3b4a7495dd35d0a48573785340cb3f755c05f524e1a375", "filePath": "client/assets/fresh-island__settings_data-CdLP20J1.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__streamer_data-4sDqHWvM.js", { "name": "/assets/fresh-island__streamer_data-4sDqHWvM.js", "hash": "f1efb1eb0b2e5fe23599257af067f385449c346c6434c36acdba700878f0bac8", "filePath": "client/assets/fresh-island__streamer_data-4sDqHWvM.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__video_data-D_vsId99.js", { "name": "/assets/fresh-island__video_data-D_vsId99.js", "hash": "5b576aac5b22cd571878519da9dcb7873b9c81239c3e5002721496838afac0d9", "filePath": "client/assets/fresh-island__video_data-D_vsId99.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/phaser.esm-BHapV951.js", { "name": "/assets/phaser.esm-BHapV951.js", "hash": "226292f9dc8fb150683aa11693e9dbf4574c5aa053e64c213d7b92c819333e4b", "filePath": "client/assets/phaser.esm-BHapV951.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
@@ -8241,10 +8517,13 @@ const fsRoutes = [
   { id: "/_app", mod: fsRoute_0, type: "app", pattern: "*", routePattern: "*" },
   { id: "/index", mod: () => import("./assets/_fresh-route___index-BBRKcwcT.mjs"), type: "route", pattern: "/", routePattern: "/" },
   { id: "/(saas)/app/_layout", mod: fsRoute_2, type: "layout", pattern: "/(saas)/app", routePattern: "/(saas)/app" },
+  { id: "/(saas)/app/affiliate/index", mod: () => import("./assets/_fresh-route___saas_app_affiliate_index-Cpg9-m9e.mjs"), type: "route", pattern: "/(saas)/app/affiliate/", routePattern: "/app/affiliate" },
+  { id: "/(saas)/app/community/index", mod: () => import("./assets/_fresh-route___saas_app_community_index-BY6y-rWf.mjs"), type: "route", pattern: "/(saas)/app/community/", routePattern: "/app/community" },
   { id: "/(saas)/app/content/index", mod: () => import("./assets/_fresh-route___saas_app_content_index-BMzPliXD.mjs"), type: "route", pattern: "/(saas)/app/content/", routePattern: "/app/content" },
   { id: "/(saas)/app/dashboard/index", mod: () => import("./assets/_fresh-route___saas_app_dashboard_index-CvuqA-qs.mjs"), type: "route", pattern: "/(saas)/app/dashboard/", routePattern: "/app/dashboard" },
   { id: "/(saas)/app/seller-dashboard/index", mod: () => import("./assets/_fresh-route___saas_app_seller_dashboard_index-DmTVYkve.mjs"), type: "route", pattern: "/(saas)/app/seller-dashboard/", routePattern: "/app/seller-dashboard" },
-  { id: "/(saas)/app/streamer-dashboard/index", mod: () => import("./assets/_fresh-route___saas_app_streamer_dashboard_index-CMaHMV_B.mjs"), type: "route", pattern: "/(saas)/app/streamer-dashboard/", routePattern: "/app/streamer-dashboard" }
+  { id: "/(saas)/app/settings/index", mod: () => import("./assets/_fresh-route___saas_app_settings_index-BptBz2Pn.mjs"), type: "route", pattern: "/(saas)/app/settings/", routePattern: "/app/settings" },
+  { id: "/(saas)/app/streamer-dashboard/index", mod: () => import("./assets/_fresh-route___saas_app_streamer_dashboard_index-CyMkpzDV.mjs"), type: "route", pattern: "/(saas)/app/streamer-dashboard/", routePattern: "/app/streamer-dashboard" }
 ];
 const snapshot = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
@@ -8284,16 +8563,20 @@ function registerStaticFile(prepared) {
   });
 }
 export {
+  AffiliateDashboard as A,
+  CommunityHub as C,
   Head as H,
   MemberDashboardV2 as M,
   StreamingLibrary as S,
   a$2 as a,
   SellerDashboard as b,
-  StreamerDashboard as c,
+  Settings as c,
   define as d,
   _fresh_server_entry as default,
-  SELLER_LIVE_PAYLOAD as e,
-  STREAMER_PAYLOAD as f,
+  StreamerDashboard as e,
+  SELLER_LIVE_PAYLOAD as f,
+  SETTINGS_DATA as g,
+  STREAMER_PAYLOAD as h,
   l$2 as l,
   registerStaticFile,
   s$2 as s,

@@ -13,6 +13,29 @@ function attr(name, value, is_boolean = false) {
   const assignment = is_boolean ? `=""` : `="${escape_html(normalized, true)}"`;
   return ` ${name}${assignment}`;
 }
+const whitespace = [..." 	\n\r\f \v\uFEFF"];
+function to_class(value, hash, directives) {
+  var classname = value == null ? "" : "" + value;
+  if (directives) {
+    for (var key of Object.keys(directives)) {
+      if (directives[key]) {
+        classname = classname ? classname + " " + key : key;
+      } else if (classname.length) {
+        var len = key.length;
+        var a = 0;
+        while ((a = classname.indexOf(key, a)) >= 0) {
+          var b = a + len;
+          if ((a === 0 || whitespace.includes(classname[a - 1])) && (b === classname.length || whitespace.includes(classname[b]))) {
+            classname = (a === 0 ? "" : classname.substring(0, a)) + classname.substring(b + 1);
+          } else {
+            a = b;
+          }
+        }
+      }
+    }
+  }
+  return classname === "" ? null : classname;
+}
 function append_styles(styles, important = false) {
   var separator = important ? " !important;" : ";";
   var css = "";
@@ -49,6 +72,10 @@ function to_style(value, styles) {
 function stringify(value) {
   return typeof value === "string" ? value : value == null ? "" : value + "";
 }
+function attr_class(value, hash, directives) {
+  var result = to_class(value, hash, directives);
+  return result ? ` class="${escape_html(result, true)}"` : "";
+}
 function attr_style(value, directives) {
   var result = to_style(value, directives);
   return result ? ` style="${escape_html(result, true)}"` : "";
@@ -71,8 +98,9 @@ function derived(fn) {
   };
 }
 export {
-  attr_style as a,
-  attr as b,
+  attr as a,
+  attr_class as b,
+  attr_style as c,
   derived as d,
   ensure_array_like as e,
   stringify as s

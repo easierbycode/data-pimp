@@ -1,0 +1,1 @@
+const s=new Date(Date.now()-108e5).toISOString(),i={primaryLinkUrl:"https://lifepreneur.com/?via=daniel",visitors:1284,conversions:37,commissionsEarned:2148.5,commissionsPending:612,commissionsPaid:1536.5,lastSyncAt:s};export{i as AFFILIATE_STATS};
