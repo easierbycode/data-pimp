@@ -369,6 +369,115 @@ export async function fetchPriceForSample(
   return { ...sampleFromProduct(enriched, proposed), persistedTo };
 }
 
+export type ProductDetails = {
+  productId: string;
+  name: string | null;
+  price: number;
+  image: string | null;
+  seller: string | null;
+  sourceUrl: string | null;
+};
+
+// Live ScrapeCreators detail lookup by product id, for sibling apps (the sample
+// tracker) whose samples live in Postgres rather than Graylog. Unlike
+// fetchPriceForSample this never requires the product to pre-exist in the
+// Graylog/store dataset -- it falls back to a minimal product built from the id
+// (and optional name) so a brand-new tracker sample can still be enriched.
+// Consumes a ScrapeCreators credit, persists the enrichment best-effort, and
+// returns the resolved name/price/image/seller for the caller to apply.
+export async function lookupProductDetails(
+  productId: string,
+  name?: string,
+): Promise<ProductDetails> {
+  const id = productId.trim();
+  if (!id) throw new Error("productId is required");
+
+  const store = await loadStore();
+  // Reuse a known product when we have one (richer name -> better slug/search),
+  // but a miss is fine: we synthesize the bare minimum the lookup needs.
+  let existing: ProductAnalysis | undefined;
+  try {
+    existing = (await fetchProductsWithStored(1000, store)).find(
+      (item) => item.productId === id,
+    );
+  } catch {
+    // Graylog offline -> proceed with the synthesized product below.
+  }
+
+  const product: ProductAnalysis = existing ?? {
+    productId: id,
+    name: (name || "").trim() || id,
+    priceRange: "",
+    min_sku_original_price: 0,
+    category: "",
+    categoryRank: null,
+    seller: "",
+    creators: 0,
+    liveStreams: 0,
+    videos: 0,
+    gmv: 0,
+    customers: 0,
+    quantity: 0,
+    skuOrders: 0,
+    refunds: 0,
+    unitsRefunded: 0,
+    sampleCount: 0,
+    estimatedRetailValue: 0,
+    lastSeen: null,
+    image: null,
+  };
+
+  const lookup = await fetchScrapeCreatorsPrice(product);
+  if (lookup.price <= 0) {
+    throw new Error("ScrapeCreators returned no usable price");
+  }
+
+  const now = new Date().toISOString();
+  const enriched: ProductAnalysis = {
+    ...product,
+    name: lookup.title || product.name,
+    seller: lookup.seller || product.seller,
+    image: lookup.image ?? product.image ?? null,
+    lastSeen: now,
+  };
+
+  // Persist so the shared catalog learns the real title/image too (mirrors
+  // fetchPriceForSample), but a failed save must not lose what we just paid to
+  // look up -- the details below are returned regardless.
+  store.products[id] = enriched;
+  try {
+    await persistStore(store, {
+      shortMessage: `thirsty product lookup: ${enriched.name}`,
+      fields: {
+        sample_source: "scrapecreators",
+        product_json: scrapeCreatorsProductJson(lookup.product),
+        core_data_json: JSON.stringify({
+          productId: id,
+          name: enriched.name,
+          min_sku_original_price: product.min_sku_original_price,
+          sample_count: enriched.sampleCount,
+          category: enriched.category,
+          seller: enriched.seller,
+          image: enriched.image,
+          estimated_retail_value: enriched.estimatedRetailValue,
+          scrapedAt: now,
+        }),
+      },
+    });
+  } catch {
+    // best-effort persistence; the looked-up details are still returned.
+  }
+
+  return {
+    productId: id,
+    name: enriched.name || null,
+    price: lookup.price,
+    image: enriched.image ?? null,
+    seller: enriched.seller || null,
+    sourceUrl: lookup.sourceUrl || null,
+  };
+}
+
 // Catalog endpoint used by sibling apps (sample tracker, thirsty.store). The
 // local/recovered store keeps serving products even when Graylog is offline.
 export async function listProducts(limit = 100): Promise<ProductAnalysis[]> {
