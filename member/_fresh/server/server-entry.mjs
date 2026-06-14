@@ -2829,7 +2829,7 @@ if (typeof exports$1 === "object" && exports$1 !== null && "default" in exports$
   exports$1.default;
 }
 exports$1.__esModule;
-let BUILD_ID = "b7c4aaa52f810f6fe54d6c3d2da91d275a0d83e5";
+let BUILD_ID = "71f71de7130c5ac3588efd9ebc473f8ae0b9a3f1";
 const DENO_DEPLOYMENT_ID = void 0;
 function setBuildId(id) {
   BUILD_ID = id;
@@ -7808,18 +7808,18 @@ const fsRoute_2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePro
   handler,
   handlers
 }, Symbol.toStringTag, { value: "Module" }));
-const clientEntry = "./assets/client-entry-CM2RyLkS.js";
-const version = "b7c4aaa52f810f6fe54d6c3d2da91d275a0d83e5";
+const clientEntry = "./assets/client-entry-DHIcJVBx.js";
+const version = "71f71de7130c5ac3588efd9ebc473f8ae0b9a3f1";
 const islands = /* @__PURE__ */ new Map();
 const islandPreparer = new IslandPreparer();
-islandPreparer.prepare(islands, AffiliateDashboard$1, "/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", "AffiliateDashboard", []);
-islandPreparer.prepare(islands, CommunityHub$1, "/assets/fresh-island__CommunityHub-aSpPsfF3.js", "CommunityHub", []);
-islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-BLeeh300.js", "MemberDashboardV2", []);
-islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-f0yS9jzi.js", "SellerDashboard", []);
-islandPreparer.prepare(islands, Settings$1, "/assets/fresh-island__Settings-BqRAVsxB.js", "Settings", []);
-islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-NUY332x6.js", "StreamerDashboard", []);
-islandPreparer.prepare(islands, StreamingLibrary$1, "/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", "StreamingLibrary", []);
-islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-CUHml4Vz.js", "SvelteCounter", []);
+islandPreparer.prepare(islands, AffiliateDashboard$1, "/assets/fresh-island__AffiliateDashboard-id_-uGc2.js", "AffiliateDashboard", []);
+islandPreparer.prepare(islands, CommunityHub$1, "/assets/fresh-island__CommunityHub-Dl18CeNZ.js", "CommunityHub", []);
+islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-D6smbaoA.js", "MemberDashboardV2", []);
+islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-CyfW4oxm.js", "SellerDashboard", []);
+islandPreparer.prepare(islands, Settings$1, "/assets/fresh-island__Settings-NByUkeEQ.js", "Settings", []);
+islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-b73UOY37.js", "StreamerDashboard", []);
+islandPreparer.prepare(islands, StreamingLibrary$1, "/assets/fresh-island__StreamingLibrary-Dpnz_C1A.js", "StreamingLibrary", []);
+islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-CFdvTOTM.js", "SvelteCounter", []);
 islandPreparer.prepare(islands, affiliate_data, "/assets/fresh-island__affiliate_data-CYPLxRkB.js", "affiliate_data", []);
 islandPreparer.prepare(islands, community_data, "/assets/fresh-island__community_data-JE0zTdqe.js", "community_data", []);
 islandPreparer.prepare(islands, dashboard_data, "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "dashboard_data", []);
@@ -7835,9 +7835,9 @@ const staticFiles = /* @__PURE__ */ new Map([
   ["/assets/each-CScPxkyS.js", { "name": "/assets/each-CScPxkyS.js", "hash": "2143a034ea8dcf575511dc8813d18b7e490d2b9ee07af36e0353fef59ce00b3d", "filePath": "client/assets/each-CScPxkyS.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/index-client-CEXvax8p.js", { "name": "/assets/index-client-CEXvax8p.js", "hash": "39ea496ed77edd49a7f2c4b78cfc7c1c2f514e1d974b9353a7ae2a6a7a82e061", "filePath": "client/assets/index-client-CEXvax8p.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/input-VB00M25y.js", { "name": "/assets/input-VB00M25y.js", "hash": "5f7bda1b2eab0761d910f2088e6de6aec3391bc38b4246e28bd0a1af532b1814", "filePath": "client/assets/input-VB00M25y.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/jsxRuntime.module-CkI6F0EC.js", { "name": "/assets/jsxRuntime.module-CkI6F0EC.js", "hash": "988952037380fa2f9c2ac1f85573b1bbc9eadb792be956c40e5bd449d95807a7", "filePath": "client/assets/jsxRuntime.module-CkI6F0EC.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/jsxRuntime.module-XUwBK3AC.js", { "name": "/assets/jsxRuntime.module-XUwBK3AC.js", "hash": "f4cc32dcb2cd2c9c0c33df3d0bd0c6717b637803006db7d10bc6f7c692ef9d20", "filePath": "client/assets/jsxRuntime.module-XUwBK3AC.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/props-BuYonK9I.js", { "name": "/assets/props-BuYonK9I.js", "hash": "479b4b4e53fb0bff3f84f5c5f914adc97dd8fa8fc16926b2f36369ebbd33688a", "filePath": "client/assets/props-BuYonK9I.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/shared-C7rkmzk3.js", { "name": "/assets/shared-C7rkmzk3.js", "hash": "69f4bb5c67bdb54606fc88ddbc275a795cb7255b345eca067fe22dbfdee3d1e5", "filePath": "client/assets/shared-C7rkmzk3.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/shared-C1CKXdWL.js", { "name": "/assets/shared-C1CKXdWL.js", "hash": "ab573f9bc091c0d54208cf6a6a1302264cfb7fe422936ef3196cd270e4b6c967", "filePath": "client/assets/shared-C1CKXdWL.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/style-IYWitRe3.js", { "name": "/assets/style-IYWitRe3.js", "hash": "7b13731061b5825db57d89abe74cf38b78bdb5c762b51dc3b7ad4effb1ee6dbc", "filePath": "client/assets/style-IYWitRe3.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/this-Dacqbvme.js", { "name": "/assets/this-Dacqbvme.js", "hash": "c7eeb54765534f78c7b3cee7702cc3e3ea1990d0ad9e77af59176eb490affb21", "filePath": "client/assets/this-Dacqbvme.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/AffiliateDashboard-D6yR5Gq4.js", { "name": "/assets/AffiliateDashboard-D6yR5Gq4.js", "hash": "1d9df13ef6418dc101060ead6fbac8d29841015a117f6b3f24e1afd1395622ca", "filePath": "client/assets/AffiliateDashboard-D6yR5Gq4.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
@@ -7848,7 +7848,7 @@ const staticFiles = /* @__PURE__ */ new Map([
   ["/assets/Counter-BzMMCu5M.css", { "name": "/assets/Counter-BzMMCu5M.css", "hash": "ac12073838bf12e41e4704641f717da9fd875d0394278153c1232be8465b9b44", "filePath": "client/assets/Counter-BzMMCu5M.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
   ["/assets/MemberDashboardV2-C9m9s28d.js", { "name": "/assets/MemberDashboardV2-C9m9s28d.js", "hash": "9d599720ecf69b90023c943e8fca9bbf99501a90111fd4dd853870dfd8b04606", "filePath": "client/assets/MemberDashboardV2-C9m9s28d.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/MemberDashboardV2-B0j9RAeR.css", { "name": "/assets/MemberDashboardV2-B0j9RAeR.css", "hash": "a18e5f001f7006aeaec4ce9c3208ca625e6b8fae18e85d811d4bb3f3738694bf", "filePath": "client/assets/MemberDashboardV2-B0j9RAeR.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/SellerDashboard-DkFpkXRp.js", { "name": "/assets/SellerDashboard-DkFpkXRp.js", "hash": "55248dc6a630b1bd2f75a5848301ede743c65c0878a541efc57151760f7ef6d9", "filePath": "client/assets/SellerDashboard-DkFpkXRp.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/SellerDashboard-CSDYqJwY.js", { "name": "/assets/SellerDashboard-CSDYqJwY.js", "hash": "b7de7b67bc900a5780034949dc2f8888f09761d00237cfc1bf190c5a58a659f8", "filePath": "client/assets/SellerDashboard-CSDYqJwY.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/SellerDashboard-Csa5HYtt.css", { "name": "/assets/SellerDashboard-Csa5HYtt.css", "hash": "2aa9621daa4b44f38fc30e991e7c54633f96d225eabb99753ff60c2bb64d2679", "filePath": "client/assets/SellerDashboard-Csa5HYtt.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
   ["/assets/Settings-D-fEewcc.js", { "name": "/assets/Settings-D-fEewcc.js", "hash": "1f5e4554394bb40fbc43598312b01e6e21a844377c4502e2a73a4e52db82581f", "filePath": "client/assets/Settings-D-fEewcc.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/Settings-7h8DXcS_.css", { "name": "/assets/Settings-7h8DXcS_.css", "hash": "f14d73e104a16acaeb0abe3ebe5f2bb695816dfdea8858637cc220776b231070", "filePath": "client/assets/Settings-7h8DXcS_.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
@@ -7856,16 +7856,16 @@ const staticFiles = /* @__PURE__ */ new Map([
   ["/assets/StreamerDashboard-D51W5TNU.css", { "name": "/assets/StreamerDashboard-D51W5TNU.css", "hash": "b9576974b2e76733295a4bca25ad408ea4d91e49ffb74776fffe0979c2ff66d2", "filePath": "client/assets/StreamerDashboard-D51W5TNU.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
   ["/assets/StreamingLibrary-8w0kCgOA.js", { "name": "/assets/StreamingLibrary-8w0kCgOA.js", "hash": "a94b434564235914834c2389f96f41d87dde22a2ef4cfb7e03afedf9ceb3ea2f", "filePath": "client/assets/StreamingLibrary-8w0kCgOA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/StreamingLibrary-uBF5V3AV.css", { "name": "/assets/StreamingLibrary-uBF5V3AV.css", "hash": "86553012152150cb9a26765160705ac796fd22af5fc9c0dc5b1ddfb3466c379f", "filePath": "client/assets/StreamingLibrary-uBF5V3AV.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/client-entry-CM2RyLkS.js", { "name": "/assets/client-entry-CM2RyLkS.js", "hash": "960222d165d350fe282abb6d101624e244c3cc83d0006847e62bf5a0435a57ba", "filePath": "client/assets/client-entry-CM2RyLkS.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/client-entry-C2u1hPs-.css", { "name": "/assets/client-entry-C2u1hPs-.css", "hash": "eaca71e1892e6098ae353e3bb558a66f6be1be4b7bb78d3999c7e4e8ee90dc52", "filePath": "client/assets/client-entry-C2u1hPs-.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", { "name": "/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", "hash": "e475d3f2486020d4e82c279c58e404b7811976f85bc7c898abbd525797f25441", "filePath": "client/assets/fresh-island__AffiliateDashboard-lksDT8k6.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__CommunityHub-aSpPsfF3.js", { "name": "/assets/fresh-island__CommunityHub-aSpPsfF3.js", "hash": "6a9c4edf9ceacc2d6733691f496bb5a1a85c158f1b82dc8afeab1cb4259fc735", "filePath": "client/assets/fresh-island__CommunityHub-aSpPsfF3.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__MemberDashboardV2-BLeeh300.js", { "name": "/assets/fresh-island__MemberDashboardV2-BLeeh300.js", "hash": "8b8cf1b7b4f0f0ae9cc50e37ba13ca2dc3a7ab124f0700a68fd7e3db3ab0e1e9", "filePath": "client/assets/fresh-island__MemberDashboardV2-BLeeh300.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SellerDashboard-f0yS9jzi.js", { "name": "/assets/fresh-island__SellerDashboard-f0yS9jzi.js", "hash": "56a559878141340691616553d93875d4b97e053811e254683fdf48639071e340", "filePath": "client/assets/fresh-island__SellerDashboard-f0yS9jzi.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__Settings-BqRAVsxB.js", { "name": "/assets/fresh-island__Settings-BqRAVsxB.js", "hash": "1757206ad3ffbb86ffac7758df767075673aa57583662fc4799e3dc8d24bf74e", "filePath": "client/assets/fresh-island__Settings-BqRAVsxB.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamerDashboard-NUY332x6.js", { "name": "/assets/fresh-island__StreamerDashboard-NUY332x6.js", "hash": "d24d26d88924e41796326726aa2e4f63cac34d0ec06b4d999ed7aeb65c29140b", "filePath": "client/assets/fresh-island__StreamerDashboard-NUY332x6.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", { "name": "/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", "hash": "0466c3c283e8a7f179a79d8680325ee5edc1ac33034edf8fb8318e628f4e3066", "filePath": "client/assets/fresh-island__StreamingLibrary-BcWfsDA_.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SvelteCounter-CUHml4Vz.js", { "name": "/assets/fresh-island__SvelteCounter-CUHml4Vz.js", "hash": "1f83e4fa2d19bff94981d67b245e4b2957838bbe6c772512cce5be3117baf576", "filePath": "client/assets/fresh-island__SvelteCounter-CUHml4Vz.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/client-entry-DHIcJVBx.js", { "name": "/assets/client-entry-DHIcJVBx.js", "hash": "5e2e3a40a63d6d35e770b65fc0978dda1a9bf1f284c80d563525e36c290f6a65", "filePath": "client/assets/client-entry-DHIcJVBx.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/client-entry-CwqRxvTx.css", { "name": "/assets/client-entry-CwqRxvTx.css", "hash": "053235c44766c8724371be02b8ecad77cf60ec9a5c50d17b2835f0fe4ac9f206", "filePath": "client/assets/client-entry-CwqRxvTx.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__AffiliateDashboard-id_-uGc2.js", { "name": "/assets/fresh-island__AffiliateDashboard-id_-uGc2.js", "hash": "2a312d663088bcc20cc66652e492bf80e3415926d253964f58e8d8f9708ea9a1", "filePath": "client/assets/fresh-island__AffiliateDashboard-id_-uGc2.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__CommunityHub-Dl18CeNZ.js", { "name": "/assets/fresh-island__CommunityHub-Dl18CeNZ.js", "hash": "8b20a310079c627a0b5093de58b30a578bd02084f5de7d8c02b9b0b4992f4c06", "filePath": "client/assets/fresh-island__CommunityHub-Dl18CeNZ.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__MemberDashboardV2-D6smbaoA.js", { "name": "/assets/fresh-island__MemberDashboardV2-D6smbaoA.js", "hash": "1efee384e31496fc6db8d1f395fcd1fc339af5ee511e46e795e017a068ebb80f", "filePath": "client/assets/fresh-island__MemberDashboardV2-D6smbaoA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SellerDashboard-CyfW4oxm.js", { "name": "/assets/fresh-island__SellerDashboard-CyfW4oxm.js", "hash": "816a9178b451ce7e3160566a4d6a5ad6f569fcfaecaece0c3d0a02a2a20fd8dd", "filePath": "client/assets/fresh-island__SellerDashboard-CyfW4oxm.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__Settings-NByUkeEQ.js", { "name": "/assets/fresh-island__Settings-NByUkeEQ.js", "hash": "b257f4de74f5ded0faa88adacfa2eb3e81e33d3800b682579e37ae56e655b179", "filePath": "client/assets/fresh-island__Settings-NByUkeEQ.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__StreamerDashboard-b73UOY37.js", { "name": "/assets/fresh-island__StreamerDashboard-b73UOY37.js", "hash": "f9309e6109b691d5907283699132d5816255b0a7a014ccd13232e1c2c74a9f70", "filePath": "client/assets/fresh-island__StreamerDashboard-b73UOY37.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__StreamingLibrary-Dpnz_C1A.js", { "name": "/assets/fresh-island__StreamingLibrary-Dpnz_C1A.js", "hash": "e5e73287fcd96287c1cd9e5b09c3f2152466630e20b400da9e4492647dd19fca", "filePath": "client/assets/fresh-island__StreamingLibrary-Dpnz_C1A.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SvelteCounter-CFdvTOTM.js", { "name": "/assets/fresh-island__SvelteCounter-CFdvTOTM.js", "hash": "10353da5a4a1f679522f197bb6f544781620c7db3c7ff383bc8e3c5bb4369d99", "filePath": "client/assets/fresh-island__SvelteCounter-CFdvTOTM.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__affiliate_data-CYPLxRkB.js", { "name": "/assets/fresh-island__affiliate_data-CYPLxRkB.js", "hash": "8c7a72abca537a7e49b9933898ce724720fb0062c82bcf2c450be2d5135c82f6", "filePath": "client/assets/fresh-island__affiliate_data-CYPLxRkB.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__community_data-JE0zTdqe.js", { "name": "/assets/fresh-island__community_data-JE0zTdqe.js", "hash": "e3f9227c5ee0b8d205a2c0bb4e5ff6075f0024ac09755bf77bd0397f740aae55", "filePath": "client/assets/fresh-island__community_data-JE0zTdqe.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__dashboard_data-deSZZ4aA.js", { "name": "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "hash": "277b1f05e67106a8f85467a4ba8f4592fa1a1ad462f497ae6f8aee9b66b13058", "filePath": "client/assets/fresh-island__dashboard_data-deSZZ4aA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
@@ -7878,7 +7878,7 @@ const staticFiles = /* @__PURE__ */ new Map([
   ["/logo.svg", { "name": "/logo.svg", "hash": "75c8bb1c6eece970f5b15487e1356f81d217714d9a42deda7162194a93af3ead", "filePath": "client/logo.svg", "contentType": "image/svg+xml" }],
   ["/lp-logo.png", { "name": "/lp-logo.png", "hash": "3c31574b417b078dd93d75218a1553ac212569060df937e5b6f66f6f0cdc6d24", "filePath": "client/lp-logo.png", "contentType": "image/png" }]
 ]);
-const entryAssets = ["/assets/client-entry-C2u1hPs-.css"];
+const entryAssets = ["/assets/client-entry-CwqRxvTx.css"];
 const fsRoutes = [
   { id: "/_app", mod: fsRoute_0, type: "app", pattern: "*", routePattern: "*" },
   { id: "/index", mod: () => import("./assets/_fresh-route___index-BBRKcwcT.mjs"), type: "route", pattern: "/", routePattern: "/" },
