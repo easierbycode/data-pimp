@@ -12,6 +12,7 @@ import {
   fetchProductWithEdits,
   fetchSampleValuationWithEdits,
   listUnpricedSamples,
+  lookupProductDetails,
   updateSamplePrice,
   upsertSampleProduct,
 } from "./core/samples.ts";
@@ -667,6 +668,26 @@ export async function legacyHandler(req: Request): Promise<Response> {
           .map(sampleRowToKioskProduct)
           .filter((p) => p.productId && p.name);
         return corsJson(limit ? catalog.slice(0, limit) : catalog);
+      }
+
+      // Live ScrapeCreators detail lookup by product id. Consumed cross-origin
+      // by the tracker's "Fetch from API" button (admin.thirsty.store), so it
+      // carries CORS like /api/products. Unlike /api/unpriced-samples/:id/
+      // fetch-price it does not require the product to exist in Graylog -- the
+      // tracker's samples live only in Postgres. A simple GET needs no preflight.
+      const lookupMatch = url.pathname.match(/^\/api\/product-lookup\/([^/]+)$/i);
+      if (lookupMatch) {
+        if (req.method !== "GET") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        const id = decodeURIComponent(lookupMatch[1]);
+        const name = url.searchParams.get("name") || undefined;
+        try {
+          return corsJson(await lookupProductDetails(id, name));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, error: msg }, 502);
+        }
       }
 
       // Product Analysis dashboard endpoints (Graylog-backed; degrade to empty
