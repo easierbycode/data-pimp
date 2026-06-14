@@ -10,6 +10,9 @@
 html,
 body {
   height: 100%;
+  /* Render native UI (scrollbars, form controls) dark to match the member App
+     view; without this the dark page still gets a light default scrollbar. */
+  color-scheme: dark;
 }
 body {
   font-family:
