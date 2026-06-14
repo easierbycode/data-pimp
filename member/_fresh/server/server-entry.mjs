@@ -2829,7 +2829,7 @@ if (typeof exports$1 === "object" && exports$1 !== null && "default" in exports$
   exports$1.default;
 }
 exports$1.__esModule;
-let BUILD_ID = "2fedae1c9e031828bb910e129af92d31c9eed172";
+let BUILD_ID = "f6027bd227092e77c262b26dfed07393e014dcd5";
 const DENO_DEPLOYMENT_ID = void 0;
 function setBuildId(id) {
   BUILD_ID = id;
@@ -8191,15 +8191,15 @@ const fsRoute_2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePro
   handler,
   handlers
 }, Symbol.toStringTag, { value: "Module" }));
-const clientEntry = "./assets/client-entry-BBCcb_di.js";
-const version = "2fedae1c9e031828bb910e129af92d31c9eed172";
+const clientEntry = "./assets/client-entry-BNXQoHTF.js";
+const version = "f6027bd227092e77c262b26dfed07393e014dcd5";
 const islands = /* @__PURE__ */ new Map();
 const islandPreparer = new IslandPreparer();
-islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", "MemberDashboardV2", ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css"]);
-islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-BxP_dxAx.js", "SellerDashboard", []);
-islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", "StreamerDashboard", []);
+islandPreparer.prepare(islands, MemberDashboardV2$1, "/assets/fresh-island__MemberDashboardV2-C6Cq5SFa.js", "MemberDashboardV2", ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css"]);
+islandPreparer.prepare(islands, SellerDashboard$1, "/assets/fresh-island__SellerDashboard-BMCTlW4l.js", "SellerDashboard", []);
+islandPreparer.prepare(islands, StreamerDashboard$1, "/assets/fresh-island__StreamerDashboard-DM6e_COC.js", "StreamerDashboard", []);
 islandPreparer.prepare(islands, StreamingLibrary$1, "/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "StreamingLibrary", ["/assets/fresh-island__StreamingLibrary-CQS91C9B.css"]);
-islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-C9VTBA7t.js", "SvelteCounter", []);
+islandPreparer.prepare(islands, SvelteCounter$1, "/assets/fresh-island__SvelteCounter-4be1iQJT.js", "SvelteCounter", []);
 islandPreparer.prepare(islands, dashboard_data, "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "dashboard_data", []);
 islandPreparer.prepare(islands, seller_data, "/assets/fresh-island__seller_data-UsZXe03B.js", "seller_data", []);
 islandPreparer.prepare(islands, streamer_data, "/assets/fresh-island__streamer_data-4sDqHWvM.js", "streamer_data", []);
@@ -8211,22 +8211,22 @@ const staticFiles = /* @__PURE__ */ new Map([
   ["/assets/index-client-BPj6OXSV.js", { "name": "/assets/index-client-BPj6OXSV.js", "hash": "8999e621ae70c9d1d7720a30a658952e8e8e41e0042a3629c909557e2f3dfe34", "filePath": "client/assets/index-client-BPj6OXSV.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/jsxRuntime.module-Tf6DB-up.js", { "name": "/assets/jsxRuntime.module-Tf6DB-up.js", "hash": "7c91716580cfa2deb5baec08ca75fbe33b30052e2115beb202a5feb6c7fcb8a2", "filePath": "client/assets/jsxRuntime.module-Tf6DB-up.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/preload-helper-BXl3LOEh.js", { "name": "/assets/preload-helper-BXl3LOEh.js", "hash": "d887044e7c17fd90344fc4f74f53cac686584daf2a458ab2136d36f1946e9ab6", "filePath": "client/assets/preload-helper-BXl3LOEh.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/shared-C-u3w8vW.js", { "name": "/assets/shared-C-u3w8vW.js", "hash": "e458003709641835895f8c58f68fb107ddf6265d6fc4f42cab982fd7dfc73c8e", "filePath": "client/assets/shared-C-u3w8vW.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/shared-CeLQ5b_K.js", { "name": "/assets/shared-CeLQ5b_K.js", "hash": "6f16072bf7e7ff6e17c4fe9b65f1ba4fbf9195e28634da76ba5b08bbda4cf089", "filePath": "client/assets/shared-CeLQ5b_K.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/Counter-BlfzojSA.js", { "name": "/assets/Counter-BlfzojSA.js", "hash": "e61d4b1fd98442b44ce8385968036ee6aa0eb8bae9ab1c62b8fcf165f08d332a", "filePath": "client/assets/Counter-BlfzojSA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/Counter-BzMMCu5M.css", { "name": "/assets/Counter-BzMMCu5M.css", "hash": "ac12073838bf12e41e4704641f717da9fd875d0394278153c1232be8465b9b44", "filePath": "client/assets/Counter-BzMMCu5M.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
   ["/assets/SellerDashboard-Bus7m2qp.js", { "name": "/assets/SellerDashboard-Bus7m2qp.js", "hash": "62356adbff1981afe710b94ae71b71971cd50a9b33f4e5f2128853b84f40681a", "filePath": "client/assets/SellerDashboard-Bus7m2qp.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/SellerDashboard-Csa5HYtt.css", { "name": "/assets/SellerDashboard-Csa5HYtt.css", "hash": "2aa9621daa4b44f38fc30e991e7c54633f96d225eabb99753ff60c2bb64d2679", "filePath": "client/assets/SellerDashboard-Csa5HYtt.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
   ["/assets/StreamerDashboard-h2eZR7NH.js", { "name": "/assets/StreamerDashboard-h2eZR7NH.js", "hash": "2939eed5a16a6e87092b6ac524db9ccdff5dc1d02af3ab8c0ad780a42d9342c7", "filePath": "client/assets/StreamerDashboard-h2eZR7NH.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/StreamerDashboard-D51W5TNU.css", { "name": "/assets/StreamerDashboard-D51W5TNU.css", "hash": "b9576974b2e76733295a4bca25ad408ea4d91e49ffb74776fffe0979c2ff66d2", "filePath": "client/assets/StreamerDashboard-D51W5TNU.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/client-entry-BBCcb_di.js", { "name": "/assets/client-entry-BBCcb_di.js", "hash": "7f8fa30d8632305abd2c435892a613a3b04c1d3495781f366c062abe46632091", "filePath": "client/assets/client-entry-BBCcb_di.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/client-entry-C2u1hPs-.css", { "name": "/assets/client-entry-C2u1hPs-.css", "hash": "eaca71e1892e6098ae353e3bb558a66f6be1be4b7bb78d3999c7e4e8ee90dc52", "filePath": "client/assets/client-entry-C2u1hPs-.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", { "name": "/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", "hash": "95b638908ebd1386cc7dd4faa2a9678f75c8b031be1cf8e7e32692df5a8ffd95", "filePath": "client/assets/fresh-island__MemberDashboardV2-TkHkjBQD.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/client-entry-BNXQoHTF.js", { "name": "/assets/client-entry-BNXQoHTF.js", "hash": "361f4bb5dfbef7e5a0810e8389e40c5d893d6d2a11befced1a386267a6e6faee", "filePath": "client/assets/client-entry-BNXQoHTF.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/client-entry-CwqRxvTx.css", { "name": "/assets/client-entry-CwqRxvTx.css", "hash": "053235c44766c8724371be02b8ecad77cf60ec9a5c50d17b2835f0fe4ac9f206", "filePath": "client/assets/client-entry-CwqRxvTx.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__MemberDashboardV2-C6Cq5SFa.js", { "name": "/assets/fresh-island__MemberDashboardV2-C6Cq5SFa.js", "hash": "05b273119ec4490ac27d2eca92c8096eb567e1ec90ffe42fcd61fc04616d544d", "filePath": "client/assets/fresh-island__MemberDashboardV2-C6Cq5SFa.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", { "name": "/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", "hash": "ad52e4ad86b16b29a32026aadf284e52fad858d2ce564c5255e517ae1d37296c", "filePath": "client/assets/fresh-island__MemberDashboardV2-BLjXwRFC.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SellerDashboard-BxP_dxAx.js", { "name": "/assets/fresh-island__SellerDashboard-BxP_dxAx.js", "hash": "b1d9c39307ba49c246ae9fece5f719b9e095e3994a7b7c6cfbcfc6db79a79a8b", "filePath": "client/assets/fresh-island__SellerDashboard-BxP_dxAx.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", { "name": "/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", "hash": "537142d1b498c9a726aa114456cede6716bc9286ba6377548390552aaca154e2", "filePath": "client/assets/fresh-island__StreamerDashboard-BKJbPOx9.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SellerDashboard-BMCTlW4l.js", { "name": "/assets/fresh-island__SellerDashboard-BMCTlW4l.js", "hash": "7cba374ba494a8a494a9899c8724b29f6b1d26f5ee8d9c349a3b946fa24958c2", "filePath": "client/assets/fresh-island__SellerDashboard-BMCTlW4l.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__StreamerDashboard-DM6e_COC.js", { "name": "/assets/fresh-island__StreamerDashboard-DM6e_COC.js", "hash": "43c93e02a02d2a6db9c6cd69de80825a94bfe976779a53a5a132588bf8fce64c", "filePath": "client/assets/fresh-island__StreamerDashboard-DM6e_COC.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", { "name": "/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "hash": "4e84133b9d7b4dcd9ce1b9c8ffbf5f9ab2b3a4488f50c6413daee7d016bde162", "filePath": "client/assets/fresh-island__StreamingLibrary-B82V1Pr7.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__StreamingLibrary-CQS91C9B.css", { "name": "/assets/fresh-island__StreamingLibrary-CQS91C9B.css", "hash": "ade63d5eba0000a6c29b1e89dbfdca9e49dd131aec77bddcc51b41e7cf1584df", "filePath": "client/assets/fresh-island__StreamingLibrary-CQS91C9B.css", "contentType": "text/css; charset=UTF-8", "immutable": true }],
-  ["/assets/fresh-island__SvelteCounter-C9VTBA7t.js", { "name": "/assets/fresh-island__SvelteCounter-C9VTBA7t.js", "hash": "5546122bbdb06ccbd3db65019da6e09c2bbfc3e15cdd8d3afb32dfefc3f4bc14", "filePath": "client/assets/fresh-island__SvelteCounter-C9VTBA7t.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
+  ["/assets/fresh-island__SvelteCounter-4be1iQJT.js", { "name": "/assets/fresh-island__SvelteCounter-4be1iQJT.js", "hash": "7b030518e3e7ab6e3690df9066dacad8dee0d07b4ef75d714115af12fa0b99ff", "filePath": "client/assets/fresh-island__SvelteCounter-4be1iQJT.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__dashboard_data-deSZZ4aA.js", { "name": "/assets/fresh-island__dashboard_data-deSZZ4aA.js", "hash": "277b1f05e67106a8f85467a4ba8f4592fa1a1ad462f497ae6f8aee9b66b13058", "filePath": "client/assets/fresh-island__dashboard_data-deSZZ4aA.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__seller_data-UsZXe03B.js", { "name": "/assets/fresh-island__seller_data-UsZXe03B.js", "hash": "20f40c29cbb4046d139b102e34867eed2bf6aad53d4a9d15a36644d890350a82", "filePath": "client/assets/fresh-island__seller_data-UsZXe03B.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
   ["/assets/fresh-island__streamer_data-4sDqHWvM.js", { "name": "/assets/fresh-island__streamer_data-4sDqHWvM.js", "hash": "f1efb1eb0b2e5fe23599257af067f385449c346c6434c36acdba700878f0bac8", "filePath": "client/assets/fresh-island__streamer_data-4sDqHWvM.js", "contentType": "text/javascript; charset=UTF-8", "immutable": true }],
@@ -8236,7 +8236,7 @@ const staticFiles = /* @__PURE__ */ new Map([
   ["/logo.svg", { "name": "/logo.svg", "hash": "75c8bb1c6eece970f5b15487e1356f81d217714d9a42deda7162194a93af3ead", "filePath": "client/logo.svg", "contentType": "image/svg+xml" }],
   ["/lp-logo.png", { "name": "/lp-logo.png", "hash": "3c31574b417b078dd93d75218a1553ac212569060df937e5b6f66f6f0cdc6d24", "filePath": "client/lp-logo.png", "contentType": "image/png" }]
 ]);
-const entryAssets = ["/assets/client-entry-C2u1hPs-.css"];
+const entryAssets = ["/assets/client-entry-CwqRxvTx.css"];
 const fsRoutes = [
   { id: "/_app", mod: fsRoute_0, type: "app", pattern: "*", routePattern: "*" },
   { id: "/index", mod: () => import("./assets/_fresh-route___index-BBRKcwcT.mjs"), type: "route", pattern: "/", routePattern: "/" },
