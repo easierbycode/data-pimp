@@ -7,7 +7,7 @@ import { createPageUrl, hasLowestPrice } from "@/utils";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
-import { StatusMultiSelect, type StatusOption } from "@/components/ui/multi-select.tsx";
+import { StatusSelect, type StatusOption } from "@/components/ui/multi-select.tsx";
 import { Plus, Search, Filter, Grid3X3, List, Loader2 } from "lucide-react";
 import SampleCard from "../Components/samples/SampleCard.tsx";
 import { useTranslation } from "../Components/i18n/translations.tsx";
@@ -126,7 +126,8 @@ export default function Samples() {
 
             {/* Filter dropdowns */}
             <div className="flex flex-wrap gap-3">
-              <StatusMultiSelect
+              <StatusSelect
+                multiple
                 options={statusOptions}
                 value={statusFilters}
                 onChange={setStatusFilters}
