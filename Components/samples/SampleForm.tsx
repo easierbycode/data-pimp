@@ -10,6 +10,7 @@ import { base44 } from "@/api/base44Client.ts";
 import type { Sample, Bundle } from "@/api/base44Client.ts";
 import { Loader2, Upload, X } from "lucide-react";
 import { useTranslation } from "../i18n/translations.tsx";
+import { STATUS_OPTIONS } from "@/core/sample-status.ts";
 
 export default function SampleForm({ sample, bundles = [], onSave, onCancel }) {
   const { t } = useTranslation();
@@ -131,11 +132,9 @@ export default function SampleForm({ sample, bundles = [], onSave, onCancel }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="available">{t('status.available')}</SelectItem>
-                <SelectItem value="checked_out">{t('status.checked_out')}</SelectItem>
-                <SelectItem value="reserved">{t('status.reserved')}</SelectItem>
-                <SelectItem value="cleared_to_sell">{t('status.cleared_to_sell')}</SelectItem>
-                <SelectItem value="discontinued">{t('status.discontinued')}</SelectItem>
+                {STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{t(o.i18nKey) || o.defaultLabel}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

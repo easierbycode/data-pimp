@@ -37,6 +37,7 @@
         "available",
         "checked_out",
         "reserved",
+        "cleared_to_sell",
         "discontinued"
       ],
       "default": "available"

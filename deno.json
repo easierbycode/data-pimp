@@ -30,6 +30,7 @@
     "dev": "deno run -A --watch main.ts",
     "dev:deno-db": "deno run --tunnel main.ts",
     "check": "deno check main.ts",
+    "sync:statuses": "deno run --allow-net --allow-read --allow-write --allow-env scripts/sync-statuses.ts",
     "seed:kiosk": "deno run -A scripts/seed-from-kiosk.ts",
     "member:build": "cd member && deno task build",
     "build": "deno task member:build",
