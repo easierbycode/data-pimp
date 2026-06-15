@@ -43,6 +43,9 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-kiosk" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#54c4f5"/><stop offset="1" stop-color="#1f8fd1"/>
       </linearGradient>
+      <linearGradient id="g-content" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fb7185"/><stop offset="1" stop-color="#e11d6b"/>
+      </linearGradient>
     </defs>
   </svg>`;
 
@@ -138,6 +141,18 @@ const ICONS = {
         <path d="M12 21v-1"/>
       </g>
     </svg>`,
+
+  // Document-with-lines glyph on a rose tile — the orders→content library page.
+  content: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-content)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <rect x="19" y="14" width="26" height="36" rx="4" fill="#fff"/>
+      <rect x="24" y="21" width="16" height="3" rx="1.5" fill="#e11d6b"/>
+      <rect x="24" y="28" width="16" height="3" rx="1.5" fill="#fb7185" opacity=".55"/>
+      <rect x="24" y="35" width="16" height="3" rx="1.5" fill="#fb7185" opacity=".55"/>
+      <rect x="24" y="42" width="10" height="3" rx="1.5" fill="#fb7185" opacity=".55"/>
+    </svg>`,
 };
 
 /* ------------------------------------------------------------ app model -- */
@@ -212,6 +227,22 @@ const FOLDERS = [
         // fixed when snapped to a screen half (see snapWindow).
         mobile: true,
         width: 430,
+        height: 780,
+      },
+      {
+        id: "content-by-sample",
+        name: "Content by Sample",
+        icon: ICONS.content,
+        // The Sample Orders → Content workflow fixture from tok-scrape. A
+        // third-party origin, so it gets the top-navigation-blocking sandbox
+        // like the other external demos.
+        url:
+          "https://easierbycode.com/tok-scrape/fixtures/orders-wizard-content.html",
+        allow: "fullscreen",
+        external: true,
+        // Wide desktop page — its content maxes out at 1180px and includes a
+        // content-library table, so it gets a full desktop-sized window.
+        width: 1180,
         height: 780,
       },
     ],
