@@ -134,6 +134,7 @@ export default function SampleForm({ sample, bundles = [], onSave, onCancel }) {
                 <SelectItem value="available">{t('status.available')}</SelectItem>
                 <SelectItem value="checked_out">{t('status.checked_out')}</SelectItem>
                 <SelectItem value="reserved">{t('status.reserved')}</SelectItem>
+                <SelectItem value="cleared_to_sell">{t('status.cleared_to_sell')}</SelectItem>
                 <SelectItem value="discontinued">{t('status.discontinued')}</SelectItem>
               </SelectContent>
             </Select>

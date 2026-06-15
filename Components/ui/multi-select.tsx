@@ -5,6 +5,7 @@ import {
   Flame,
   Pencil,
   Plus,
+  Sprout,
   Trash2,
   TrendingDown,
   X,
@@ -45,6 +46,12 @@ const optionStyles: Record<
     border: "border-blue-200",
     selected: "bg-blue-100",
   },
+  cleared_to_sell: {
+    bg: "bg-green-50",
+    text: "text-green-800",
+    border: "border-green-200",
+    selected: "bg-green-100",
+  },
   discontinued: {
     bg: "bg-slate-50",
     text: "text-slate-800",
@@ -70,6 +77,7 @@ const pillStyles: Record<string, string> = {
   available: "bg-emerald-100 text-emerald-800 border-emerald-200",
   checked_out: "bg-amber-100 text-amber-800 border-amber-200",
   reserved: "bg-blue-100 text-blue-800 border-blue-200",
+  cleared_to_sell: "bg-green-100 text-green-800 border-green-200",
   discontinued: "bg-slate-100 text-slate-800 border-slate-200",
   fire_sale: "bg-gradient-to-r from-orange-500 to-red-500 text-white border-0",
   lowest_price:
@@ -214,6 +222,7 @@ export function StatusSelect(props: StatusSelectProps) {
     if (opt?.emoji) return <span aria-hidden>{opt.emoji}</span>;
     if (value === "fire_sale") return <Flame className="w-3 h-3" />;
     if (value === "lowest_price") return <TrendingDown className="w-3 h-3" />;
+    if (value === "cleared_to_sell") return <Sprout className="w-3 h-3" />;
     return null;
   };
 
