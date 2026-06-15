@@ -375,6 +375,75 @@ section.panel {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  position: relative;
+  /* leave room for the absolutely-positioned collapse chevron */
+  padding-right: 38px;
+  cursor: pointer;
+  user-select: none;
+  transition: margin-bottom 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapse toggle: chevron points down when open, right when collapsed. It sits
+   out of flow at the top-right so it never disturbs the title / pill layout. */
+.panel-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.panel-toggle:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.panel-toggle svg {
+  display: block;
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+section.panel.collapsed .panel-toggle svg {
+  transform: rotate(-90deg);
+}
+
+section.panel.collapsed .section-head {
+  margin-bottom: 0;
+}
+
+/* Buttery collapse: animate the body's single grid row from 1fr -> 0fr so it
+   works with any content height, no magic max-height numbers. */
+.panel-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.42s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
+}
+
+.panel-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+section.panel.collapsed .panel-body {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-head,
+  .panel-toggle svg,
+  .panel-body {
+    transition: none;
+  }
 }
 
 .pill {
