@@ -12,6 +12,7 @@ import {
   fetchProductWithEdits,
   fetchSampleValuationWithEdits,
   listUnpricedSamples,
+  lookupProductByUpc,
   lookupProductDetails,
   updateSamplePrice,
   upsertSampleProduct,
@@ -687,6 +688,23 @@ export async function legacyHandler(req: Request): Promise<Response> {
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return corsJson({ ok: false, error: msg }, 502);
+        }
+      }
+
+      // Scanned-barcode lookup for the tracker's Barcode Test page: resolve a
+      // UPC to a product name via UPCitemdb, then find the matching TikTok
+      // product via ScrapeCreators. Cross-origin GET, so it carries CORS.
+      const upcMatch = url.pathname.match(/^\/api\/upc-lookup\/([^/]+)$/i);
+      if (upcMatch) {
+        if (req.method !== "GET") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        const upc = decodeURIComponent(upcMatch[1]);
+        try {
+          return corsJson(await lookupProductByUpc(upc));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, upc, error: msg }, 502);
         }
       }
 

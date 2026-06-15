@@ -478,6 +478,149 @@ export async function lookupProductDetails(
   };
 }
 
+// --- UPC -> product name -> TikTok product (for the tracker's Barcode Test) --
+// ScrapeCreators is TikTok-only and can't resolve a physical barcode, so we
+// first resolve the UPC to a name/brand via UPCitemdb, then search TikTok Shop
+// for the best match. Either side may come up empty: a UPC with no UPCitemdb
+// record is a hard miss; a known UPC with no TikTok listing still returns the
+// UPCitemdb item (match: null) so the caller can save it from that data alone.
+const DEFAULT_UPCITEMDB_URL = "https://api.upcitemdb.com/prod/trial/lookup";
+
+export type UpcItem = {
+  title: string;
+  brand: string | null;
+  category: string | null;
+};
+
+export type UpcMatch = {
+  productId: string | null;
+  name: string | null;
+  price: number;
+  image: string | null;
+  seller: string | null;
+  sourceUrl: string | null;
+  product?: Record<string, unknown>;
+};
+
+export type UpcLookup = {
+  ok: boolean;
+  upc: string;
+  upcItem?: UpcItem;
+  match?: UpcMatch | null;
+  error?: string;
+};
+
+// UPCitemdb: trial endpoint needs no key (rate-limited ~100/day, shared). A paid
+// plan key (UPCITEMDB_API_KEY) switches to the authenticated endpoint headers.
+async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
+  const base = envValue("UPCITEMDB_API_URL") || DEFAULT_UPCITEMDB_URL;
+  const url = new URL(base);
+  url.searchParams.set("upc", upc);
+
+  const headers: Record<string, string> = { accept: "application/json" };
+  const key = envValue("UPCITEMDB_API_KEY");
+  if (key) {
+    headers["user_key"] = key;
+    headers["key_type"] = "3scale";
+  }
+
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    throw new Error(`UPCitemdb lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  const item = isRecord(body) && Array.isArray(body.items) ? body.items[0] : null;
+  if (!isRecord(item) || !item.title) return null;
+  return {
+    title: String(item.title),
+    brand: item.brand ? String(item.brand) : null,
+    category: item.category ? String(item.category) : null,
+  };
+}
+
+// Pull the numeric TikTok product id out of a PDP url
+// (.../shop/pdp/<slug>/<productId>).
+function productIdFromUrl(sourceUrl: string | undefined): string | null {
+  if (!sourceUrl) return null;
+  const m = sourceUrl.match(/(\d{6,})(?:[/?#]|$)/);
+  return m ? m[1] : null;
+}
+
+export async function lookupProductByUpc(upc: string): Promise<UpcLookup> {
+  const clean = String(upc || "").replace(/\D/g, "");
+  if (!clean) throw new Error("upc is required");
+
+  const item = await fetchUpcItem(clean);
+  if (!item) {
+    return { ok: false, upc: clean, error: "No product found for that UPC" };
+  }
+
+  const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
+  if (!apiKey) {
+    // No TikTok search available — still hand back the UPCitemdb item.
+    return { ok: true, upc: clean, upcItem: item, match: null };
+  }
+
+  // Search TikTok Shop by brand + title (deduped) for the best match.
+  const query = [item.brand, item.title]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const product: ProductAnalysis = {
+    productId: "9" + clean, // synthetic id: never a real PDP, forces name search
+    name: query || item.title,
+    priceRange: "",
+    min_sku_original_price: 0,
+    category: item.category || "",
+    categoryRank: null,
+    seller: item.brand || "",
+    creators: 0,
+    liveStreams: 0,
+    videos: 0,
+    gmv: 0,
+    customers: 0,
+    quantity: 0,
+    skuOrders: 0,
+    refunds: 0,
+    unitsRefunded: 0,
+    sampleCount: 0,
+    estimatedRetailValue: 0,
+    lastSeen: null,
+    image: null,
+  };
+
+  const base = (envValue("SCRAPECREATORS_API_BASE") || DEFAULT_SCRAPECREATORS_BASE)
+    .replace(/\/+$/, "");
+  const region = envValue("SCRAPECREATORS_REGION") || DEFAULT_REGION;
+
+  let lookup: ScrapeCreatorsPrice | null = null;
+  try {
+    lookup = await fetchScrapeCreatorsPriceByName(base, apiKey, region, product);
+  } catch {
+    lookup = null; // a search miss/credit error shouldn't fail the whole lookup
+  }
+
+  if (!lookup || !lookup.title) {
+    return { ok: true, upc: clean, upcItem: item, match: null };
+  }
+
+  return {
+    ok: true,
+    upc: clean,
+    upcItem: item,
+    match: {
+      productId: productIdFromUrl(lookup.sourceUrl),
+      name: lookup.title || null,
+      price: lookup.price || 0,
+      image: lookup.image ?? null,
+      seller: lookup.seller ?? null,
+      sourceUrl: lookup.sourceUrl || null,
+      product: lookup.product,
+    },
+  };
+}
+
 // Catalog endpoint used by sibling apps (sample tracker, thirsty.store). The
 // local/recovered store keeps serving products even when Graylog is offline.
 export async function listProducts(limit = 100): Promise<ProductAnalysis[]> {
