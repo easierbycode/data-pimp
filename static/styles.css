@@ -462,6 +462,49 @@ section.panel.collapsed .panel-body {
   color: var(--accent);
 }
 
+/* The price-queue summary doubles as a toggle between the unpriced backlog and
+   the recovered (priced) list, so it renders as an interactive pill button --
+   reset the default button gradient back to the subtle badge look (keeping the
+   .pill border/shape) and carry a status dot whose color tracks the active view.
+   Scoped to .pill-toggle so other .pill badges keep the default treatment. */
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.pill-toggle::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.pill-toggle[data-mode="priced"]::before {
+  background: var(--gold);
+}
+
+/* No active view to advertise while loading or unavailable -- drop the dot. */
+.pill-toggle[data-mode=""]::before {
+  display: none;
+}
+
+.pill-toggle:hover:not(:disabled) {
+  filter: none;
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+}
+
+.pill-toggle:disabled {
+  cursor: not-allowed;
+}
+
 .valuation-grid {
   display: grid;
   gap: 10px;
@@ -515,6 +558,14 @@ section.panel.collapsed .panel-body {
   gap: 10px;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.toolbar-lead {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
 }
 
 .table-status {
