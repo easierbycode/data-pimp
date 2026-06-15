@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { StatusSelect, type StatusOption } from "@/components/ui/multi-select.tsx";
+import { FILTER_OPTIONS, BADGE_VALUES } from "@/core/sample-status.ts";
 import { Plus, Search, Filter, Grid3X3, List, Loader2 } from "lucide-react";
 import SampleCard from "../Components/samples/SampleCard.tsx";
 import { useTranslation } from "../Components/i18n/translations.tsx";
@@ -20,16 +21,15 @@ export default function Samples() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
 
-  // Status filter options with badge-matching styles
-  const statusOptions: StatusOption[] = [
-    { value: 'available', label: t('status.available'), type: 'status' },
-    { value: 'checked_out', label: t('status.checked_out'), type: 'status' },
-    { value: 'reserved', label: t('status.reserved'), type: 'status' },
-    { value: 'cleared_to_sell', label: t('status.cleared_to_sell'), type: 'status' },
-    { value: 'discontinued', label: t('status.discontinued'), type: 'status' },
-    { value: 'fire_sale', label: t('filters.fireSale'), type: 'badge' },
-    { value: 'lowest_price', label: t('filters.lowestPrice'), type: 'badge' },
-  ];
+  // Status filter options, derived from the shared sample-status list
+  // (core/sample-status.ts → core/sample-statuses.json). Labels resolve via
+  // i18n, falling back to the shared default. Badges (fire sale / lowest price)
+  // are tagged type:'badge' so the filter logic below treats them as overlays.
+  const statusOptions: StatusOption[] = FILTER_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t(o.i18nKey) || o.defaultLabel,
+    type: o.kind,
+  }));
 
   const { data: samples = [], isLoading } = useQuery({
     queryKey: ['samples'],
@@ -59,8 +59,8 @@ export default function Samples() {
       let matchesStatusFilter = true;
       if (statusFilters.length > 0) {
         // Separate status filters from badge filters
-        const statusValues = statusFilters.filter(f => !['fire_sale', 'lowest_price'].includes(f));
-        const hasBadgeFilters = statusFilters.includes('fire_sale') || statusFilters.includes('lowest_price');
+        const statusValues = statusFilters.filter(f => !BADGE_VALUES.includes(f));
+        const hasBadgeFilters = statusFilters.some(f => BADGE_VALUES.includes(f));
 
         // Check if sample matches any of the selected statuses
         const matchesStatus = statusValues.length === 0 || statusValues.includes(sample.status || '');
