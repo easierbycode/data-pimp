@@ -178,37 +178,31 @@ async function loadProduct(productId) {
 }
 
 async function loadUnpricedSamples() {
-  const status = document.getElementById("unpriced-status");
   const query = document.getElementById("global-query").value.trim();
   const params = new URLSearchParams({ limit: SAMPLE_LIMIT });
 
   if (query) params.set("query", query);
-
-  status.textContent = "Loading samples.";
 
   try {
     lastSampleData = await json(`/api/unpriced-samples?${params}`);
     renderSamples();
   } catch (error) {
     lastSampleData = null;
-    status.textContent = error.message;
     document.getElementById("unpriced-rows").innerHTML =
       `<div class="empty-row">${escapeHtml(error.message)}</div>`;
   }
 }
 
 // Render the cached sample list for the active view. The response carries every
-// matched row plus both totals, so each view is a filter on it; both pills always
-// show their count, the active one is highlighted, and heading/status follow.
+// matched row, so each view is a filter on it; both pills always show their
+// count, the active one is highlighted, and the heading names the active view.
 function renderSamples() {
   const data = lastSampleData;
   if (!data) return;
 
   const body = document.getElementById("unpriced-rows");
-  const status = document.getElementById("unpriced-status");
   const unpricedPill = document.getElementById("view-unpriced");
   const pricedPill = document.getElementById("view-priced");
-  const eyebrow = document.getElementById("queue-eyebrow");
   const title = document.getElementById("queue-title");
 
   const priced = sampleView === "priced";
@@ -222,15 +216,9 @@ function renderSamples() {
   unpricedPill.setAttribute("aria-pressed", String(!priced));
   pricedPill.setAttribute("aria-pressed", String(priced));
 
-  eyebrow.textContent = priced ? "Priced Samples" : "Unpriced Samples";
-  title.textContent = priced ? "Recovered Prices" : "Price Recovery Queue";
+  title.textContent = priced ? "Priced Samples" : "Unpriced Samples";
 
-  const modeTotal = priced ? data.pricedCount : data.unpricedCount;
   const rows = data.items.filter((sample) => sample.priced === priced);
-
-  status.textContent = modeTotal
-    ? `${count(rows.length)} of ${count(modeTotal)} ${label} sample rows shown.`
-    : `No ${label} samples matched this query.`;
 
   body.innerHTML = rows.length
     ? rows.map(unpricedRowHtml).join("")
@@ -239,10 +227,8 @@ function renderSamples() {
 
 async function saveUnpricedSample(row) {
   const productId = row.dataset.productId;
-  const status = document.getElementById("unpriced-status");
 
   setRowBusy(row, true);
-  status.textContent = `Saving ${productId}.`;
 
   try {
     await json(`/api/unpriced-samples/${encodeURIComponent(productId)}`, {
@@ -253,10 +239,8 @@ async function saveUnpricedSample(row) {
         notes: row.querySelector(".notes-input").value,
       }),
     });
-    status.textContent = `Saved ${productId}.`;
     await refreshAfterPriceChange(productId);
   } catch (error) {
-    status.textContent = error.message;
     showNotice(error.message);
   } finally {
     setRowBusy(row, false);
@@ -265,10 +249,8 @@ async function saveUnpricedSample(row) {
 
 async function fetchUnpricedPrice(row) {
   const productId = row.dataset.productId;
-  const status = document.getElementById("unpriced-status");
 
   setRowBusy(row, true);
-  status.textContent = `Looking up the live price for ${productId}.`;
 
   let fetched;
   try {
@@ -277,7 +259,6 @@ async function fetchUnpricedPrice(row) {
       { method: "POST" },
     );
   } catch (error) {
-    status.textContent = error.message;
     showNotice(error.message);
     setRowBusy(row, false);
     return;
@@ -286,14 +267,12 @@ async function fetchUnpricedPrice(row) {
   // The lookup only proposes a price -- preview it in the row, then offer to save.
   const priceInput = row.querySelector(".price-input");
   if (priceInput) priceInput.value = priceInputValue(fetched.price);
-  status.textContent = `Found ${money(fetched.price)} for ${fetched.name}.`;
 
   if (
     !confirm(
       `Found ${money(fetched.price)} for ${fetched.name}. Save this price?`,
     )
   ) {
-    status.textContent = `Discarded looked-up price for ${productId}.`;
     await loadUnpricedSamples();
     setRowBusy(row, false);
     return;
@@ -311,10 +290,8 @@ async function fetchUnpricedPrice(row) {
         fetchedAt: fetched.fetchedAt,
       }),
     });
-    status.textContent = `Saved ${money(fetched.price)} for ${productId}.`;
     await refreshAfterPriceChange(productId);
   } catch (error) {
-    status.textContent = error.message;
     showNotice(error.message);
   } finally {
     setRowBusy(row, false);
