@@ -37,6 +37,7 @@ export const translations = {
       available: 'Available',
       checked_out: 'Checked Out',
       reserved: 'Reserved',
+      cleared_to_sell: 'Cleared to Sell',
       discontinued: 'Discontinued'
     },
     

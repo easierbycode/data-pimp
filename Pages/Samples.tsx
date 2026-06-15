@@ -25,6 +25,7 @@ export default function Samples() {
     { value: 'available', label: t('status.available'), type: 'status' },
     { value: 'checked_out', label: t('status.checked_out'), type: 'status' },
     { value: 'reserved', label: t('status.reserved'), type: 'status' },
+    { value: 'cleared_to_sell', label: t('status.cleared_to_sell'), type: 'status' },
     { value: 'discontinued', label: t('status.discontinued'), type: 'status' },
     { value: 'fire_sale', label: t('filters.fireSale'), type: 'badge' },
     { value: 'lowest_price', label: t('filters.lowestPrice'), type: 'badge' },
