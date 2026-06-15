@@ -36,6 +36,20 @@ function setMode(mode) {
 modeSearchBtn.addEventListener("click", () => setMode("search"));
 modeIntakeBtn.addEventListener("click", () => setMode("intake"));
 
+// Collapsible panels: clicking a section header (or its chevron) slides the
+// body open/closed. The chevron points down when open, right when collapsed.
+for (const head of document.querySelectorAll("section.panel > .section-head")) {
+  const panel = head.closest("section.panel");
+  const toggle = head.querySelector(".panel-toggle");
+  if (!panel || !toggle) continue;
+  head.addEventListener("click", (event) => {
+    // Don't hijack clicks on real controls that might live in a header.
+    if (event.target.closest("a, input, select, textarea")) return;
+    const collapsed = panel.classList.toggle("collapsed");
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+  });
+}
+
 document.getElementById("global-search").addEventListener(
   "submit",
   (event) => {
