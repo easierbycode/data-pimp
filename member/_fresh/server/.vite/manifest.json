@@ -207,6 +207,15 @@
       "fresh:server_entry"
     ]
   },
+  "fresh-route::_saas_app_index": {
+    "file": "assets/_fresh-route___saas_app_index-D5hcNJaS.mjs",
+    "name": "_fresh-route___saas_app_index",
+    "src": "fresh-route::_saas_app_index",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry"
+    ]
+  },
   "fresh-route::_saas_app_mobile": {
     "file": "assets/_fresh-route___saas_app_mobile--iKva4_o.mjs",
     "name": "_fresh-route___saas_app_mobile",
@@ -269,6 +278,7 @@
       "node_modules/.deno/svelte@5.55.5/node_modules/svelte/src/index-server.js",
       "components/Counter.svelte",
       "fresh-route::_index",
+      "fresh-route::_saas_app_index",
       "fresh-route::_saas_app_affiliate_index",
       "fresh-route::_saas_app_community_index",
       "fresh-route::_saas_app_content_index",
