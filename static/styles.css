@@ -568,19 +568,6 @@ section.panel.collapsed .panel-body {
   margin-bottom: 12px;
 }
 
-.toolbar-lead {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  min-width: 0;
-}
-
-.table-status {
-  font-size: 13px;
-  margin: 0;
-}
-
 /* ---------- grid "tables" (no horizontal scroll) ---------- */
 
 .rowgrid {
