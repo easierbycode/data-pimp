@@ -207,6 +207,15 @@
       "fresh:server_entry"
     ]
   },
+  "fresh-route::_saas_app_mobile": {
+    "file": "assets/_fresh-route___saas_app_mobile--iKva4_o.mjs",
+    "name": "_fresh-route___saas_app_mobile",
+    "src": "fresh-route::_saas_app_mobile",
+    "isDynamicEntry": true,
+    "imports": [
+      "fresh:server_entry"
+    ]
+  },
   "fresh-route::_saas_app_seller_dashboard_index": {
     "file": "assets/_fresh-route___saas_app_seller_dashboard_index-DmTVYkve.mjs",
     "name": "_fresh-route___saas_app_seller_dashboard_index",
@@ -264,6 +273,7 @@
       "fresh-route::_saas_app_community_index",
       "fresh-route::_saas_app_content_index",
       "fresh-route::_saas_app_dashboard_index",
+      "fresh-route::_saas_app_mobile",
       "fresh-route::_saas_app_seller_dashboard_index",
       "fresh-route::_saas_app_settings_index",
       "fresh-route::_saas_app_streamer_dashboard_index"
