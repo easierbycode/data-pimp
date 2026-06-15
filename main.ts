@@ -324,6 +324,17 @@ function renderSPAShell(): Response {
     ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin { animation: spin 1s linear infinite; }
+    /* Status badges (Fire Sale / Available / Checked Out) drop their colored
+       tint for a uniform dark translucent fill, keeping their colored text and
+       border. !important is required to beat the Tailwind Play CDN's own
+       .bg-*\/15 utilities, which it injects into <head> after this block. The
+       class names carry a literal backslash (Tailwind escapes the "/"), doubled
+       here so the template literal emits a single "\". */
+    .bg-primary\\/15,
+    .bg-success\\/15,
+    .bg-warning\\/15 {
+      background-color: rgb(11 13 17 / 70%) !important;
+    }
   </style>
 </head>
 <body class="bg-background text-foreground antialiased">
