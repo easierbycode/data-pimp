@@ -106,10 +106,9 @@
       <section class="panel" data-screen-label="Price recovery queue">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Unpriced Samples</p>
-            <h2>Price Recovery Queue</h2>
+            <p class="eyebrow" id="queue-eyebrow">Unpriced Samples</p>
+            <h2 id="queue-title">Price Recovery Queue</h2>
           </div>
-          <span id="unpriced-summary" class="pill">Loading</span>
           <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Toggle section">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </button>
@@ -117,9 +116,20 @@
         <div class="panel-body">
           <div class="panel-body-inner">
             <div class="sample-toolbar">
-              <p id="unpriced-status" class="muted table-status">
-                Checking Graylog-backed sample rows.
-              </p>
+              <div class="toolbar-lead">
+                <button
+                  id="unpriced-summary"
+                  class="pill pill-toggle"
+                  type="button"
+                  data-mode="unpriced"
+                  aria-pressed="false"
+                >
+                  Loading
+                </button>
+                <p id="unpriced-status" class="muted table-status">
+                  Checking Graylog-backed sample rows.
+                </p>
+              </div>
               <button id="unpriced-refresh" class="ghost" type="button">
                 Refresh
               </button>

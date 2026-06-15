@@ -9,6 +9,13 @@ const defaultProductId = new URLSearchParams(location.search).get("product") ||
 
 let currentProductId = "";
 
+// The price-queue summary pill toggles which slice of the sample list is shown:
+// the unpriced backlog (default) or the rows whose prices have been recovered.
+// loadUnpricedSamples() caches the last response so toggling re-renders instantly
+// without another round-trip -- the list already carries both slices.
+let sampleView = "unpriced";
+let lastSampleData = null;
+
 // Launch clean: never replay a remembered/browser-restored search, and put the
 // cursor in the search box so the user can search or scan immediately. The
 // product details stay hidden until a search/scan actually loads a product.
@@ -74,6 +81,14 @@ document.getElementById("sample-intake").addEventListener("submit", (event) => {
 
 document.getElementById("unpriced-refresh").addEventListener("click", () => {
   loadUnpricedSamples();
+});
+
+// Flip between the unpriced backlog and the recovered (priced) list. The data is
+// already loaded, so just re-render the other slice -- no refetch.
+document.getElementById("unpriced-summary").addEventListener("click", () => {
+  if (!lastSampleData) return;
+  sampleView = sampleView === "unpriced" ? "priced" : "unpriced";
+  renderSamples();
 });
 
 document.getElementById("unpriced-rows").addEventListener(
@@ -148,7 +163,6 @@ async function loadProduct(productId) {
 }
 
 async function loadUnpricedSamples() {
-  const body = document.getElementById("unpriced-rows");
   const status = document.getElementById("unpriced-status");
   const summary = document.getElementById("unpriced-summary");
   const query = document.getElementById("global-query").value.trim();
@@ -156,27 +170,63 @@ async function loadUnpricedSamples() {
 
   if (query) params.set("query", query);
 
-  status.textContent = "Loading unpriced samples.";
+  status.textContent = "Loading samples.";
   summary.textContent = "Loading";
+  summary.disabled = true;
 
   try {
-    const data = await json(`/api/unpriced-samples?${params}`);
-    summary.textContent = `${count(data.unpricedCount)} unpriced | ${
-      count(data.pricedCount)
-    } priced`;
-    status.textContent = data.total
-      ? `${count(data.items.length)} of ${count(data.total)} sample rows shown.`
-      : "No unpriced samples matched this query.";
-    body.innerHTML = data.items.length
-      ? data.items.map(unpricedRowHtml).join("")
-      : `<div class="empty-row">No unpriced samples found.</div>`;
+    lastSampleData = await json(`/api/unpriced-samples?${params}`);
+    renderSamples();
   } catch (error) {
+    lastSampleData = null;
     status.textContent = error.message;
     summary.textContent = "Unavailable";
-    body.innerHTML = `<div class="empty-row">${
-      escapeHtml(error.message)
-    }</div>`;
+    summary.disabled = true;
+    // No view to advertise once the data is gone: clear the toggle affordance so
+    // a stale dot / pressed state doesn't linger on the "Unavailable" pill.
+    summary.dataset.mode = "";
+    summary.setAttribute("aria-pressed", "false");
+    document.getElementById("unpriced-rows").innerHTML =
+      `<div class="empty-row">${escapeHtml(error.message)}</div>`;
   }
+}
+
+// Render the cached sample list for the active view. The list response carries
+// every priced row plus the unpriced backlog up to the fetch limit, so each view
+// is just a filter on it; the summary pill, heading, and status all follow suit.
+function renderSamples() {
+  const data = lastSampleData;
+  if (!data) return;
+
+  const body = document.getElementById("unpriced-rows");
+  const status = document.getElementById("unpriced-status");
+  const summary = document.getElementById("unpriced-summary");
+  const eyebrow = document.getElementById("queue-eyebrow");
+  const title = document.getElementById("queue-title");
+
+  const priced = sampleView === "priced";
+  const label = priced ? "priced" : "unpriced";
+  const modeTotal = priced ? data.pricedCount : data.unpricedCount;
+  const rows = data.items.filter((sample) => sample.priced === priced);
+
+  eyebrow.textContent = priced ? "Priced Samples" : "Unpriced Samples";
+  title.textContent = priced ? "Recovered Prices" : "Price Recovery Queue";
+
+  summary.disabled = false;
+  summary.dataset.mode = label;
+  summary.setAttribute("aria-pressed", String(priced));
+  summary.title = priced
+    ? "Showing recovered prices — tap to see the unpriced backlog"
+    : "Showing the unpriced backlog — tap to see recovered prices";
+  summary.textContent = `${count(modeTotal)} ${label}`;
+
+  status.textContent = modeTotal
+    ? `${count(rows.length)} of ${count(modeTotal)} ${label} sample rows shown.`
+    : `No ${label} samples matched this query.`;
+
+  body.innerHTML = rows.length
+    ? rows.map(unpricedRowHtml).join("")
+    : `<div class="empty-row">No ${label} samples found.</div>`;
 }
 
 async function saveUnpricedSample(row) {
