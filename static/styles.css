@@ -462,19 +462,26 @@ section.panel.collapsed .panel-body {
   color: var(--accent);
 }
 
-/* The price-queue summary doubles as a toggle between the unpriced backlog and
-   the recovered (priced) list, so it renders as an interactive pill button --
-   reset the default button gradient back to the subtle badge look (keeping the
-   .pill border/shape) and carry a status dot whose color tracks the active view.
-   Scoped to .pill-toggle so other .pill badges keep the default treatment. */
+/* The price-queue summary is a two-segment toggle: one pill per view (unpriced
+   backlog vs. recovered/priced rows), each showing its live count. The active
+   view is highlighted (matching the app's other active toggles) and made
+   non-interactive, so only the other pill is clickable. Each pill keeps the
+   .pill border/shape but resets the default button gradient, and carries a
+   status dot colored by its view. Scoped to .pill-toggle so other .pill badges
+   keep the default treatment. */
+.view-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
+
 .pill-toggle {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   background: var(--surface-2);
-  color: var(--text);
+  color: var(--text-dim);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .pill-toggle::before {
@@ -486,23 +493,24 @@ section.panel.collapsed .panel-body {
   background: var(--accent);
 }
 
-.pill-toggle[data-mode="priced"]::before {
+.pill-toggle[data-view="priced"]::before {
   background: var(--gold);
 }
 
-/* No active view to advertise while loading or unavailable -- drop the dot. */
-.pill-toggle[data-mode=""]::before {
-  display: none;
-}
-
-.pill-toggle:hover:not(:disabled) {
+.pill-toggle:not(.is-active):hover {
   filter: none;
   background: var(--surface-3);
   border-color: var(--line-strong);
+  color: var(--text);
 }
 
-.pill-toggle:disabled {
-  cursor: not-allowed;
+/* Active view: highlighted and not clickable -- only the other pill toggles. */
+.pill-toggle.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  cursor: default;
+  pointer-events: none;
 }
 
 .valuation-grid {

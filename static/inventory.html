@@ -117,15 +117,33 @@
           <div class="panel-body-inner">
             <div class="sample-toolbar">
               <div class="toolbar-lead">
-                <button
-                  id="unpriced-summary"
-                  class="pill pill-toggle"
-                  type="button"
-                  data-mode="unpriced"
-                  aria-pressed="false"
+                <div
+                  id="sample-view-toggle"
+                  class="view-toggle"
+                  role="group"
+                  aria-label="Show unpriced or priced samples"
                 >
-                  Loading
-                </button>
+                  <button
+                    id="view-unpriced"
+                    class="pill pill-toggle is-active"
+                    type="button"
+                    data-view="unpriced"
+                    aria-pressed="true"
+                    title="Show unpriced samples"
+                  >
+                    Unpriced
+                  </button>
+                  <button
+                    id="view-priced"
+                    class="pill pill-toggle"
+                    type="button"
+                    data-view="priced"
+                    aria-pressed="false"
+                    title="Show priced samples"
+                  >
+                    Priced
+                  </button>
+                </div>
                 <p id="unpriced-status" class="muted table-status">
                   Checking Graylog-backed sample rows.
                 </p>

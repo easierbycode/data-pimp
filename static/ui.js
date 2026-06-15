@@ -9,12 +9,21 @@ const defaultProductId = new URLSearchParams(location.search).get("product") ||
 
 let currentProductId = "";
 
-// The price-queue summary pill toggles which slice of the sample list is shown:
-// the unpriced backlog (default) or the rows whose prices have been recovered.
-// loadUnpricedSamples() caches the last response so toggling re-renders instantly
-// without another round-trip -- the list already carries both slices.
+// The price-queue summary is a two-pill toggle between the unpriced backlog
+// (default) and the rows whose prices have been recovered. loadUnpricedSamples()
+// fetches the full set once (see SAMPLE_LIMIT) and caches it, so flipping views
+// just re-filters the cached list -- no refetch.
 let sampleView = "unpriced";
 let lastSampleData = null;
+
+// Fetch the whole set in one shot so both views are complete. The backend keeps
+// every priced (edited) row in the page and fills the rest with the unpriced
+// backlog up to this limit; with priced rows able to outnumber a small limit,
+// anything lower would starve the unpriced slice. The product universe is capped
+// server-side (~1000), so this returns everything matched. Declared up here (not
+// beside loadUnpricedSamples) because that function runs during module init,
+// before a const lower in the file would leave its temporal dead zone.
+const SAMPLE_LIMIT = "1000";
 
 // Launch clean: never replay a remembered/browser-restored search, and put the
 // cursor in the search box so the user can search or scan immediately. The
@@ -83,13 +92,19 @@ document.getElementById("unpriced-refresh").addEventListener("click", () => {
   loadUnpricedSamples();
 });
 
-// Flip between the unpriced backlog and the recovered (priced) list. The data is
-// already loaded, so just re-render the other slice -- no refetch.
-document.getElementById("unpriced-summary").addEventListener("click", () => {
-  if (!lastSampleData) return;
-  sampleView = sampleView === "unpriced" ? "priced" : "unpriced";
-  renderSamples();
-});
+// Flip between the unpriced backlog and the recovered (priced) list. Only the
+// inactive pill is clickable (the active one has pointer-events: none), so a
+// click always names the view to switch to; re-render from cached data.
+document.getElementById("sample-view-toggle").addEventListener(
+  "click",
+  (event) => {
+    const pill = event.target.closest("button[data-view]");
+    if (!pill || !lastSampleData) return;
+    if (pill.dataset.view === sampleView) return;
+    sampleView = pill.dataset.view;
+    renderSamples();
+  },
+);
 
 document.getElementById("unpriced-rows").addEventListener(
   "click",
@@ -164,15 +179,12 @@ async function loadProduct(productId) {
 
 async function loadUnpricedSamples() {
   const status = document.getElementById("unpriced-status");
-  const summary = document.getElementById("unpriced-summary");
   const query = document.getElementById("global-query").value.trim();
-  const params = new URLSearchParams({ limit: "150" });
+  const params = new URLSearchParams({ limit: SAMPLE_LIMIT });
 
   if (query) params.set("query", query);
 
   status.textContent = "Loading samples.";
-  summary.textContent = "Loading";
-  summary.disabled = true;
 
   try {
     lastSampleData = await json(`/api/unpriced-samples?${params}`);
@@ -180,45 +192,41 @@ async function loadUnpricedSamples() {
   } catch (error) {
     lastSampleData = null;
     status.textContent = error.message;
-    summary.textContent = "Unavailable";
-    summary.disabled = true;
-    // No view to advertise once the data is gone: clear the toggle affordance so
-    // a stale dot / pressed state doesn't linger on the "Unavailable" pill.
-    summary.dataset.mode = "";
-    summary.setAttribute("aria-pressed", "false");
     document.getElementById("unpriced-rows").innerHTML =
       `<div class="empty-row">${escapeHtml(error.message)}</div>`;
   }
 }
 
-// Render the cached sample list for the active view. The list response carries
-// every priced row plus the unpriced backlog up to the fetch limit, so each view
-// is just a filter on it; the summary pill, heading, and status all follow suit.
+// Render the cached sample list for the active view. The response carries every
+// matched row plus both totals, so each view is a filter on it; both pills always
+// show their count, the active one is highlighted, and heading/status follow.
 function renderSamples() {
   const data = lastSampleData;
   if (!data) return;
 
   const body = document.getElementById("unpriced-rows");
   const status = document.getElementById("unpriced-status");
-  const summary = document.getElementById("unpriced-summary");
+  const unpricedPill = document.getElementById("view-unpriced");
+  const pricedPill = document.getElementById("view-priced");
   const eyebrow = document.getElementById("queue-eyebrow");
   const title = document.getElementById("queue-title");
 
   const priced = sampleView === "priced";
   const label = priced ? "priced" : "unpriced";
-  const modeTotal = priced ? data.pricedCount : data.unpricedCount;
-  const rows = data.items.filter((sample) => sample.priced === priced);
+
+  // Both pills always show their live count; only the inactive one is clickable.
+  unpricedPill.textContent = `${count(data.unpricedCount)} unpriced`;
+  pricedPill.textContent = `${count(data.pricedCount)} priced`;
+  unpricedPill.classList.toggle("is-active", !priced);
+  pricedPill.classList.toggle("is-active", priced);
+  unpricedPill.setAttribute("aria-pressed", String(!priced));
+  pricedPill.setAttribute("aria-pressed", String(priced));
 
   eyebrow.textContent = priced ? "Priced Samples" : "Unpriced Samples";
   title.textContent = priced ? "Recovered Prices" : "Price Recovery Queue";
 
-  summary.disabled = false;
-  summary.dataset.mode = label;
-  summary.setAttribute("aria-pressed", String(priced));
-  summary.title = priced
-    ? "Showing recovered prices — tap to see the unpriced backlog"
-    : "Showing the unpriced backlog — tap to see recovered prices";
-  summary.textContent = `${count(modeTotal)} ${label}`;
+  const modeTotal = priced ? data.pricedCount : data.unpricedCount;
+  const rows = data.items.filter((sample) => sample.priced === priced);
 
   status.textContent = modeTotal
     ? `${count(rows.length)} of ${count(modeTotal)} ${label} sample rows shown.`
