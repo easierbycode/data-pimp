@@ -1161,6 +1161,24 @@ function storePath(): string {
   return envValue("THIRSTY_SAMPLE_STORE") || DEFAULT_STORE_PATH;
 }
 
+// The extension used to stamp every auto-priced sample with a note like
+// "Estimated by extension demo · confidence med · variant Black, 10*300cm". The
+// row's source badge (API / Extension) already conveys that provenance, so the
+// note was pure noise. Drop it on read so existing records show a clean Notes
+// column and the cleared value persists on the next save. The pattern matches
+// only the machine-generated shape, so a manual note is never touched.
+const AUTO_EXTENSION_NOTE_RE =
+  /^(?:Estimated by extension demo|Resolved by extension lookup)(?: · confidence [^·]*)?(?: · variant .*)?$/;
+
+function withoutAutoExtensionNote(
+  edit: SamplePriceEdit,
+): SamplePriceEdit {
+  if (edit.notes && AUTO_EXTENSION_NOTE_RE.test(edit.notes.trim())) {
+    return { ...edit, notes: undefined };
+  }
+  return edit;
+}
+
 // The local JSON store is wiped whenever the deployed app restarts, so the
 // durable copy of every price edit lives in Graylog (sample_edit_json
 // messages). Reads merge both, newest updatedAt per product winning.
@@ -1175,6 +1193,10 @@ async function loadStore(): Promise<SampleStore> {
     if (!existing || edit.updatedAt > (existing.updatedAt || "")) {
       store.edits[edit.productId] = edit;
     }
+  }
+
+  for (const productId of Object.keys(store.edits)) {
+    store.edits[productId] = withoutAutoExtensionNote(store.edits[productId]);
   }
 
   return store;
