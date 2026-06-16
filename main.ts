@@ -705,16 +705,20 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       // Scanned-barcode lookup for the tracker's Barcode Test page: resolve a
       // UPC to a product name via UPCitemdb (falling back to Go-UPC, Barcode
-      // Lookup, Open Food Facts, then a Google Lens visual match), then find the
-      // matching TikTok product via ScrapeCreators. Cross-origin GET, carries CORS.
+      // Lookup, Open Food Facts, then SerpApi Google Shopping + Google Lens),
+      // then find the matching TikTok product via ScrapeCreators. ?debug=1 echoes
+      // the raw SerpApi payloads. Cross-origin GET, carries CORS.
       const upcMatch = url.pathname.match(/^\/api\/upc-lookup\/([^/]+)$/i);
       if (upcMatch) {
         if (req.method !== "GET") {
           return corsJson({ ok: false, error: "Method not allowed" }, 405);
         }
         const upc = decodeURIComponent(upcMatch[1]);
+        // ?debug=1 echoes the raw SerpApi payloads in the response for diagnosing
+        // why the Lens/Shopping fallbacks did or didn't resolve a code.
+        const debug = url.searchParams.get("debug") === "1";
         try {
-          return corsJson(await lookupProductByUpc(upc, { origin: url.origin }));
+          return corsJson(await lookupProductByUpc(upc, { origin: url.origin, debug }));
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return corsJson({ ok: false, upc, error: msg }, 502);
