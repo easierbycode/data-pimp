@@ -505,12 +505,19 @@ export type UpcMatch = {
   product?: Record<string, unknown>;
 };
 
+// Which provider in the chain resolved the UPC (diagnostics for the caller).
+export type UpcSource = "upcitemdb" | "go-upc";
+
 export type UpcLookup = {
   ok: boolean;
   upc: string;
   upcItem?: UpcItem;
   match?: UpcMatch | null;
   error?: string;
+  // true when the Go-UPC fallback was attempted (key set & UPCitemdb missed).
+  triedFallback: boolean;
+  // set when an item was found, naming the provider that supplied it.
+  source?: UpcSource;
 };
 
 // UPCitemdb: trial endpoint needs no key (rate-limited ~100/day, shared). A paid
@@ -563,15 +570,22 @@ async function fetchGoUpcItem(upc: string, key: string): Promise<UpcItem | null>
   };
 }
 
+type UpcItemResult = {
+  item: UpcItem | null;
+  source: UpcSource | null;
+  triedFallback: boolean;
+};
+
 // Resolve a UPC to a product, walking a provider chain so a single source's
 // gap (or the trial endpoint's ~100/day cap) doesn't strand the lookup:
 // UPCitemdb first, then Go-UPC when GOUPC_API_KEY is set. A provider error is
-// only fatal when there's no fallback to fall through to.
-async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
+// only fatal when there's no fallback to fall through to. Reports which
+// provider answered (source) and whether the fallback was attempted.
+async function fetchUpcItem(upc: string): Promise<UpcItemResult> {
   let primaryError: unknown = null;
   try {
     const item = await fetchUpcItemDb(upc);
-    if (item) return item;
+    if (item) return { item, source: "upcitemdb", triedFallback: false };
   } catch (error) {
     primaryError = error; // e.g. a 429 from the shared trial endpoint
   }
@@ -580,15 +594,15 @@ async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
   if (goUpcKey) {
     try {
       const fallback = await fetchGoUpcItem(upc, goUpcKey);
-      if (fallback) return fallback;
+      if (fallback) return { item: fallback, source: "go-upc", triedFallback: true };
     } catch {
       // A fallback miss/credit error shouldn't mask a real primary failure.
     }
-    return null; // both providers tried, genuine miss
+    return { item: null, source: null, triedFallback: true }; // both tried, miss
   }
 
   if (primaryError) throw primaryError; // no fallback configured — surface it
-  return null;
+  return { item: null, source: null, triedFallback: false };
 }
 
 // Pull the numeric TikTok product id out of a PDP url
@@ -603,15 +617,20 @@ export async function lookupProductByUpc(upc: string): Promise<UpcLookup> {
   const clean = String(upc || "").replace(/\D/g, "");
   if (!clean) throw new Error("upc is required");
 
-  const item = await fetchUpcItem(clean);
+  const { item, source, triedFallback } = await fetchUpcItem(clean);
   if (!item) {
-    return { ok: false, upc: clean, error: "No product found for that UPC" };
+    return {
+      ok: false,
+      upc: clean,
+      error: "No product found for that UPC",
+      triedFallback,
+    };
   }
 
   const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
   if (!apiKey) {
-    // No TikTok search available — still hand back the UPCitemdb item.
-    return { ok: true, upc: clean, upcItem: item, match: null };
+    // No TikTok search available — still hand back the resolved item.
+    return { ok: true, upc: clean, upcItem: item, match: null, triedFallback, source };
   }
 
   // Search TikTok Shop by brand + title (deduped) for the best match.
@@ -655,13 +674,15 @@ export async function lookupProductByUpc(upc: string): Promise<UpcLookup> {
   }
 
   if (!lookup || !lookup.title) {
-    return { ok: true, upc: clean, upcItem: item, match: null };
+    return { ok: true, upc: clean, upcItem: item, match: null, triedFallback, source };
   }
 
   return {
     ok: true,
     upc: clean,
     upcItem: item,
+    triedFallback,
+    source,
     match: {
       productId: productIdFromUrl(lookup.sourceUrl),
       name: lookup.title || null,
