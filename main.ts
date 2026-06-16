@@ -703,9 +703,9 @@ export async function legacyHandler(req: Request): Promise<Response> {
       }
 
       // Scanned-barcode lookup for the tracker's Barcode Test page: resolve a
-      // UPC to a product name via UPCitemdb (falling back to Go-UPC), then find
-      // the matching TikTok product via ScrapeCreators. Cross-origin GET, so it
-      // carries CORS.
+      // UPC to a product name via UPCitemdb (falling back to Go-UPC, then Open
+      // Food Facts), then find the matching TikTok product via ScrapeCreators.
+      // Cross-origin GET, so it carries CORS.
       const upcMatch = url.pathname.match(/^\/api\/upc-lookup\/([^/]+)$/i);
       if (upcMatch) {
         if (req.method !== "GET") {

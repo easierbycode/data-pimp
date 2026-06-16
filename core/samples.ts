@@ -488,6 +488,9 @@ const DEFAULT_UPCITEMDB_URL = "https://api.upcitemdb.com/prod/trial/lookup";
 // Go-UPC fallback: a much larger (500M+) catalog that covers general consumer
 // goods UPCitemdb's free trial misses. Keyed (GOUPC_API_KEY) — skipped if unset.
 const DEFAULT_GOUPC_URL = "https://go-upc.com/api/v1/code";
+// Open Food Facts fallback: free, no key, no rate limit. Food/grocery/cosmetics
+// focused — the last-resort provider when both keyed sources come up empty.
+const DEFAULT_OPENFOODFACTS_URL = "https://world.openfoodfacts.org/api/v2/product";
 
 export type UpcItem = {
   title: string;
@@ -505,12 +508,20 @@ export type UpcMatch = {
   product?: Record<string, unknown>;
 };
 
+// Providers in the lookup chain (diagnostics for the caller).
+export type UpcSource = "upcitemdb" | "go-upc" | "openfoodfacts";
+
 export type UpcLookup = {
   ok: boolean;
   upc: string;
   upcItem?: UpcItem;
   match?: UpcMatch | null;
   error?: string;
+  // Every provider attempted, in order — e.g. ["upcitemdb","go-upc",
+  // "openfoodfacts"] when both fallbacks ran before giving up.
+  providersTried: UpcSource[];
+  // Set when an item was found, naming the provider that supplied it.
+  source?: UpcSource;
 };
 
 // UPCitemdb: trial endpoint needs no key (rate-limited ~100/day, shared). A paid
@@ -563,32 +574,95 @@ async function fetchGoUpcItem(upc: string, key: string): Promise<UpcItem | null>
   };
 }
 
+// Open Food Facts: free, keyless. GET /api/v2/product/<upc>.json — status 0 (or
+// HTTP 404) means the barcode isn't in the open database. `brands`/`categories`
+// come back as comma lists: take the first brand and the most-specific category.
+async function fetchOpenFoodFactsItem(upc: string): Promise<UpcItem | null> {
+  const base = (envValue("OPENFOODFACTS_API_URL") || DEFAULT_OPENFOODFACTS_URL)
+    .replace(/\/+$/, "");
+  const url = new URL(`${base}/${encodeURIComponent(upc)}.json`);
+  url.searchParams.set("fields", "product_name,brands,categories");
+
+  const res = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      // Open Food Facts asks API clients to identify themselves.
+      "user-agent": "data-pimp/1.0 (+https://thirsty.store)",
+    },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Open Food Facts lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  if (!isRecord(body) || body.status !== 1) return null; // 0 = product not found
+  const product = isRecord(body.product) ? body.product : null;
+  const title = product?.product_name ? String(product.product_name).trim() : "";
+  if (!title) return null;
+
+  const brand = product?.brands
+    ? String(product.brands).split(",")[0].trim() || null
+    : null;
+  const cats = product?.categories
+    ? String(product.categories).split(",").map((c) => c.trim()).filter(Boolean)
+    : [];
+  return { title, brand, category: cats.length ? cats[cats.length - 1] : null };
+}
+
+type UpcItemResult = {
+  item: UpcItem | null;
+  source: UpcSource | null;
+  providersTried: UpcSource[];
+};
+
 // Resolve a UPC to a product, walking a provider chain so a single source's
 // gap (or the trial endpoint's ~100/day cap) doesn't strand the lookup:
-// UPCitemdb first, then Go-UPC when GOUPC_API_KEY is set. A provider error is
-// only fatal when there's no fallback to fall through to.
-async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
+//   UPCitemdb → Go-UPC (when GOUPC_API_KEY is set) → Open Food Facts (free).
+// Records every provider attempted (providersTried) and which one answered
+// (source). A provider error is only fatal when *every* attempt threw —
+// otherwise a clean miss from any source means a genuine "not found".
+async function fetchUpcItem(upc: string): Promise<UpcItemResult> {
+  const providersTried: UpcSource[] = [];
   let primaryError: unknown = null;
+  let anyAnswered = false; // a provider responded cleanly (hit or definitive miss)
+
+  // 1. UPCitemdb
+  providersTried.push("upcitemdb");
   try {
     const item = await fetchUpcItemDb(upc);
-    if (item) return item;
+    anyAnswered = true;
+    if (item) return { item, source: "upcitemdb", providersTried };
   } catch (error) {
     primaryError = error; // e.g. a 429 from the shared trial endpoint
   }
 
+  // 2. Go-UPC (only when a key is configured)
   const goUpcKey = envValue("GOUPC_API_KEY");
   if (goUpcKey) {
+    providersTried.push("go-upc");
     try {
-      const fallback = await fetchGoUpcItem(upc, goUpcKey);
-      if (fallback) return fallback;
+      const item = await fetchGoUpcItem(upc, goUpcKey);
+      anyAnswered = true;
+      if (item) return { item, source: "go-upc", providersTried };
     } catch {
-      // A fallback miss/credit error shouldn't mask a real primary failure.
+      // A miss/credit error shouldn't mask a real primary failure.
     }
-    return null; // both providers tried, genuine miss
   }
 
-  if (primaryError) throw primaryError; // no fallback configured — surface it
-  return null;
+  // 3. Open Food Facts (free, keyless last resort)
+  providersTried.push("openfoodfacts");
+  try {
+    const item = await fetchOpenFoodFactsItem(upc);
+    anyAnswered = true;
+    if (item) return { item, source: "openfoodfacts", providersTried };
+  } catch {
+    // An OFF outage shouldn't be fatal on its own.
+  }
+
+  // Nothing matched. If at least one provider answered, it's a genuine miss; if
+  // they ALL errored, surface the primary failure so the caller returns 502.
+  if (!anyAnswered && primaryError) throw primaryError;
+  return { item: null, source: null, providersTried };
 }
 
 // Pull the numeric TikTok product id out of a PDP url
@@ -603,15 +677,20 @@ export async function lookupProductByUpc(upc: string): Promise<UpcLookup> {
   const clean = String(upc || "").replace(/\D/g, "");
   if (!clean) throw new Error("upc is required");
 
-  const item = await fetchUpcItem(clean);
+  const { item, source, providersTried } = await fetchUpcItem(clean);
   if (!item) {
-    return { ok: false, upc: clean, error: "No product found for that UPC" };
+    return {
+      ok: false,
+      upc: clean,
+      error: "No product found for that UPC",
+      providersTried,
+    };
   }
 
   const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
   if (!apiKey) {
-    // No TikTok search available — still hand back the UPCitemdb item.
-    return { ok: true, upc: clean, upcItem: item, match: null };
+    // No TikTok search available — still hand back the resolved item.
+    return { ok: true, upc: clean, upcItem: item, match: null, providersTried, source };
   }
 
   // Search TikTok Shop by brand + title (deduped) for the best match.
@@ -655,13 +734,15 @@ export async function lookupProductByUpc(upc: string): Promise<UpcLookup> {
   }
 
   if (!lookup || !lookup.title) {
-    return { ok: true, upc: clean, upcItem: item, match: null };
+    return { ok: true, upc: clean, upcItem: item, match: null, providersTried, source };
   }
 
   return {
     ok: true,
     upc: clean,
     upcItem: item,
+    providersTried,
+    source,
     match: {
       productId: productIdFromUrl(lookup.sourceUrl),
       name: lookup.title || null,
