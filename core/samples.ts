@@ -488,8 +488,11 @@ const DEFAULT_UPCITEMDB_URL = "https://api.upcitemdb.com/prod/trial/lookup";
 // Go-UPC fallback: a much larger (500M+) catalog that covers general consumer
 // goods UPCitemdb's free trial misses. Keyed (GOUPC_API_KEY) — skipped if unset.
 const DEFAULT_GOUPC_URL = "https://go-upc.com/api/v1/code";
+// Barcode Lookup fallback: another large independent catalog. Keyed
+// (BARCODELOOKUP_API_KEY) — skipped if unset.
+const DEFAULT_BARCODELOOKUP_URL = "https://api.barcodelookup.com/v3/products";
 // Open Food Facts fallback: free, no key, no rate limit. Food/grocery/cosmetics
-// focused — the last-resort provider when both keyed sources come up empty.
+// focused — the last-resort provider when the keyed sources come up empty.
 const DEFAULT_OPENFOODFACTS_URL = "https://world.openfoodfacts.org/api/v2/product";
 
 export type UpcItem = {
@@ -509,7 +512,7 @@ export type UpcMatch = {
 };
 
 // Providers in the lookup chain (diagnostics for the caller).
-export type UpcSource = "upcitemdb" | "go-upc" | "openfoodfacts";
+export type UpcSource = "upcitemdb" | "go-upc" | "barcodelookup" | "openfoodfacts";
 
 export type UpcLookup = {
   ok: boolean;
@@ -574,6 +577,36 @@ async function fetchGoUpcItem(upc: string, key: string): Promise<UpcItem | null>
   };
 }
 
+// Barcode Lookup: GET /v3/products?barcode=<upc>&key=<key>. 404 = not in their
+// database; otherwise a { products: [ { product_name, brand, category } ] } list.
+async function fetchBarcodeLookupItem(upc: string, key: string): Promise<UpcItem | null> {
+  const base = (envValue("BARCODELOOKUP_API_URL") || DEFAULT_BARCODELOOKUP_URL)
+    .replace(/\/+$/, "");
+  const url = new URL(base);
+  url.searchParams.set("barcode", upc);
+  url.searchParams.set("key", key);
+
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Barcode Lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  const product = isRecord(body) && Array.isArray(body.products) ? body.products[0] : null;
+  if (!isRecord(product)) return null;
+  const title = product.product_name
+    ? String(product.product_name).trim()
+    : product.title
+    ? String(product.title).trim()
+    : "";
+  if (!title) return null;
+  return {
+    title,
+    brand: product.brand ? String(product.brand) : null,
+    category: product.category ? String(product.category) : null,
+  };
+}
+
 // Open Food Facts: free, keyless. GET /api/v2/product/<upc>.json — status 0 (or
 // HTTP 404) means the barcode isn't in the open database. `brands`/`categories`
 // come back as comma lists: take the first brand and the most-specific category.
@@ -615,49 +648,73 @@ type UpcItemResult = {
   providersTried: UpcSource[];
 };
 
+// A scanned code may arrive as UPC-A (12 digits) or zero-padded EAN-13 (13).
+// Try the as-given form first, then the alternate, so a provider that only
+// indexes one representation still resolves. Deduped, order-preserving.
+function upcCandidates(upc: string): string[] {
+  const out = [upc];
+  if (upc.length === 13 && upc.startsWith("0")) {
+    out.push(upc.slice(1)); // EAN-13 leading zero → UPC-A (12)
+  } else if (upc.length === 12) {
+    out.push("0" + upc); // UPC-A → EAN-13
+  }
+  return [...new Set(out)];
+}
+
 // Resolve a UPC to a product, walking a provider chain so a single source's
 // gap (or the trial endpoint's ~100/day cap) doesn't strand the lookup:
-//   UPCitemdb → Go-UPC (when GOUPC_API_KEY is set) → Open Food Facts (free).
-// Records every provider attempted (providersTried) and which one answered
-// (source). A provider error is only fatal when *every* attempt threw —
-// otherwise a clean miss from any source means a genuine "not found".
+//   UPCitemdb → Go-UPC → Barcode Lookup (each keyed) → Open Food Facts (free).
+// Each provider is tried across every UPC candidate form. Records every
+// provider attempted (providersTried) and which one answered (source). A
+// provider error is only fatal when *every* attempt threw — otherwise a clean
+// miss from any source means a genuine "not found".
 async function fetchUpcItem(upc: string): Promise<UpcItemResult> {
+  const candidates = upcCandidates(upc);
   const providersTried: UpcSource[] = [];
   let primaryError: unknown = null;
   let anyAnswered = false; // a provider responded cleanly (hit or definitive miss)
 
-  // 1. UPCitemdb
-  providersTried.push("upcitemdb");
-  try {
-    const item = await fetchUpcItemDb(upc);
-    anyAnswered = true;
-    if (item) return { item, source: "upcitemdb", providersTried };
-  } catch (error) {
-    primaryError = error; // e.g. a 429 from the shared trial endpoint
-  }
+  // Run one provider across all UPC candidate forms. Returns the first hit, or
+  // null on a clean miss. Marks anyAnswered when the provider responds without
+  // throwing, and captures UPCitemdb's error as the primary failure.
+  const run = async (
+    source: UpcSource,
+    fn: (u: string) => Promise<UpcItem | null>,
+  ): Promise<UpcItem | null> => {
+    providersTried.push(source);
+    let answered = false;
+    let firstError: unknown = null;
+    for (const candidate of candidates) {
+      try {
+        const item = await fn(candidate);
+        answered = true;
+        if (item) return item;
+      } catch (error) {
+        if (firstError === null) firstError = error;
+      }
+    }
+    if (answered) anyAnswered = true;
+    else if (source === "upcitemdb" && firstError !== null) primaryError = firstError;
+    return null;
+  };
 
-  // 2. Go-UPC (only when a key is configured)
+  let item = await run("upcitemdb", fetchUpcItemDb);
+  if (item) return { item, source: "upcitemdb", providersTried };
+
   const goUpcKey = envValue("GOUPC_API_KEY");
   if (goUpcKey) {
-    providersTried.push("go-upc");
-    try {
-      const item = await fetchGoUpcItem(upc, goUpcKey);
-      anyAnswered = true;
-      if (item) return { item, source: "go-upc", providersTried };
-    } catch {
-      // A miss/credit error shouldn't mask a real primary failure.
-    }
+    item = await run("go-upc", (u) => fetchGoUpcItem(u, goUpcKey));
+    if (item) return { item, source: "go-upc", providersTried };
   }
 
-  // 3. Open Food Facts (free, keyless last resort)
-  providersTried.push("openfoodfacts");
-  try {
-    const item = await fetchOpenFoodFactsItem(upc);
-    anyAnswered = true;
-    if (item) return { item, source: "openfoodfacts", providersTried };
-  } catch {
-    // An OFF outage shouldn't be fatal on its own.
+  const barcodeLookupKey = envValue("BARCODELOOKUP_API_KEY");
+  if (barcodeLookupKey) {
+    item = await run("barcodelookup", (u) => fetchBarcodeLookupItem(u, barcodeLookupKey));
+    if (item) return { item, source: "barcodelookup", providersTried };
   }
+
+  item = await run("openfoodfacts", fetchOpenFoodFactsItem);
+  if (item) return { item, source: "openfoodfacts", providersTried };
 
   // Nothing matched. If at least one provider answered, it's a genuine miss; if
   // they ALL errored, surface the primary failure so the caller returns 502.
