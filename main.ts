@@ -705,7 +705,7 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       // Scanned-barcode lookup for the tracker's Barcode Test page: resolve a
       // UPC to a product name via UPCitemdb (falling back to Go-UPC, Barcode
-      // Lookup, Open Food Facts, then SerpApi Google Lens + Google Shopping),
+      // Lookup, Open Food Facts, then SerpApi Google Shopping + Google Lens),
       // then find the matching TikTok product via ScrapeCreators. ?debug=1 echoes
       // the raw SerpApi payloads. Cross-origin GET, carries CORS.
       const upcMatch = url.pathname.match(/^\/api\/upc-lookup\/([^/]+)$/i);

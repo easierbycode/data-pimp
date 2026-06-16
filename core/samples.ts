@@ -759,7 +759,7 @@ function upcCandidates(upc: string): string[] {
 // Resolve a UPC to a product, walking a provider chain so a single source's
 // gap (or the trial endpoint's ~100/day cap) doesn't strand the lookup:
 //   UPCitemdb → Go-UPC → Barcode Lookup (each keyed) → Open Food Facts (free)
-//   → Google Lens → Google Shopping (both SerpApi; for codes no DB indexes).
+//   → Google Shopping → Google Lens (both SerpApi; for codes no DB indexes).
 // Each DB provider is tried across every UPC candidate form; the SerpApi steps
 // run once (per candidate for Shopping) and cost a credit each. Records every
 // provider attempted (providersTried) and which one answered (source). A
@@ -823,12 +823,19 @@ async function fetchUpcItem(
   if (item) return { item, source: "openfoodfacts", providersTried, debug: debugInfo };
 
   // SerpApi fallbacks for codes no UPC database indexes. Both are keyed
-  // (SERPAPI_API_KEY) and run only after the DBs miss. First Google Lens, a
-  // visual match against our rendered barcode image (needs a public origin;
-  // runs once to save credits); then Google Shopping, whose GTIN-indexed
-  // listings often resolve a raw barcode query that web search can't.
+  // (SERPAPI_API_KEY) and run only after the DBs miss. Google Shopping first —
+  // its GTIN-indexed listings resolve a raw barcode query reliably and fast
+  // (~1s). Google Lens is the last resort: a visual match against our rendered
+  // barcode image (needs a public origin), kept only for the rare code Shopping
+  // misses, since it's slow (~30s) and can't actually decode barcodes itself.
   const serpApiKey = envValue("SERPAPI_API_KEY");
   if (serpApiKey) {
+    item = await run(
+      "googleshopping",
+      (u) => fetchGoogleShoppingItem(u, serpApiKey, debugInfo),
+    );
+    if (item) return { item, source: "googleshopping", providersTried, debug: debugInfo };
+
     if (publicBase) {
       item = await run(
         "googlelens",
@@ -837,12 +844,6 @@ async function fetchUpcItem(
       );
       if (item) return { item, source: "googlelens", providersTried, debug: debugInfo };
     }
-
-    item = await run(
-      "googleshopping",
-      (u) => fetchGoogleShoppingItem(u, serpApiKey, debugInfo),
-    );
-    if (item) return { item, source: "googleshopping", providersTried, debug: debugInfo };
   }
 
   // Nothing matched. If at least one provider answered, it's a genuine miss; if
