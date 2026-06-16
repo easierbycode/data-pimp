@@ -18,6 +18,7 @@ import {
   upsertSampleProduct,
 } from "./core/samples.ts";
 import { envValue, graylogConfigFromEnv } from "./core/graylog.ts";
+import { renderBarcodePng } from "./core/barcode.ts";
 
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
@@ -704,8 +705,8 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       // Scanned-barcode lookup for the tracker's Barcode Test page: resolve a
       // UPC to a product name via UPCitemdb (falling back to Go-UPC, Barcode
-      // Lookup, then Open Food Facts), then find the matching TikTok product via
-      // ScrapeCreators. Cross-origin GET, so it carries CORS.
+      // Lookup, Open Food Facts, then a Google Lens visual match), then find the
+      // matching TikTok product via ScrapeCreators. Cross-origin GET, carries CORS.
       const upcMatch = url.pathname.match(/^\/api\/upc-lookup\/([^/]+)$/i);
       if (upcMatch) {
         if (req.method !== "GET") {
@@ -713,10 +714,35 @@ export async function legacyHandler(req: Request): Promise<Response> {
         }
         const upc = decodeURIComponent(upcMatch[1]);
         try {
-          return corsJson(await lookupProductByUpc(upc));
+          return corsJson(await lookupProductByUpc(upc, { origin: url.origin }));
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return corsJson({ ok: false, upc, error: msg }, 502);
+        }
+      }
+
+      // Render a UPC as a barcode PNG. Backs the UPC lookup's Google Lens
+      // fallback: SerpApi fetches this image so Lens can decode the barcode and
+      // match products no UPC database indexes. Public GET (image, not JSON).
+      const barcodeMatch = url.pathname.match(/^\/api\/barcode\/([^/]+?)\.png$/i);
+      if (barcodeMatch) {
+        if (req.method !== "GET") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        const upc = decodeURIComponent(barcodeMatch[1]).replace(/\D/g, "");
+        try {
+          const png = await renderBarcodePng(upc);
+          return new Response(png, {
+            status: 200,
+            headers: {
+              "content-type": "image/png",
+              "cache-control": "public, max-age=86400",
+              "access-control-allow-origin": "*",
+            },
+          });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, upc, error: msg }, 400);
         }
       }
 

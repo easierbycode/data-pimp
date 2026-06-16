@@ -494,6 +494,10 @@ const DEFAULT_BARCODELOOKUP_URL = "https://api.barcodelookup.com/v3/products";
 // Open Food Facts fallback: free, no key, no rate limit. Food/grocery/cosmetics
 // focused — the last-resort provider when the keyed sources come up empty.
 const DEFAULT_OPENFOODFACTS_URL = "https://world.openfoodfacts.org/api/v2/product";
+// Google Lens (via SerpApi): the visual-search escape hatch for barcodes no UPC
+// database indexes. We render the code as a barcode image and let Lens decode +
+// match it against Google's shopping graph. Keyed (SERPAPI_API_KEY).
+const DEFAULT_SERPAPI_URL = "https://serpapi.com/search.json";
 
 export type UpcItem = {
   title: string;
@@ -512,7 +516,12 @@ export type UpcMatch = {
 };
 
 // Providers in the lookup chain (diagnostics for the caller).
-export type UpcSource = "upcitemdb" | "go-upc" | "barcodelookup" | "openfoodfacts";
+export type UpcSource =
+  | "upcitemdb"
+  | "go-upc"
+  | "barcodelookup"
+  | "openfoodfacts"
+  | "googlelens";
 
 export type UpcLookup = {
   ok: boolean;
@@ -642,6 +651,50 @@ async function fetchOpenFoodFactsItem(upc: string): Promise<UpcItem | null> {
   return { title, brand, category: cats.length ? cats[cats.length - 1] : null };
 }
 
+// Lens/shopping titles carry retail noise ("Buy …", "… - Walmart.com"). Trim the
+// leading verb and any trailing " - site" / " | site" suffix so the name we feed
+// the TikTok search is the product, not the storefront.
+function cleanLensTitle(raw: string): string {
+  return raw
+    .replace(/^\s*(buy|shop|get|order)\s+/i, "")
+    .split(/\s+[|–—]\s+|\s+-\s+(?=\S+\.\w{2,}|\w+\.com)/i)[0]
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Google Lens via SerpApi. We point Lens at our own rendered barcode image
+// (served by /api/barcode/<upc>.png) so it decodes the code and returns the
+// shopping "visual_matches" — resolving products no UPC database indexes. Needs
+// a publicly reachable base URL for the image, hence publicBase.
+async function fetchGoogleLensItem(
+  upc: string,
+  key: string,
+  publicBase: string,
+): Promise<UpcItem | null> {
+  const imageUrl = `${publicBase.replace(/\/+$/, "")}/api/barcode/${
+    encodeURIComponent(upc)
+  }.png`;
+  const url = new URL(envValue("SERPAPI_API_URL") || DEFAULT_SERPAPI_URL);
+  url.searchParams.set("engine", "google_lens");
+  url.searchParams.set("url", imageUrl);
+  url.searchParams.set("api_key", key);
+
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`Google Lens lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  const matches = isRecord(body) && Array.isArray(body.visual_matches)
+    ? body.visual_matches
+    : [];
+  for (const match of matches) {
+    if (!isRecord(match) || !match.title) continue;
+    const title = cleanLensTitle(String(match.title));
+    if (title) return { title, brand: null, category: null };
+  }
+  return null;
+}
+
 type UpcItemResult = {
   item: UpcItem | null;
   source: UpcSource | null;
@@ -663,28 +716,33 @@ function upcCandidates(upc: string): string[] {
 
 // Resolve a UPC to a product, walking a provider chain so a single source's
 // gap (or the trial endpoint's ~100/day cap) doesn't strand the lookup:
-//   UPCitemdb → Go-UPC → Barcode Lookup (each keyed) → Open Food Facts (free).
-// Each provider is tried across every UPC candidate form. Records every
-// provider attempted (providersTried) and which one answered (source). A
-// provider error is only fatal when *every* attempt threw — otherwise a clean
-// miss from any source means a genuine "not found".
-async function fetchUpcItem(upc: string): Promise<UpcItemResult> {
+//   UPCitemdb → Go-UPC → Barcode Lookup (each keyed) → Open Food Facts (free)
+//   → Google Lens (SerpApi; visual barcode match for codes no DB indexes).
+// Each provider is tried across every UPC candidate form (Lens excepted — it
+// costs a SerpApi credit per call, so it runs once on the scanned code).
+// Records every provider attempted (providersTried) and which one answered
+// (source). A provider error is only fatal when *every* attempt threw —
+// otherwise a clean miss from any source means a genuine "not found".
+// publicBase is the externally reachable origin Lens fetches the barcode from.
+async function fetchUpcItem(upc: string, publicBase: string): Promise<UpcItemResult> {
   const candidates = upcCandidates(upc);
   const providersTried: UpcSource[] = [];
   let primaryError: unknown = null;
   let anyAnswered = false; // a provider responded cleanly (hit or definitive miss)
 
-  // Run one provider across all UPC candidate forms. Returns the first hit, or
-  // null on a clean miss. Marks anyAnswered when the provider responds without
-  // throwing, and captures UPCitemdb's error as the primary failure.
+  // Run one provider across the given UPC candidate forms (defaulting to all).
+  // Returns the first hit, or null on a clean miss. Marks anyAnswered when the
+  // provider responds without throwing, and captures UPCitemdb's error as the
+  // primary failure.
   const run = async (
     source: UpcSource,
     fn: (u: string) => Promise<UpcItem | null>,
+    cands: string[] = candidates,
   ): Promise<UpcItem | null> => {
     providersTried.push(source);
     let answered = false;
     let firstError: unknown = null;
-    for (const candidate of candidates) {
+    for (const candidate of cands) {
       try {
         const item = await fn(candidate);
         answered = true;
@@ -716,6 +774,19 @@ async function fetchUpcItem(upc: string): Promise<UpcItemResult> {
   item = await run("openfoodfacts", fetchOpenFoodFactsItem);
   if (item) return { item, source: "openfoodfacts", providersTried };
 
+  // Last resort: visual barcode match via Google Lens. Needs a key and a
+  // public origin for the rendered barcode image; runs once (not per candidate)
+  // to conserve SerpApi credits.
+  const serpApiKey = envValue("SERPAPI_API_KEY");
+  if (serpApiKey && publicBase) {
+    item = await run(
+      "googlelens",
+      (u) => fetchGoogleLensItem(u, serpApiKey, publicBase),
+      [upc],
+    );
+    if (item) return { item, source: "googlelens", providersTried };
+  }
+
   // Nothing matched. If at least one provider answered, it's a genuine miss; if
   // they ALL errored, surface the primary failure so the caller returns 502.
   if (!anyAnswered && primaryError) throw primaryError;
@@ -730,11 +801,18 @@ function productIdFromUrl(sourceUrl: string | undefined): string | null {
   return m ? m[1] : null;
 }
 
-export async function lookupProductByUpc(upc: string): Promise<UpcLookup> {
+// `origin` is the request's public origin, used to build the barcode-image URL
+// for the Google Lens fallback. PUBLIC_BASE_URL overrides it when the request
+// origin isn't externally reachable (e.g. behind an internal proxy).
+export async function lookupProductByUpc(
+  upc: string,
+  opts: { origin?: string } = {},
+): Promise<UpcLookup> {
   const clean = String(upc || "").replace(/\D/g, "");
   if (!clean) throw new Error("upc is required");
 
-  const { item, source, providersTried } = await fetchUpcItem(clean);
+  const publicBase = envValue("PUBLIC_BASE_URL") || opts.origin || "";
+  const { item, source, providersTried } = await fetchUpcItem(clean, publicBase);
   if (!item) {
     return {
       ok: false,
