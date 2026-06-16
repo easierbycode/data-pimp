@@ -485,6 +485,9 @@ export async function lookupProductDetails(
 // record is a hard miss; a known UPC with no TikTok listing still returns the
 // UPCitemdb item (match: null) so the caller can save it from that data alone.
 const DEFAULT_UPCITEMDB_URL = "https://api.upcitemdb.com/prod/trial/lookup";
+// Go-UPC fallback: a much larger (500M+) catalog that covers general consumer
+// goods UPCitemdb's free trial misses. Keyed (GOUPC_API_KEY) — skipped if unset.
+const DEFAULT_GOUPC_URL = "https://go-upc.com/api/v1/code";
 
 export type UpcItem = {
   title: string;
@@ -512,7 +515,7 @@ export type UpcLookup = {
 
 // UPCitemdb: trial endpoint needs no key (rate-limited ~100/day, shared). A paid
 // plan key (UPCITEMDB_API_KEY) switches to the authenticated endpoint headers.
-async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
+async function fetchUpcItemDb(upc: string): Promise<UpcItem | null> {
   const base = envValue("UPCITEMDB_API_URL") || DEFAULT_UPCITEMDB_URL;
   const url = new URL(base);
   url.searchParams.set("upc", upc);
@@ -536,6 +539,56 @@ async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
     brand: item.brand ? String(item.brand) : null,
     category: item.category ? String(item.category) : null,
   };
+}
+
+// Go-UPC fallback: GET /api/v1/code/<upc> with a Bearer key, returning a single
+// { product: { name, brand, category, ... } }. An unknown code yields 404 (or a
+// product-less body) — both are a clean miss, not an error.
+async function fetchGoUpcItem(upc: string, key: string): Promise<UpcItem | null> {
+  const base = (envValue("GOUPC_API_URL") || DEFAULT_GOUPC_URL).replace(/\/+$/, "");
+  const res = await fetch(`${base}/${encodeURIComponent(upc)}`, {
+    headers: { accept: "application/json", authorization: `Bearer ${key}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Go-UPC lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  const product = isRecord(body) && isRecord(body.product) ? body.product : null;
+  if (!product || !product.name) return null;
+  return {
+    title: String(product.name),
+    brand: product.brand ? String(product.brand) : null,
+    category: product.category ? String(product.category) : null,
+  };
+}
+
+// Resolve a UPC to a product, walking a provider chain so a single source's
+// gap (or the trial endpoint's ~100/day cap) doesn't strand the lookup:
+// UPCitemdb first, then Go-UPC when GOUPC_API_KEY is set. A provider error is
+// only fatal when there's no fallback to fall through to.
+async function fetchUpcItem(upc: string): Promise<UpcItem | null> {
+  let primaryError: unknown = null;
+  try {
+    const item = await fetchUpcItemDb(upc);
+    if (item) return item;
+  } catch (error) {
+    primaryError = error; // e.g. a 429 from the shared trial endpoint
+  }
+
+  const goUpcKey = envValue("GOUPC_API_KEY");
+  if (goUpcKey) {
+    try {
+      const fallback = await fetchGoUpcItem(upc, goUpcKey);
+      if (fallback) return fallback;
+    } catch {
+      // A fallback miss/credit error shouldn't mask a real primary failure.
+    }
+    return null; // both providers tried, genuine miss
+  }
+
+  if (primaryError) throw primaryError; // no fallback configured — surface it
+  return null;
 }
 
 // Pull the numeric TikTok product id out of a PDP url
