@@ -796,7 +796,16 @@ export async function legacyHandler(req: Request): Promise<Response> {
       const fetchPriceMatch = url.pathname.match(/^\/api\/unpriced-samples\/([^/]+)\/fetch-price$/i);
       if (fetchPriceMatch) {
         if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
-        return json(await fetchPriceForSample(decodeURIComponent(fetchPriceMatch[1])));
+        try {
+          return json(await fetchPriceForSample(decodeURIComponent(fetchPriceMatch[1])));
+        } catch (error) {
+          // A ScrapeCreators miss/outage (or a product missing from Graylog)
+          // must not surface as a raw 500 stack trace -- return a clean error
+          // like the sibling /api/product-lookup and /api/upc-lookup routes so
+          // the row simply stays unpriced.
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 502);
+        }
       }
 
       if (pathname === "/api/comparison") {
