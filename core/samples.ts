@@ -1124,6 +1124,28 @@ function matchesQuery(sample: UnpricedSample, query: string): boolean {
     sample.notes.toLowerCase().includes(query);
 }
 
+// Retry transient ScrapeCreators failures (5xx/429) a few times with linear
+// backoff. Their endpoints occasionally fault on requests they can otherwise
+// serve, and a short retry recovers the accurate result without resorting to a
+// less-precise fallback lookup.
+async function fetchWithRetry(
+  url: URL,
+  init: RequestInit,
+  attempts = 3,
+): Promise<Response> {
+  let response!: Response;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    response = await fetch(url, init);
+    if (response.status < 500 && response.status !== 429) return response;
+    if (attempt < attempts - 1) {
+      // Drain the unused body so the connection can be reused, then back off.
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
+  }
+  return response;
+}
+
 async function fetchScrapeCreatorsPrice(
   product: ProductAnalysis,
 ): Promise<ScrapeCreatorsPrice> {
@@ -1135,11 +1157,34 @@ async function fetchScrapeCreatorsPrice(
       .replace(/\/+$/, "");
   const region = envValue("SCRAPECREATORS_REGION") || DEFAULT_REGION;
 
+  // Synthetic "9"-prefixed ids never map to a real PDP, so go straight to the
+  // name search.
   if (product.productId.startsWith("9")) {
     return fetchScrapeCreatorsPriceByName(base, apiKey, region, product);
   }
 
-  return fetchScrapeCreatorsPriceByUrl(base, apiKey, region, product);
+  // Prefer the by-URL lookup -- when it works it returns the exact PDP's price.
+  // But that endpoint is flaky (ScrapeCreators intermittently 500s with "Cannot
+  // set properties of undefined (setting 'related_videos')" on products it can
+  // otherwise resolve) and some products never resolve, so fall back to the
+  // name search instead of failing the whole request. The fallback may match a
+  // different listing for the same product, which still beats no price at all.
+  try {
+    const byUrl = await fetchScrapeCreatorsPriceByUrl(
+      base,
+      apiKey,
+      region,
+      product,
+    );
+    if (byUrl.price > 0) return byUrl;
+  } catch (error) {
+    console.error(
+      "ScrapeCreators by-url lookup failed; trying name search:",
+      error,
+    );
+  }
+
+  return fetchScrapeCreatorsPriceByName(base, apiKey, region, product);
 }
 
 async function fetchScrapeCreatorsPriceByUrl(
@@ -1153,7 +1198,10 @@ async function fetchScrapeCreatorsPriceByUrl(
   url.searchParams.set("url", productUrl);
   url.searchParams.set("region", region);
 
-  const response = await fetch(url, {
+  // This endpoint intermittently 500s on products it can otherwise resolve, so
+  // retry transient 5xx/429 before giving up -- a retry usually returns the
+  // correct PDP price (and only then do we fall back to the name search).
+  const response = await fetchWithRetry(url, {
     headers: {
       "accept": "application/json",
       "content-type": "application/json",
