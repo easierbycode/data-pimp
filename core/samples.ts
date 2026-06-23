@@ -9,6 +9,7 @@ import {
   type SampleValuation,
   sendGelfMessage,
 } from "./graylog.ts";
+import { cacheGet, cacheSet, hashKey } from "./cache.ts";
 
 export type SamplePriceEdit = {
   productId: string;
@@ -499,6 +500,28 @@ const DEFAULT_OPENFOODFACTS_URL = "https://world.openfoodfacts.org/api/v2/produc
 // match it against Google's shopping graph. Keyed (SERPAPI_API_KEY).
 const DEFAULT_SERPAPI_URL = "https://serpapi.com/search.json";
 
+// Google Lens "type" for the image-lookup endpoint. `products` returns
+// product-oriented matches (names + store links); `exact_matches` is the
+// strictest (only confirmed same-product listings). Overridable via
+// SERPAPI_LENS_TYPE. We parse exact_matches / products / visual_matches from the
+// response regardless, so this just steers which set SerpApi prioritizes.
+const DEFAULT_LENS_TYPE = "products";
+
+// Cache TTLs (ms) for the cost-bearing lookups. Hits live a day by default
+// (a UPC/image → product mapping is stable; only the price drifts), misses an
+// hour (so a transient gap re-checks sooner). Both env-tunable. Parsed
+// explicitly (not `Number(...) || default`) so an operator can set "0" to
+// disable caching — cacheSet treats ttl<=0 as a no-op — while only an unset or
+// non-numeric value falls back to the default.
+function lookupCacheTtl(): number {
+  const n = Number(envValue("LOOKUP_CACHE_TTL_MS"));
+  return Number.isFinite(n) ? n : 24 * 60 * 60 * 1000;
+}
+function lookupCacheNegTtl(): number {
+  const n = Number(envValue("LOOKUP_CACHE_NEG_TTL_MS"));
+  return Number.isFinite(n) ? n : 60 * 60 * 1000;
+}
+
 export type UpcItem = {
   title: string;
   brand: string | null;
@@ -543,6 +566,26 @@ export type UpcLookup = {
 
 // Raw provider responses captured for diagnostics, keyed by "engine:query".
 export type SerpDebug = Record<string, unknown>;
+
+// Result of resolving a product *image* (not a barcode) to a TikTok Shop
+// product: SerpApi Google Lens turns the image into candidate product names,
+// then ScrapeCreators resolves the best candidate to a live listing. Mirrors
+// UpcLookup so the tracker can share rendering, keyed by imageUrl instead of upc.
+export type ImageLookup = {
+  ok: boolean;
+  imageUrl: string;
+  // Best candidate Lens surfaced (its title drives the TikTok search).
+  item?: UpcItem;
+  // Every candidate title Lens returned, best-first — diagnostic context for the
+  // debug panel even when none resolved to a TikTok product.
+  candidates?: string[];
+  match?: UpcMatch | null;
+  error?: string;
+  // Which Lens result set answered ("googlelens" — products/exact/visual).
+  source?: "googlelens";
+  // Raw SerpApi payload when the caller asks for debug (?debug=1).
+  debug?: SerpDebug;
+};
 
 // UPCitemdb: trial endpoint needs no key (rate-limited ~100/day, shared). A paid
 // plan key (UPCITEMDB_API_KEY) switches to the authenticated endpoint headers.
@@ -705,6 +748,56 @@ async function fetchGoogleLensItem(
   return null;
 }
 
+// A product candidate Lens returned for an image: the cleaned listing title
+// (drives the TikTok search) and its source link (diagnostic).
+type LensCandidate = { title: string; link: string | null };
+
+// Google Lens via SerpApi, pointed at a *product image* (the image-lookup
+// endpoint). Unlike the barcode fallback above, this matches the photo itself —
+// SerpApi's `google searches by image` behavior — and returns product-oriented
+// candidates. We request the configured type (products / exact_matches) but
+// parse every result set the response carries, most-precise first, so the caller
+// gets candidate names even when SerpApi files them under a different key.
+async function fetchGoogleLensProducts(
+  imageUrl: string,
+  key: string,
+  debug?: SerpDebug,
+): Promise<LensCandidate[]> {
+  const url = new URL(envValue("SERPAPI_API_URL") || DEFAULT_SERPAPI_URL);
+  url.searchParams.set("engine", "google_lens");
+  url.searchParams.set("url", imageUrl);
+  url.searchParams.set("type", envValue("SERPAPI_LENS_TYPE") || DEFAULT_LENS_TYPE);
+  url.searchParams.set("api_key", key);
+
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`Google Lens lookup failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  if (debug) debug[`google_lens:${imageUrl}`] = body;
+
+  // Exact matches are confirmed same-product listings; products / visual matches
+  // are progressively looser. Walk them in that order and dedup by cleaned title.
+  const groups = ["exact_matches", "products", "product_results", "visual_matches"];
+  const seen = new Set<string>();
+  const out: LensCandidate[] = [];
+  if (isRecord(body)) {
+    for (const groupKey of groups) {
+      const arr = Array.isArray(body[groupKey]) ? body[groupKey] as unknown[] : [];
+      for (const entry of arr) {
+        if (!isRecord(entry) || !entry.title) continue;
+        const title = cleanLensTitle(String(entry.title));
+        if (!title) continue;
+        const dedup = title.toLowerCase();
+        if (seen.has(dedup)) continue;
+        seen.add(dedup);
+        out.push({ title, link: entry.link ? String(entry.link) : null });
+      }
+    }
+  }
+  return out;
+}
+
 // Google Shopping via SerpApi. Shopping listings are indexed by GTIN/UPC, so a
 // raw barcode query often surfaces the exact product even when plain web search
 // (and Lens visual matching) come up empty — the more reliable of the two
@@ -860,53 +953,18 @@ function productIdFromUrl(sourceUrl: string | undefined): string | null {
   return m ? m[1] : null;
 }
 
-// `origin` is the request's public origin, used to build the barcode-image URL
-// for the Google Lens fallback. PUBLIC_BASE_URL overrides it when the request
-// origin isn't externally reachable (e.g. behind an internal proxy). `debug`
-// echoes the raw SerpApi payloads back to the caller for diagnostics.
-export async function lookupProductByUpc(
-  upc: string,
-  opts: { origin?: string; debug?: boolean } = {},
-): Promise<UpcLookup> {
-  const clean = String(upc || "").replace(/\D/g, "");
-  if (!clean) throw new Error("upc is required");
-
-  const publicBase = envValue("PUBLIC_BASE_URL") || opts.origin || "";
-  const { item, source, providersTried, debug } = await fetchUpcItem(
-    clean,
-    publicBase,
-    opts.debug,
-  );
-  if (!item) {
-    return {
-      ok: false,
-      upc: clean,
-      error: "No product found for that UPC",
-      providersTried,
-      debug,
-    };
-  }
-
-  const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
-  if (!apiKey) {
-    // No TikTok search available — still hand back the resolved item.
-    return { ok: true, upc: clean, upcItem: item, match: null, providersTried, source, debug };
-  }
-
-  // Search TikTok Shop by brand + title (deduped) for the best match.
-  const query = [item.brand, item.title]
-    .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const product: ProductAnalysis = {
-    productId: "9" + clean, // synthetic id: never a real PDP, forces name search
-    name: query || item.title,
+// The synthetic ProductAnalysis the ScrapeCreators name search needs. Only
+// `name` is read by that search; the "9"-prefixed id forces the name-search path
+// (never a real PDP) and the rest are zero placeholders.
+function syntheticProduct(name: string, idHint = ""): ProductAnalysis {
+  return {
+    productId: "9" + idHint,
+    name,
     priceRange: "",
     min_sku_original_price: 0,
-    category: item.category || "",
+    category: "",
     categoryRank: null,
-    seller: item.brand || "",
+    seller: "",
     creators: 0,
     liveStreams: 0,
     videos: 0,
@@ -921,6 +979,24 @@ export async function lookupProductByUpc(
     lastSeen: null,
     image: null,
   };
+}
+
+// Resolve a free-text product name to the best matching TikTok Shop listing via
+// ScrapeCreators. Shared by the UPC and image lookups. Never throws — a price
+// miss must not fail the whole lookup. Returns { match, errored }: `errored` is
+// true only when the ScrapeCreators call itself failed transiently
+// (network/5xx/429/credit), distinct from a clean "no listing" miss, so the
+// caller can cache a transient failure briefly instead of for the full positive
+// TTL. `idHint` only labels the synthetic id; the real product id comes from the
+// matched listing's URL.
+async function resolveTiktokMatchByName(
+  name: string,
+  idHint = "",
+): Promise<{ match: UpcMatch | null; errored: boolean }> {
+  const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
+  if (!apiKey) return { match: null, errored: false };
+  const trimmed = name.replace(/\s+/g, " ").trim();
+  if (!trimmed) return { match: null, errored: false };
 
   const base = (envValue("SCRAPECREATORS_API_BASE") || DEFAULT_SCRAPECREATORS_BASE)
     .replace(/\/+$/, "");
@@ -928,22 +1004,18 @@ export async function lookupProductByUpc(
 
   let lookup: ScrapeCreatorsPrice | null = null;
   try {
-    lookup = await fetchScrapeCreatorsPriceByName(base, apiKey, region, product);
+    lookup = await fetchScrapeCreatorsPriceByName(
+      base,
+      apiKey,
+      region,
+      syntheticProduct(trimmed, idHint),
+    );
   } catch {
-    lookup = null; // a search miss/credit error shouldn't fail the whole lookup
+    return { match: null, errored: true }; // transient — don't cache long
   }
-
-  if (!lookup || !lookup.title) {
-    return { ok: true, upc: clean, upcItem: item, match: null, providersTried, source, debug };
-  }
+  if (!lookup || !lookup.title) return { match: null, errored: false };
 
   return {
-    ok: true,
-    upc: clean,
-    upcItem: item,
-    providersTried,
-    source,
-    debug,
     match: {
       productId: productIdFromUrl(lookup.sourceUrl),
       name: lookup.title || null,
@@ -953,6 +1025,172 @@ export async function lookupProductByUpc(
       sourceUrl: lookup.sourceUrl || null,
       product: lookup.product,
     },
+    errored: false,
+  };
+}
+
+// `origin` is the request's public origin, used to build the barcode-image URL
+// for the Google Lens fallback. PUBLIC_BASE_URL overrides it when the request
+// origin isn't externally reachable (e.g. behind an internal proxy). `debug`
+// echoes the raw SerpApi payloads back to the caller for diagnostics — and
+// bypasses the cache, so a debug call always returns fresh raw payloads.
+export async function lookupProductByUpc(
+  upc: string,
+  opts: { origin?: string; debug?: boolean } = {},
+): Promise<UpcLookup> {
+  const clean = String(upc || "").replace(/\D/g, "");
+  if (!clean) throw new Error("upc is required");
+
+  // Cache by UPC to spare repeat scans the provider + SerpApi credits. Skipped
+  // under debug so the raw payloads are always live. Only resolved results are
+  // cached (computeUpcLookup throws on hard provider failure, so those aren't
+  // stored).
+  if (!opts.debug) {
+    const cached = await cacheGet<UpcLookup>("upc", clean);
+    if (cached) return cached;
+  }
+
+  const { lookup, matchErrored } = await computeUpcLookup(clean, opts);
+
+  if (!opts.debug) {
+    // A transient ScrapeCreators failure yields ok:true/match:null; cache it only
+    // briefly (negative TTL) so the price re-checks within the hour once the
+    // provider recovers, rather than pinning a matchless result for the full day.
+    const ttl = matchErrored || !lookup.ok ? lookupCacheNegTtl() : lookupCacheTtl();
+    await cacheSet("upc", clean, lookup, ttl);
+  }
+  return lookup;
+}
+
+async function computeUpcLookup(
+  clean: string,
+  opts: { origin?: string; debug?: boolean },
+): Promise<{ lookup: UpcLookup; matchErrored: boolean }> {
+  const publicBase = envValue("PUBLIC_BASE_URL") || opts.origin || "";
+  const { item, source, providersTried, debug } = await fetchUpcItem(
+    clean,
+    publicBase,
+    opts.debug,
+  );
+  if (!item) {
+    return {
+      lookup: {
+        ok: false,
+        upc: clean,
+        error: "No product found for that UPC",
+        providersTried,
+        debug,
+      },
+      matchErrored: false,
+    };
+  }
+
+  // Search TikTok Shop by brand + title (deduped) for the best match.
+  const query = [item.brand, item.title]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const { match, errored } = await resolveTiktokMatchByName(
+    query || item.title,
+    clean,
+  );
+
+  return {
+    lookup: {
+      ok: true,
+      upc: clean,
+      upcItem: item,
+      providersTried,
+      source: source ?? undefined,
+      debug,
+      match,
+    },
+    matchErrored: errored,
+  };
+}
+
+// Resolve a product *image* (URL) to a TikTok Shop product: SerpApi Google Lens
+// turns the image into candidate product names, then ScrapeCreators resolves the
+// best candidate to a live listing — the "search by image" path for TikTok
+// metadata/image matching. Gated on SERPAPI_API_KEY. Cached by image URL to
+// control cost; `debug` bypasses the cache and echoes the raw Lens payload.
+export async function lookupProductByImage(
+  imageUrl: string,
+  opts: { debug?: boolean } = {},
+): Promise<ImageLookup> {
+  const url = String(imageUrl || "").trim();
+  if (!url) throw new Error("image url is required");
+
+  const serpApiKey = envValue("SERPAPI_API_KEY");
+  if (!serpApiKey) {
+    return {
+      ok: false,
+      imageUrl: url,
+      error: "image lookup unavailable: SERPAPI_API_KEY is not configured",
+    };
+  }
+
+  const cacheKey = await hashKey(url);
+  if (!opts.debug) {
+    const cached = await cacheGet<ImageLookup>("image", cacheKey);
+    if (cached) return cached;
+  }
+
+  const { lookup, matchErrored } = await computeImageLookup(
+    url,
+    serpApiKey,
+    opts.debug,
+  );
+
+  if (!opts.debug) {
+    // As in lookupProductByUpc: a transient ScrapeCreators failure re-checks
+    // within the hour instead of pinning a matchless result for the full day.
+    const ttl = matchErrored || !lookup.ok ? lookupCacheNegTtl() : lookupCacheTtl();
+    await cacheSet("image", cacheKey, lookup, ttl);
+  }
+  return lookup;
+}
+
+async function computeImageLookup(
+  url: string,
+  serpApiKey: string,
+  debug = false,
+): Promise<{ lookup: ImageLookup; matchErrored: boolean }> {
+  const debugInfo: SerpDebug | undefined = debug ? {} : undefined;
+  const candidates = await fetchGoogleLensProducts(url, serpApiKey, debugInfo);
+  const candidateTitles = candidates.map((c) => c.title);
+
+  if (!candidates.length) {
+    return {
+      lookup: {
+        ok: false,
+        imageUrl: url,
+        error: "No product matches for that image",
+        candidates: candidateTitles,
+        debug: debugInfo,
+      },
+      matchErrored: false,
+    };
+  }
+
+  const best = candidates[0];
+  const item: UpcItem = { title: best.title, brand: null, category: null };
+  // Resolve only the top candidate to a TikTok listing — one ScrapeCreators
+  // search keeps the per-lookup cost bounded.
+  const { match, errored } = await resolveTiktokMatchByName(best.title);
+
+  return {
+    lookup: {
+      ok: true,
+      imageUrl: url,
+      item,
+      candidates: candidateTitles,
+      source: "googlelens",
+      debug: debugInfo,
+      match,
+    },
+    matchErrored: errored,
   };
 }
 

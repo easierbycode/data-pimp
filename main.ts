@@ -12,6 +12,7 @@ import {
   fetchProductWithEdits,
   fetchSampleValuationWithEdits,
   listUnpricedSamples,
+  lookupProductByImage,
   lookupProductByUpc,
   lookupProductDetails,
   updateSamplePrice,
@@ -86,6 +87,21 @@ function corsJson(data: unknown, status = 200) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
+    },
+  });
+}
+
+// CORS preflight for the endpoints that accept POST with a JSON body (e.g.
+// /api/image-lookup) — a cross-origin JSON POST triggers an OPTIONS preflight
+// the simple GET endpoints never see.
+function corsPreflight() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "content-type",
+      "access-control-max-age": "86400",
     },
   });
 }
@@ -722,6 +738,48 @@ export async function legacyHandler(req: Request): Promise<Response> {
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return corsJson({ ok: false, upc, error: msg }, 502);
+        }
+      }
+
+      // Image lookup for the tracker's "search by image" path: resolve a product
+      // IMAGE (URL) to a TikTok product via SerpApi Google Lens (type=products /
+      // exact_matches) → candidate names → ScrapeCreators. Gated on
+      // SERPAPI_API_KEY, cached by image URL. ?debug=1 echoes the raw Lens
+      // payload (bypassing the cache). Accepts GET ?url= or POST {url}; carries
+      // CORS + an OPTIONS preflight for the cross-origin JSON POST.
+      if (pathname === "/api/image-lookup") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        if (req.method !== "GET" && req.method !== "POST") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        let imageUrl = url.searchParams.get("url") || url.searchParams.get("image") || "";
+        let debug = url.searchParams.get("debug") === "1";
+        if (req.method === "POST") {
+          const body = await readJsonBody(req);
+          if (!imageUrl && typeof body.url === "string") imageUrl = body.url;
+          if (!imageUrl && typeof body.image === "string") imageUrl = body.image;
+          if (body.debug === true || body.debug === "1" || body.debug === 1) debug = true;
+        }
+        imageUrl = imageUrl.trim();
+        if (!imageUrl) {
+          return corsJson(
+            {
+              ok: false,
+              error: "image url is required (?url= / ?image= or POST {url})",
+            },
+            400,
+          );
+        }
+        try {
+          const result = await lookupProductByImage(imageUrl, { debug });
+          // SERPAPI_API_KEY unset → the feature is unavailable, not a bad request.
+          const status = !result.ok && /SERPAPI_API_KEY/.test(result.error || "")
+            ? 503
+            : 200;
+          return corsJson(result, status);
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, imageUrl, error: msg }, 502);
         }
       }
 
