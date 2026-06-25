@@ -413,6 +413,254 @@ function renderOSShell(): Response {
   });
 }
 
+// Escape a value for safe interpolation into HTML text and double-quoted
+// attributes. The public product page below injects DB-sourced sample fields
+// (name/brand/notes/picture_url) into markup, so every dynamic value goes
+// through this first.
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Build the trimmed, copy-paste-friendly product page document. Mirrors the
+// surface the Inventory app renders at admin.thirsty.store/p/<id>: product image
+// (with "Copy image") plus Name / Brand / Price / Notes rows, each with a
+// per-field copy button — and no BIN/affiliate/action chrome. `sample` is null
+// for a missing product; `errored` flags a lookup failure (vs. a clean miss).
+// Exported for the offline render test (scripts/verify-product-page.ts).
+export function productPageDocument(
+  sample: Record<string, unknown> | null,
+  code: string,
+  errored = false,
+): string {
+  const name = sample?.name != null ? String(sample.name) : "";
+  const brand = sample?.brand != null ? String(sample.brand) : "";
+  const notes = sample?.notes != null ? String(sample.notes) : "";
+  // Only trust an absolute http(s) image URL: it flows into <img src>, og:image,
+  // and the clipboard (copyImage), so reject javascript:/data:/relative values
+  // (falls back to the "No image" placeholder).
+  const rawPicture = sample?.picture_url != null ? String(sample.picture_url) : "";
+  const picture = /^https?:\/\//i.test(rawPicture) ? rawPicture : "";
+  // Postgres numerics can arrive as strings via node-pg; coerce defensively.
+  // Treat <= 0 as unpriced (the rest of the codebase uses price > 0 as the
+  // "has a price" test), so the row is omitted rather than advertising "$0.00".
+  const rawPrice = sample?.current_price;
+  const priceNum = rawPrice == null || rawPrice === "" ? null : Number(rawPrice);
+  const price = priceNum != null && Number.isFinite(priceNum) && priceNum > 0
+    ? `$${priceNum.toFixed(2)}`
+    : null;
+
+  const title = sample ? (name || "Product") : "Product not found";
+  const desc = sample ? [brand, price].filter(Boolean).join(" · ") : "";
+
+  // Name always renders; the rest only when present (matching the Inventory app).
+  const fields: Array<[label: string, value: string, isPrice: boolean]> = [];
+  if (sample) {
+    fields.push(["Name", name, false]);
+    if (brand) fields.push(["Brand", brand, false]);
+    if (price) fields.push(["Price", price, true]);
+    if (notes) fields.push(["Notes", notes, false]);
+  }
+
+  const fieldsHtml = fields.map(([label, value, isPrice]) =>
+    `        <div class="row${isPrice ? " price" : ""}">
+          <div class="col">
+            <div class="label">${escapeHtml(label)}</div>
+            <div class="value">${escapeHtml(value) || "&mdash;"}</div>
+          </div>
+          <button class="copy" type="button" data-copy="${escapeHtml(value)}" aria-label="Copy ${escapeHtml(label)}">Copy</button>
+        </div>`
+  ).join("\n");
+
+  const mediaHtml = picture
+    ? `<img src="${escapeHtml(picture)}" alt="${escapeHtml(name)}" />
+        <button class="copy copy-image" type="button" data-copy-image="${escapeHtml(picture)}" aria-label="Copy image">Copy image</button>`
+    : `<div class="placeholder">No image</div>`;
+
+  const bodyHtml = sample
+    ? `<main class="card">
+        <div class="media">${mediaHtml}</div>
+        <div class="fields">
+${fieldsHtml}
+        </div>
+      </main>`
+    : `<main class="card">
+        <div class="empty">
+          <h1>${errored ? "Temporarily unavailable" : "Product not found"}</h1>
+          <p>${errored
+            ? "Please try again in a moment."
+            : `No sample matches <code>${escapeHtml(code)}</code>.`}</p>
+        </div>
+      </main>`;
+
+  // og:image only when we have a picture, so link previews (eBay/social) get one.
+  const ogImage = picture
+    ? `\n  <meta property="og:image" content="${escapeHtml(picture)}" />`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#070a12" />
+  <title>${escapeHtml(title)}</title>
+  ${desc ? `<meta name="description" content="${escapeHtml(desc)}" />\n  ` : ""}<meta property="og:title" content="${escapeHtml(title)}" />
+  ${desc ? `<meta property="og:description" content="${escapeHtml(desc)}" />\n  ` : ""}<meta property="og:type" content="product" />${ogImage}
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="https://assets.codepen.io/11817390/LifePreneur-logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Dark theme tokens, shared with the Inventory app (tiktok-sample-tracker
+       src/index.css) so the public page matches admin.thirsty.store/p/<id>. */
+    :root {
+      color-scheme: dark;
+      --background: 222 47% 5%;
+      --foreground: 210 40% 96%;
+      --card: 218 24.4% 8.8%;
+      --muted-foreground: 220 20% 75%;
+      --primary: 30 97% 61%;
+      --border: 217 32% 15%;
+      --radius: 0.5rem;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 1.5rem;
+      background: hsl(var(--background)); color: hsl(var(--foreground));
+      font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card {
+      width: 100%; max-width: 30rem; background: hsl(var(--card));
+      border: 1px solid hsl(var(--border)); border-radius: calc(var(--radius) * 2);
+      overflow: hidden; box-shadow: 0 18px 50px -22px rgba(0,0,0,.8);
+    }
+    .media {
+      position: relative; aspect-ratio: 1 / 1; background: hsl(var(--background));
+      display: grid; place-items: center;
+    }
+    .media img { width: 100%; height: 100%; object-fit: contain; }
+    .media .placeholder { color: hsl(var(--muted-foreground)); font-size: .85rem; }
+    .media .copy-image {
+      position: absolute; right: .6rem; bottom: .6rem;
+      background: hsl(var(--background) / .82); backdrop-filter: blur(4px);
+    }
+    .fields { padding: .5rem .85rem 1rem; }
+    .row {
+      display: flex; align-items: flex-start; gap: .75rem;
+      padding: .8rem .15rem; border-bottom: 1px solid hsl(var(--border) / .6);
+    }
+    .row:last-child { border-bottom: 0; }
+    .row .col { flex: 1 1 auto; min-width: 0; }
+    .row .label {
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+      color: hsl(var(--muted-foreground)); margin-bottom: .2rem;
+    }
+    .row .value { font-size: 1rem; font-weight: 500; word-break: break-word; white-space: pre-wrap; }
+    .row.price .value { color: hsl(var(--primary)); font-weight: 700; }
+    button.copy {
+      flex: 0 0 auto; cursor: pointer; border: 1px solid hsl(var(--border));
+      background: transparent; color: hsl(var(--foreground)); border-radius: var(--radius);
+      font: 600 .8rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
+      padding: .55rem .7rem; transition: color .15s, border-color .15s;
+    }
+    button.copy:hover { border-color: hsl(var(--primary)); color: hsl(var(--primary)); }
+    button.copy.copied { border-color: hsl(var(--primary)); color: hsl(var(--primary)); }
+    .empty { padding: 3.5rem 1.5rem; text-align: center; color: hsl(var(--muted-foreground)); }
+    .empty h1 { color: hsl(var(--foreground)); font-size: 1.1rem; margin: 0 0 .5rem; }
+    .empty code { color: hsl(var(--foreground)); }
+  </style>
+</head>
+<body>
+  ${bodyHtml}
+  <script>
+    (function () {
+      function flash(btn, msg) {
+        if (!btn.hasAttribute('data-label')) btn.setAttribute('data-label', btn.textContent);
+        btn.textContent = msg;
+        btn.classList.add('copied');
+        clearTimeout(btn._t);
+        btn._t = setTimeout(function () {
+          btn.textContent = btn.getAttribute('data-label');
+          btn.classList.remove('copied');
+        }, 1400);
+      }
+      async function copyText(text, btn) {
+        try { await navigator.clipboard.writeText(text); flash(btn, 'Copied'); }
+        catch (_) { flash(btn, 'Copy failed'); }
+      }
+      async function copyImage(url, btn) {
+        try {
+          var blob = await (await fetch(url, { mode: 'cors' })).blob();
+          if (typeof ClipboardItem === 'undefined') throw new Error('no ClipboardItem');
+          await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+          flash(btn, 'Copied image');
+        } catch (_) {
+          try { await navigator.clipboard.writeText(url); flash(btn, 'Copied image URL'); }
+          catch (_e) { flash(btn, 'Copy failed'); }
+        }
+      }
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('button.copy');
+        if (!btn) return;
+        if (btn.hasAttribute('data-copy-image')) copyImage(btn.getAttribute('data-copy-image'), btn);
+        else if (btn.hasAttribute('data-copy')) copyText(btn.getAttribute('data-copy'), btn);
+      });
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+// Defense-in-depth headers for the public product page. No X-Frame-Options: the
+// page is meant to be embeddable in eBay listings; nosniff + a privacy-preserving
+// referrer policy are safe to send and cheap insurance behind the output escaping.
+const PRODUCT_PAGE_HEADERS: Record<string, string> = {
+  "content-type": "text/html; charset=utf-8",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+};
+
+// Look up a sample by its TikTok product id (qr_code, the value used in the
+// bare-digit URL) in the shared Postgres this deployment owns and render the
+// trimmed public product page. In thin-client mode (no local DB) defer to the
+// central deployment, mirroring the /api/* proxy.
+async function renderPublicProductPage(code: string, req: Request, url: URL): Promise<Response> {
+  if (REMOTE_API && new URL(REMOTE_API).host !== url.host) {
+    return await proxyApi(req, url);
+  }
+  let sample: Record<string, unknown> | null = null;
+  try {
+    const rows = await Samples.filter({ qr_code: code }, undefined, 1);
+    sample = (rows[0] as Record<string, unknown>) ?? null;
+    // Fail closed: db.ts's buildWhere silently drops a filter key that isn't a
+    // known column, which would turn this into "newest sample" for any digit
+    // URL. Only treat a row as a match when its qr_code actually equals `code`.
+    if (sample && String(sample.qr_code) !== code) sample = null;
+  } catch (err) {
+    console.error(`product page lookup failed for ${code}:`, err);
+    return new Response(productPageDocument(null, code, true), {
+      status: 503,
+      headers: { ...PRODUCT_PAGE_HEADERS, "cache-control": "no-store" },
+    });
+  }
+  return new Response(productPageDocument(sample, code), {
+    status: sample ? 200 : 404,
+    headers: {
+      ...PRODUCT_PAGE_HEADERS,
+      // Short shared cache for found products (good for link-preview crawlers /
+      // embeds); never cache a miss so a freshly-added sample shows up promptly.
+      "cache-control": sample ? "public, max-age=60" : "no-store",
+    },
+  });
+}
+
 // Serve a local file (cached in-memory, refreshed when its mtime changes).
 // Used for the client bundle (/app.js) and the Thirsty OS shell assets.
 const fileCache = new Map<string, { text: string; mtimeMs: number | null }>();
@@ -914,6 +1162,16 @@ export async function legacyHandler(req: Request): Promise<Response> {
   // The storefront SPA now lives under /kiosk (its BrowserRouter uses
   // basename="/kiosk"); serve its shell for /kiosk and any client-routed path.
   if (pathname === "/kiosk" || pathname.startsWith("/kiosk/")) return renderSPAShell();
+
+  // Public product page: a bare, all-digits path (the TikTok product id, 10+
+  // digits so it can't collide with real store routes) renders the trimmed,
+  // shareable sample page — the same surface as admin.thirsty.store/p/<id> — so
+  // a thirsty.store/<id> link can be shared/embedded in eBay listings. An
+  // optional trailing slash is tolerated so a copy-pasted ".../<id>/" still works.
+  const productPageMatch = url.pathname.match(/^\/(\d{10,})\/?$/);
+  if (productPageMatch && (req.method === "GET" || req.method === "HEAD")) {
+    return await renderPublicProductPage(productPageMatch[1], req, url);
+  }
 
   // Thirsty OS desktop owns the root; unknown routes fall back to it too.
   return renderOSShell();
