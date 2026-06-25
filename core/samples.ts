@@ -535,7 +535,13 @@ export type UpcMatch = {
   image: string | null;
   seller: string | null;
   sourceUrl: string | null;
-  product?: Record<string, unknown>;
+  // Which pipeline stage produced this candidate — "tiktok" | "google_shopping"
+  // | "google_lens" | "upcitemdb". Set on every entry in `candidates`; the
+  // legacy top-level `match` (which is candidates[0]) carries it too.
+  source?: string | null;
+  // Raw upstream record (TikTok search product / SerpApi listing) the candidate
+  // was mapped from — kept for the match-picker and diagnostics.
+  product?: unknown;
 };
 
 // Providers in the lookup chain (diagnostics for the caller).
@@ -552,6 +558,12 @@ export type UpcLookup = {
   upc: string;
   upcItem?: UpcItem;
   match?: UpcMatch | null;
+  // Every product the pipeline surfaced for this UPC, ranked best-first: TikTok
+  // Shop search results first (the inventory app's target), then Google Shopping
+  // / Lens listings. De-duped (by productId or normalized title+seller) and
+  // capped. `match` is candidates[0] (kept for back-compat — the picker uses the
+  // full list); [] when nothing matched.
+  candidates?: UpcMatch[];
   error?: string;
   // Every provider attempted, in order — e.g. ["upcitemdb","go-upc",
   // "openfoodfacts"] when both fallbacks ran before giving up.
@@ -713,6 +725,37 @@ function cleanLensTitle(raw: string): string {
     .trim();
 }
 
+// Map one SerpApi listing (a google_shopping `shopping_results` entry or a
+// google_lens `visual_matches` entry) to a ranked candidate. Both shapes expose
+// the same fields under slightly different keys: a seller in `source`, an image
+// in `thumbnail`, a link in `product_link`/`link`, and a price either as
+// `extracted_price` (Shopping) or a `{ extracted_value, value }` object (Lens).
+// productId stays null — these aren't TikTok products — so de-dup keys on
+// title+seller. Price is a number (0 when unparseable), never null.
+function serpCandidate(
+  entry: Record<string, unknown>,
+  source: "google_shopping" | "google_lens",
+): UpcMatch {
+  const price = numberFrom(
+    valueAt(entry, ["extracted_price"]) ??
+      valueAt(entry, ["price", "extracted_value"]) ??
+      valueAt(entry, ["price", "value"]) ??
+      valueAt(entry, ["price"]),
+    0,
+  );
+  return {
+    productId: null,
+    name: cleanLensTitle(String(entry.title ?? "")) || null,
+    price,
+    image: stringAt(entry, ["thumbnail"]) ?? stringAt(entry, ["image"]) ?? null,
+    seller: stringAt(entry, ["source"]) ?? stringAt(entry, ["seller"]) ?? null,
+    sourceUrl: stringAt(entry, ["product_link"]) ?? stringAt(entry, ["link"]) ??
+      null,
+    source,
+    product: entry,
+  };
+}
+
 // Google Lens via SerpApi. We point Lens at our own rendered barcode image
 // (served by /api/barcode/<upc>.png) so it decodes the code and returns the
 // shopping "visual_matches" — resolving products no UPC database indexes. Needs
@@ -722,6 +765,7 @@ async function fetchGoogleLensItem(
   key: string,
   publicBase: string,
   debug?: SerpDebug,
+  collect?: UpcMatch[],
 ): Promise<UpcItem | null> {
   const imageUrl = `${publicBase.replace(/\/+$/, "")}/api/barcode/${
     encodeURIComponent(upc)
@@ -740,12 +784,18 @@ async function fetchGoogleLensItem(
   const matches = isRecord(body) && Array.isArray(body.visual_matches)
     ? body.visual_matches
     : [];
+  // Return the first usable title as the resolved item, but when a collector is
+  // supplied keep walking so every visual match becomes a ranked candidate.
+  let first: UpcItem | null = null;
   for (const match of matches) {
     if (!isRecord(match) || !match.title) continue;
     const title = cleanLensTitle(String(match.title));
-    if (title) return { title, brand: null, category: null };
+    if (!title) continue;
+    if (!first) first = { title, brand: null, category: null };
+    if (!collect) break;
+    collect.push(serpCandidate(match, "google_lens"));
   }
-  return null;
+  return first;
 }
 
 // A product candidate Lens returned for an image: the cleaned listing title
@@ -806,6 +856,7 @@ async function fetchGoogleShoppingItem(
   upc: string,
   key: string,
   debug?: SerpDebug,
+  collect?: UpcMatch[],
 ): Promise<UpcItem | null> {
   const url = new URL(envValue("SERPAPI_API_URL") || DEFAULT_SERPAPI_URL);
   url.searchParams.set("engine", "google_shopping");
@@ -821,12 +872,19 @@ async function fetchGoogleShoppingItem(
   const results = isRecord(body) && Array.isArray(body.shopping_results)
     ? body.shopping_results
     : [];
+  // Return the first usable title as the resolved item, but when a collector is
+  // supplied keep walking so every shopping result becomes a ranked candidate
+  // (these are exactly the 3rd-party / spam SKUs the picker lets a user reject).
+  let first: UpcItem | null = null;
   for (const result of results) {
     if (!isRecord(result) || !result.title) continue;
     const title = cleanLensTitle(String(result.title));
-    if (title) return { title, brand: null, category: null };
+    if (!title) continue;
+    if (!first) first = { title, brand: null, category: null };
+    if (!collect) break;
+    collect.push(serpCandidate(result, "google_shopping"));
   }
-  return null;
+  return first;
 }
 
 type UpcItemResult = {
@@ -834,6 +892,10 @@ type UpcItemResult = {
   source: UpcSource | null;
   providersTried: UpcSource[];
   debug?: SerpDebug;
+  // Listings collected from the SerpApi steps (Google Shopping then Lens) while
+  // resolving the item — surfaced as candidates. Empty when a UPC database
+  // answered first (those steps never ran) or SerpApi isn't configured.
+  candidates: UpcMatch[];
 };
 
 // A scanned code may arrive as UPC-A (12 digits) or zero-padded EAN-13 (13).
@@ -868,6 +930,9 @@ async function fetchUpcItem(
   const candidates = upcCandidates(upc);
   const providersTried: UpcSource[] = [];
   const debugInfo: SerpDebug | undefined = debug ? {} : undefined;
+  // Listings the SerpApi steps surface, gathered regardless of debug so the
+  // caller can rank them into `candidates`.
+  const serpCandidates: UpcMatch[] = [];
   let primaryError: unknown = null;
   let anyAnswered = false; // a provider responded cleanly (hit or definitive miss)
 
@@ -898,22 +963,30 @@ async function fetchUpcItem(
   };
 
   let item = await run("upcitemdb", fetchUpcItemDb);
-  if (item) return { item, source: "upcitemdb", providersTried, debug: debugInfo };
+  if (item) {
+    return { item, source: "upcitemdb", providersTried, debug: debugInfo, candidates: serpCandidates };
+  }
 
   const goUpcKey = envValue("GOUPC_API_KEY");
   if (goUpcKey) {
     item = await run("go-upc", (u) => fetchGoUpcItem(u, goUpcKey));
-    if (item) return { item, source: "go-upc", providersTried, debug: debugInfo };
+    if (item) {
+      return { item, source: "go-upc", providersTried, debug: debugInfo, candidates: serpCandidates };
+    }
   }
 
   const barcodeLookupKey = envValue("BARCODELOOKUP_API_KEY");
   if (barcodeLookupKey) {
     item = await run("barcodelookup", (u) => fetchBarcodeLookupItem(u, barcodeLookupKey));
-    if (item) return { item, source: "barcodelookup", providersTried, debug: debugInfo };
+    if (item) {
+      return { item, source: "barcodelookup", providersTried, debug: debugInfo, candidates: serpCandidates };
+    }
   }
 
   item = await run("openfoodfacts", fetchOpenFoodFactsItem);
-  if (item) return { item, source: "openfoodfacts", providersTried, debug: debugInfo };
+  if (item) {
+    return { item, source: "openfoodfacts", providersTried, debug: debugInfo, candidates: serpCandidates };
+  }
 
   // SerpApi fallbacks for codes no UPC database indexes. Both are keyed
   // (SERPAPI_API_KEY) and run only after the DBs miss. Google Shopping first —
@@ -925,24 +998,28 @@ async function fetchUpcItem(
   if (serpApiKey) {
     item = await run(
       "googleshopping",
-      (u) => fetchGoogleShoppingItem(u, serpApiKey, debugInfo),
+      (u) => fetchGoogleShoppingItem(u, serpApiKey, debugInfo, serpCandidates),
     );
-    if (item) return { item, source: "googleshopping", providersTried, debug: debugInfo };
+    if (item) {
+      return { item, source: "googleshopping", providersTried, debug: debugInfo, candidates: serpCandidates };
+    }
 
     if (publicBase) {
       item = await run(
         "googlelens",
-        (u) => fetchGoogleLensItem(u, serpApiKey, publicBase, debugInfo),
+        (u) => fetchGoogleLensItem(u, serpApiKey, publicBase, debugInfo, serpCandidates),
         [upc],
       );
-      if (item) return { item, source: "googlelens", providersTried, debug: debugInfo };
+      if (item) {
+        return { item, source: "googlelens", providersTried, debug: debugInfo, candidates: serpCandidates };
+      }
     }
   }
 
   // Nothing matched. If at least one provider answered, it's a genuine miss; if
   // they ALL errored, surface the primary failure so the caller returns 502.
   if (!anyAnswered && primaryError) throw primaryError;
-  return { item: null, source: null, providersTried, debug: debugInfo };
+  return { item: null, source: null, providersTried, debug: debugInfo, candidates: serpCandidates };
 }
 
 // Pull the numeric TikTok product id out of a PDP url
@@ -953,80 +1030,51 @@ function productIdFromUrl(sourceUrl: string | undefined): string | null {
   return m ? m[1] : null;
 }
 
-// The synthetic ProductAnalysis the ScrapeCreators name search needs. Only
-// `name` is read by that search; the "9"-prefixed id forces the name-search path
-// (never a real PDP) and the rest are zero placeholders.
-function syntheticProduct(name: string, idHint = ""): ProductAnalysis {
-  return {
-    productId: "9" + idHint,
-    name,
-    priceRange: "",
-    min_sku_original_price: 0,
-    category: "",
-    categoryRank: null,
-    seller: "",
-    creators: 0,
-    liveStreams: 0,
-    videos: 0,
-    gmv: 0,
-    customers: 0,
-    quantity: 0,
-    skuOrders: 0,
-    refunds: 0,
-    unitsRefunded: 0,
-    sampleCount: 0,
-    estimatedRetailValue: 0,
-    lastSeen: null,
-    image: null,
-  };
-}
-
-// Resolve a free-text product name to the best matching TikTok Shop listing via
-// ScrapeCreators. Shared by the UPC and image lookups. Never throws — a price
-// miss must not fail the whole lookup. Returns { match, errored }: `errored` is
-// true only when the ScrapeCreators call itself failed transiently
-// (network/5xx/429/credit), distinct from a clean "no listing" miss, so the
-// caller can cache a transient failure briefly instead of for the full positive
-// TTL. `idHint` only labels the synthetic id; the real product id comes from the
-// matched listing's URL.
+// Resolve a free-text product name to TikTok Shop listings via ScrapeCreators.
+// Shared by the UPC and image lookups. Never throws — a price miss must not fail
+// the whole lookup. Returns { match, candidates, errored }:
+//   - `candidates` is every search result mapped and ranked best-first.
+//   - `match` is the single highest-scoring *priced* listing (candidates[0] in
+//     the common case), kept for callers that want one result and to preserve
+//     the image lookup's behavior — null when no priced listing was found.
+//   - `errored` is true only when the ScrapeCreators call itself failed
+//     transiently (network/5xx/429/credit), distinct from a clean "no listing"
+//     miss, so the caller can cache a transient failure briefly instead of for
+//     the full positive TTL.
 async function resolveTiktokMatchByName(
   name: string,
-  idHint = "",
-): Promise<{ match: UpcMatch | null; errored: boolean }> {
+): Promise<{ match: UpcMatch | null; candidates: UpcMatch[]; errored: boolean }> {
   const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
-  if (!apiKey) return { match: null, errored: false };
+  if (!apiKey) return { match: null, candidates: [], errored: false };
   const trimmed = name.replace(/\s+/g, " ").trim();
-  if (!trimmed) return { match: null, errored: false };
+  if (!trimmed) return { match: null, candidates: [], errored: false };
 
   const base = (envValue("SCRAPECREATORS_API_BASE") || DEFAULT_SCRAPECREATORS_BASE)
     .replace(/\/+$/, "");
   const region = envValue("SCRAPECREATORS_REGION") || DEFAULT_REGION;
 
-  let lookup: ScrapeCreatorsPrice | null = null;
+  let body: unknown;
   try {
-    lookup = await fetchScrapeCreatorsPriceByName(
-      base,
-      apiKey,
-      region,
-      syntheticProduct(trimmed, idHint),
-    );
+    ({ body } = await fetchScrapeCreatorsSearchBody(base, apiKey, region, trimmed));
   } catch {
-    return { match: null, errored: true }; // transient — don't cache long
+    return { match: null, candidates: [], errored: true }; // transient — don't cache long
   }
-  if (!lookup || !lookup.title) return { match: null, errored: false };
 
-  return {
-    match: {
-      productId: productIdFromUrl(lookup.sourceUrl),
-      name: lookup.title || null,
-      price: lookup.price || 0,
-      image: lookup.image ?? null,
-      seller: lookup.seller ?? null,
-      sourceUrl: lookup.sourceUrl || null,
-      product: lookup.product,
-    },
-    errored: false,
-  };
+  const candidates = tiktokSearchCandidates(body, trimmed);
+  const best = bestScrapeCreatorsSearchProduct(body, trimmed);
+  const match: UpcMatch | null = best
+    ? {
+      productId: productIdFromUrl(scrapeCreatorsSearchProductUrl(best)),
+      name: scrapeCreatorsSearchProductTitle(best) || null,
+      price: priceFromScrapeCreatorsSearchProduct(best) || 0,
+      image: imageFromScrapeCreators(best) ?? null,
+      seller: scrapeCreatorsSearchProductSeller(best) ?? null,
+      sourceUrl: scrapeCreatorsSearchProductUrl(best) || null,
+      source: "tiktok",
+      product: best,
+    }
+    : null;
+  return { match, candidates, errored: false };
 }
 
 // `origin` is the request's public origin, used to build the barcode-image URL
@@ -1062,16 +1110,40 @@ export async function lookupProductByUpc(
   return lookup;
 }
 
+// Merge candidate lists into one ranked, de-duplicated result. Input order is
+// the ranking — callers pass the best sources first (TikTok listings ahead of
+// Google ones) and each list is already best-first, so the first occurrence of
+// a product wins. Two candidates collide when they share a productId or a
+// normalized title+seller. Capped so a noisy SerpApi page can't bloat the
+// response (or blow past the cache's value-size limit).
+function rankCandidates(lists: UpcMatch[][], cap = 10): UpcMatch[] {
+  const norm = (value: string | null | undefined) =>
+    (value || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const seenIds = new Set<string>();
+  const seenTitleSeller = new Set<string>();
+  const out: UpcMatch[] = [];
+  for (const candidate of lists.flat()) {
+    const id = candidate.productId || "";
+    const title = norm(candidate.name);
+    const titleSeller = `${title}\t${norm(candidate.seller)}`;
+    if (!id && !title) continue; // nothing to identify it by
+    if (id && seenIds.has(id)) continue;
+    if (title && seenTitleSeller.has(titleSeller)) continue;
+    if (id) seenIds.add(id);
+    if (title) seenTitleSeller.add(titleSeller);
+    out.push(candidate);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
 async function computeUpcLookup(
   clean: string,
   opts: { origin?: string; debug?: boolean },
 ): Promise<{ lookup: UpcLookup; matchErrored: boolean }> {
   const publicBase = envValue("PUBLIC_BASE_URL") || opts.origin || "";
-  const { item, source, providersTried, debug } = await fetchUpcItem(
-    clean,
-    publicBase,
-    opts.debug,
-  );
+  const { item, source, providersTried, debug, candidates: serpCandidates } =
+    await fetchUpcItem(clean, publicBase, opts.debug);
   if (!item) {
     return {
       lookup: {
@@ -1080,21 +1152,28 @@ async function computeUpcLookup(
         error: "No product found for that UPC",
         providersTried,
         debug,
+        candidates: [],
+        match: null,
       },
       matchErrored: false,
     };
   }
 
-  // Search TikTok Shop by brand + title (deduped) for the best match.
+  // Search TikTok Shop by brand + title (deduped) for matching listings.
   const query = [item.brand, item.title]
     .filter(Boolean)
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
-  const { match, errored } = await resolveTiktokMatchByName(
+  const { candidates: tiktokCandidates, errored } = await resolveTiktokMatchByName(
     query || item.title,
-    clean,
   );
+
+  // TikTok listings rank first (the inventory app's target, and so the legacy
+  // `match` — candidates[0] — stays the best TikTok listing), then the Google
+  // Shopping / Lens listings gathered while resolving the item. `match` is just
+  // candidates[0] now; the app's match-picker consumes the full ranked list.
+  const candidates = rankCandidates([tiktokCandidates, serpCandidates]);
 
   return {
     lookup: {
@@ -1104,7 +1183,8 @@ async function computeUpcLookup(
       providersTried,
       source: source ?? undefined,
       debug,
-      match,
+      candidates,
+      match: candidates[0] ?? null,
     },
     matchErrored: errored,
   };
@@ -1470,14 +1550,18 @@ async function fetchScrapeCreatorsPriceByUrl(
   };
 }
 
-async function fetchScrapeCreatorsPriceByName(
+// One TikTok Shop search call, returning the parsed body and the request URL.
+// Shared by the price path (which keeps the best result) and the candidate path
+// (which maps every result), so a single lookup serves both without a second
+// SerpApi-style credit spend.
+async function fetchScrapeCreatorsSearchBody(
   base: string,
   apiKey: string,
   region: string,
-  product: ProductAnalysis,
-): Promise<ScrapeCreatorsPrice> {
+  query: string,
+): Promise<{ body: unknown; url: string }> {
   const url = new URL(`${base}/v1/tiktok/shop/search`);
-  url.searchParams.set("query", product.name);
+  url.searchParams.set("query", query);
   url.searchParams.set("region", region);
 
   const response = await fetch(url, {
@@ -1495,23 +1579,73 @@ async function fetchScrapeCreatorsPriceByName(
     );
   }
 
-  const body = await response.json();
+  return { body: await response.json(), url: url.href };
+}
+
+async function fetchScrapeCreatorsPriceByName(
+  base: string,
+  apiKey: string,
+  region: string,
+  product: ProductAnalysis,
+): Promise<ScrapeCreatorsPrice> {
+  const { body, url } = await fetchScrapeCreatorsSearchBody(
+    base,
+    apiKey,
+    region,
+    product.name,
+  );
   const result = bestScrapeCreatorsSearchProduct(body, product.name);
   if (!result) {
     return {
       price: 0,
-      sourceUrl: url.href,
+      sourceUrl: url,
     };
   }
 
   return {
     price: priceFromScrapeCreatorsSearchProduct(result),
-    sourceUrl: scrapeCreatorsSearchProductUrl(result) || url.href,
+    sourceUrl: scrapeCreatorsSearchProductUrl(result) || url,
     title: scrapeCreatorsSearchProductTitle(result),
     seller: scrapeCreatorsSearchProductSeller(result),
     image: imageFromScrapeCreators(result),
     product: result,
   };
+}
+
+// Map every product the ScrapeCreators search returned to a ranked candidate,
+// best-first. Ranking mirrors bestScrapeCreatorsSearchProduct: priced listings
+// first, then by title-match score, stable on the original order — so
+// candidates[0] is exactly the listing the legacy single `match` would pick.
+function tiktokSearchCandidates(body: unknown, query: string): UpcMatch[] {
+  const ranked = scrapeCreatorsSearchProducts(body)
+    .map((product, index) => ({
+      product,
+      index,
+      title: scrapeCreatorsSearchProductTitle(product),
+      price: priceFromScrapeCreatorsSearchProduct(product),
+      score: searchProductScore(
+        query,
+        scrapeCreatorsSearchProductTitle(product) || "",
+      ),
+    }))
+    .filter((entry) => entry.title); // a candidate needs a name
+  ranked.sort((a, b) => {
+    const aPriced = a.price > 0 ? 1 : 0;
+    const bPriced = b.price > 0 ? 1 : 0;
+    if (aPriced !== bPriced) return bPriced - aPriced;
+    if (a.score !== b.score) return b.score - a.score;
+    return a.index - b.index;
+  });
+  return ranked.map(({ product, price }) => ({
+    productId: productIdFromUrl(scrapeCreatorsSearchProductUrl(product)),
+    name: scrapeCreatorsSearchProductTitle(product) ?? null,
+    price: price || 0,
+    image: imageFromScrapeCreators(product) ?? null,
+    seller: scrapeCreatorsSearchProductSeller(product) ?? null,
+    sourceUrl: scrapeCreatorsSearchProductUrl(product) ?? null,
+    source: "tiktok",
+    product,
+  }));
 }
 
 function priceFromScrapeCreators(body: unknown): number {
