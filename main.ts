@@ -13,6 +13,7 @@ import {
   fetchSampleValuationWithEdits,
   listUnpricedSamples,
   lookupProductByImage,
+  lookupProductByLens,
   lookupProductByTiktokUrl,
   lookupProductByUpc,
   lookupProductDetails,
@@ -823,6 +824,55 @@ export async function legacyHandler(req: Request): Promise<Response> {
             },
             502,
           );
+        }
+      }
+
+      // Image lookup variant for the inventory app's "Find by photo" flow:
+      // resolve a public product IMAGE (URL) to ranked candidates in the same
+      // UpcMatch shape /api/upc-lookup returns. SerpApi Google Lens visual
+      // matches are mapped to UpcMatch and any that resolve to a TikTok Shop
+      // listing (via ScrapeCreators) are boosted and tagged source:"tiktok";
+      // match == candidates[0]. Gated on SERPAPI_API_KEY, cached by image URL.
+      // ?debug=1 echoes the raw Lens payload (mirrors upc-lookup), bypassing the
+      // cache. Cross-origin GET; carries CORS + an OPTIONS preflight.
+      if (pathname === "/api/lens-lookup") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        if (req.method !== "GET") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        const image =
+          (url.searchParams.get("image") || url.searchParams.get("url") || "").trim();
+        const debug = url.searchParams.get("debug") === "1";
+        // The image must be a public http(s) URL Lens can fetch — reject missing
+        // or non-http(s) values up front rather than handing SerpApi garbage.
+        let validImage = false;
+        if (image) {
+          try {
+            const proto = new URL(image).protocol;
+            validImage = proto === "http:" || proto === "https:";
+          } catch {
+            validImage = false;
+          }
+        }
+        if (!validImage) {
+          return corsJson(
+            {
+              ok: false,
+              error: "image must be an http(s) URL (?image=<url-encoded url>)",
+            },
+            400,
+          );
+        }
+        try {
+          const result = await lookupProductByLens(image, { debug });
+          // SERPAPI_API_KEY unset → the feature is unavailable, not a bad request.
+          const status = !result.ok && /SERPAPI_API_KEY/.test(result.error || "")
+            ? 503
+            : 200;
+          return corsJson(result, status);
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, image, error: msg }, 502);
         }
       }
 
