@@ -535,13 +535,16 @@ export type UpcMatch = {
   image: string | null;
   seller: string | null;
   sourceUrl: string | null;
-  // Which pipeline stage produced this candidate — "tiktok" | "google_shopping"
-  // | "google_lens" | "upcitemdb". Set on every entry in `candidates`; the
-  // legacy top-level `match` (which is candidates[0]) carries it too.
+  // Which pipeline stage produced this candidate: "tiktok" once it resolves to a
+  // TikTok Shop listing (via ScrapeCreators), "google_shopping" / "google_lens"
+  // for a SerpApi listing that didn't, or "upcitemdb". Set on every entry in a
+  // candidates list; the legacy top-level `match` (candidates[0]) carries it too.
+  // Lets the lookups rank in-platform listings above visual/shopping matches and
+  // tag each candidate's provenance.
   source?: string | null;
   // Raw upstream record (TikTok search product / SerpApi listing) the candidate
   // was mapped from — kept for the match-picker and diagnostics.
-  product?: unknown;
+  product?: Record<string, unknown>;
 };
 
 // Providers in the lookup chain (diagnostics for the caller).
@@ -594,6 +597,23 @@ export type ImageLookup = {
   match?: UpcMatch | null;
   error?: string;
   // Which Lens result set answered ("googlelens" — products/exact/visual).
+  source?: "googlelens";
+  // Raw SerpApi payload when the caller asks for debug (?debug=1).
+  debug?: SerpDebug;
+};
+
+// Result of the /api/lens-lookup endpoint: the same Google Lens search as
+// ImageLookup, but every visual match mapped to the shared UpcMatch shape and
+// ranked best-first (TikTok-resolved listings boosted above raw Lens matches) —
+// the candidate shape /api/upc-lookup returns. Backs the inventory app's "Find
+// by photo" flow. Keyed by `image` (the response echoes it under that name).
+export type LensLookup = {
+  ok: boolean;
+  image: string;
+  // Ranked candidates, best-first; match is candidates[0] (null when none).
+  match?: UpcMatch | null;
+  candidates?: UpcMatch[];
+  error?: string;
   source?: "googlelens";
   // Raw SerpApi payload when the caller asks for debug (?debug=1).
   debug?: SerpDebug;
@@ -799,8 +819,36 @@ async function fetchGoogleLensItem(
 }
 
 // A product candidate Lens returned for an image: the cleaned listing title
-// (drives the TikTok search) and its source link (diagnostic).
-type LensCandidate = { title: string; link: string | null };
+// (drives the TikTok search) plus the fields needed to map it straight to a
+// UpcMatch (image-lookup only reads `title`; lens-lookup uses the rest to render
+// a "google_lens" candidate when it doesn't resolve to a TikTok listing).
+type LensCandidate = {
+  title: string;
+  link: string | null;
+  image: string | null;
+  price: number;
+  seller: string | null;
+};
+
+// Pull a numeric price out of a Lens visual match. SerpApi reports it as
+// { value: "$19.99", extracted_value: 19.99, currency: "$" }, but older shapes
+// use a bare number or string — handle all three, returning 0 (unknown) when no
+// parseable amount is present.
+function lensEntryPrice(entry: Record<string, unknown>): number {
+  const p = entry.price;
+  if (typeof p === "number") return Number.isFinite(p) ? p : 0;
+  const fromString = (s: string): number => {
+    const n = Number(s.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) ? n : 0;
+  };
+  if (typeof p === "string") return fromString(p);
+  if (isRecord(p)) {
+    const ev = p.extracted_value;
+    if (typeof ev === "number" && Number.isFinite(ev)) return ev;
+    if (typeof p.value === "string") return fromString(p.value);
+  }
+  return 0;
+}
 
 // Google Lens via SerpApi, pointed at a *product image* (the image-lookup
 // endpoint). Unlike the barcode fallback above, this matches the photo itself —
@@ -841,7 +889,24 @@ async function fetchGoogleLensProducts(
         const dedup = title.toLowerCase();
         if (seen.has(dedup)) continue;
         seen.add(dedup);
-        out.push({ title, link: entry.link ? String(entry.link) : null });
+        const image = entry.thumbnail
+          ? String(entry.thumbnail)
+          : entry.image
+          ? String(entry.image)
+          : null;
+        out.push({
+          title,
+          link: entry.link ? String(entry.link) : null,
+          image,
+          price: lensEntryPrice(entry),
+          // Lens labels the storefront in `source` (e.g. "Walmart"); fall back
+          // to `source_name` for the visual_matches shape.
+          seller: entry.source
+            ? String(entry.source)
+            : entry.source_name
+            ? String(entry.source_name)
+            : null,
+        });
       }
     }
   }
@@ -1110,33 +1175,6 @@ export async function lookupProductByUpc(
   return lookup;
 }
 
-// Merge candidate lists into one ranked, de-duplicated result. Input order is
-// the ranking — callers pass the best sources first (TikTok listings ahead of
-// Google ones) and each list is already best-first, so the first occurrence of
-// a product wins. Two candidates collide when they share a productId or a
-// normalized title+seller. Capped so a noisy SerpApi page can't bloat the
-// response (or blow past the cache's value-size limit).
-function rankCandidates(lists: UpcMatch[][], cap = 10): UpcMatch[] {
-  const norm = (value: string | null | undefined) =>
-    (value || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const seenIds = new Set<string>();
-  const seenTitleSeller = new Set<string>();
-  const out: UpcMatch[] = [];
-  for (const candidate of lists.flat()) {
-    const id = candidate.productId || "";
-    const title = norm(candidate.name);
-    const titleSeller = `${title}\t${norm(candidate.seller)}`;
-    if (!id && !title) continue; // nothing to identify it by
-    if (id && seenIds.has(id)) continue;
-    if (title && seenTitleSeller.has(titleSeller)) continue;
-    if (id) seenIds.add(id);
-    if (title) seenTitleSeller.add(titleSeller);
-    out.push(candidate);
-    if (out.length >= cap) break;
-  }
-  return out;
-}
-
 async function computeUpcLookup(
   clean: string,
   opts: { origin?: string; debug?: boolean },
@@ -1169,11 +1207,12 @@ async function computeUpcLookup(
     query || item.title,
   );
 
-  // TikTok listings rank first (the inventory app's target, and so the legacy
-  // `match` — candidates[0] — stays the best TikTok listing), then the Google
-  // Shopping / Lens listings gathered while resolving the item. `match` is just
-  // candidates[0] now; the app's match-picker consumes the full ranked list.
-  const candidates = rankCandidates([tiktokCandidates, serpCandidates]);
+  // Rank/de-dupe with the shared helper: TikTok listings (the inventory app's
+  // target) sort ahead of the Google Shopping / Lens listings gathered while
+  // resolving the item, so the legacy `match` — candidates[0] — stays the best
+  // TikTok listing. `match` is just candidates[0] now; the app's match-picker
+  // consumes the full ranked list.
+  const candidates = rankUpcMatches([...tiktokCandidates, ...serpCandidates], 10);
 
   return {
     lookup: {
@@ -1271,6 +1310,166 @@ async function computeImageLookup(
       match,
     },
     matchErrored: errored,
+  };
+}
+
+// How many of the (best-first) Lens candidates the lens-lookup endpoint resolves
+// against ScrapeCreators to find a TikTok listing. Each is a ScrapeCreators
+// credit, so it's bounded (and env-tunable) — the rest stay "google_lens"
+// candidates. Parsed explicitly so an operator can set "0" to disable the TikTok
+// upgrade entirely while an unset/non-numeric value falls back to the default.
+function lensTiktokResolveCap(): number {
+  const n = Number(envValue("LENS_TIKTOK_RESOLVE_CAP"));
+  return Number.isFinite(n) && n >= 0 ? n : 5;
+}
+
+// Map a raw Lens visual match to a "google_lens"-tagged UpcMatch — the candidate
+// we surface when it didn't resolve to a TikTok listing. productId is only set
+// for an actual TikTok Shop link (productIdFromUrl matches any digit run, which
+// would be noise on a Walmart/Amazon URL).
+function lensCandidateToMatch(c: LensCandidate): UpcMatch {
+  const link = c.link ?? null;
+  const isTikTok = !!link && /tiktok\.com/i.test(link);
+  return {
+    productId: isTikTok ? productIdFromUrl(link) : null,
+    name: c.title || null,
+    price: c.price || 0,
+    image: c.image ?? null,
+    seller: c.seller ?? null,
+    sourceUrl: link,
+    source: "google_lens",
+  };
+}
+
+// Stable identity for de-duping a UpcMatch list: prefer the TikTok product id,
+// then a normalized title+seller (collapses the same listing reached two ways —
+// e.g. one product re-listed under different tracking URLs), then the source
+// URL, then the (lowercased) name.
+function matchDedupeKey(m: UpcMatch): string {
+  if (m.productId) return `id:${m.productId}`;
+  const norm = (value: string | null | undefined) =>
+    (value || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const name = norm(m.name);
+  const seller = norm(m.seller);
+  if (name && seller) return `ts:${name}\t${seller}`;
+  if (m.sourceUrl) return `url:${m.sourceUrl.toLowerCase()}`;
+  return `name:${name}`;
+}
+
+// De-dupe and rank a UpcMatch list best-first: TikTok-resolved listings (richer,
+// in-platform) ahead of raw Lens visual matches, each group preserving its
+// upstream (Lens best-first) order. Capped to keep the payload bounded.
+function rankUpcMatches(matches: UpcMatch[], cap = 10): UpcMatch[] {
+  const seen = new Set<string>();
+  const deduped: { m: UpcMatch; i: number }[] = [];
+  for (const m of matches) {
+    const key = matchDedupeKey(m);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push({ m, i: deduped.length });
+  }
+  const rank = (m: UpcMatch) => (m.source === "tiktok" ? 0 : 1);
+  return deduped
+    .sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i)
+    .map((x) => x.m)
+    .slice(0, cap);
+}
+
+// Resolve a product *image* (URL) to ranked product candidates in the shared
+// UpcMatch shape — the candidate shape /api/upc-lookup returns. SerpApi Google
+// Lens turns the image into visual matches; each is mapped to a "google_lens"
+// UpcMatch, and the top few are resolved against ScrapeCreators so any that hit
+// a TikTok Shop listing are upgraded to a "tiktok" match and boosted to the top.
+// Gated on SERPAPI_API_KEY. Cached by image URL to control cost; `debug`
+// bypasses the cache and echoes the raw Lens payload.
+export async function lookupProductByLens(
+  imageUrl: string,
+  opts: { debug?: boolean } = {},
+): Promise<LensLookup> {
+  const url = String(imageUrl || "").trim();
+  if (!url) throw new Error("image url is required");
+
+  const serpApiKey = envValue("SERPAPI_API_KEY");
+  if (!serpApiKey) {
+    return {
+      ok: false,
+      image: url,
+      error: "lens lookup unavailable: SERPAPI_API_KEY is not configured",
+    };
+  }
+
+  const cacheKey = await hashKey(url);
+  if (!opts.debug) {
+    const cached = await cacheGet<LensLookup>("lens", cacheKey);
+    if (cached) return cached;
+  }
+
+  const { lookup, matchErrored } = await computeLensLookup(
+    url,
+    serpApiKey,
+    opts.debug,
+  );
+
+  if (!opts.debug) {
+    // As in lookupProductByUpc/Image: a transient ScrapeCreators failure
+    // re-checks within the hour instead of pinning a stale ranking for the day.
+    const ttl = matchErrored || !lookup.ok ? lookupCacheNegTtl() : lookupCacheTtl();
+    await cacheSet("lens", cacheKey, lookup, ttl);
+  }
+  return lookup;
+}
+
+async function computeLensLookup(
+  url: string,
+  serpApiKey: string,
+  debug = false,
+): Promise<{ lookup: LensLookup; matchErrored: boolean }> {
+  const debugInfo: SerpDebug | undefined = debug ? {} : undefined;
+  const lensCandidates = await fetchGoogleLensProducts(url, serpApiKey, debugInfo);
+
+  if (!lensCandidates.length) {
+    return {
+      lookup: {
+        ok: false,
+        image: url,
+        error: "No product matches for that image",
+        candidates: [],
+        debug: debugInfo,
+      },
+      matchErrored: false,
+    };
+  }
+
+  // Resolve the top candidates against ScrapeCreators in parallel (bounded by
+  // lensTiktokResolveCap to cap cost). resolveTiktokMatchByName never throws, so
+  // a failed call just yields a null match (and flags errored for caching).
+  const toResolve = lensCandidates.slice(0, lensTiktokResolveCap());
+  const resolved = await Promise.all(
+    toResolve.map((c) => resolveTiktokMatchByName(c.title)),
+  );
+
+  let matchErrored = false;
+  const matches: UpcMatch[] = lensCandidates.map((c, i) => {
+    if (i < resolved.length) {
+      const { match, errored } = resolved[i];
+      if (errored) matchErrored = true;
+      if (match) return match; // "tiktok"-tagged, richer in-platform listing
+    }
+    return lensCandidateToMatch(c); // "google_lens" visual match
+  });
+
+  const candidates = rankUpcMatches(matches, 10);
+
+  return {
+    lookup: {
+      ok: true,
+      image: url,
+      source: "googlelens",
+      candidates,
+      match: candidates[0] ?? null,
+      debug: debugInfo,
+    },
+    matchErrored,
   };
 }
 
