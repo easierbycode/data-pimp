@@ -14,8 +14,10 @@ import {
   listUnpricedSamples,
   lookupProductByImage,
   lookupProductByLens,
+  lookupProductByTiktokUrl,
   lookupProductByUpc,
   lookupProductDetails,
+  resolveTiktokProductUrl,
   updateSamplePrice,
   upsertSampleProduct,
 } from "./core/samples.ts";
@@ -781,6 +783,47 @@ export async function legacyHandler(req: Request): Promise<Response> {
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return corsJson({ ok: false, imageUrl, error: msg }, 502);
+        }
+      }
+
+      // Resolve a pasted/shared TikTok product-page URL to a product for the
+      // inventory app (admin.thirsty.store), which saves it as a sample. Extract
+      // the numeric product id from the url (following vt/vm/t.tiktok.com short
+      // links server-side), then run the same ScrapeCreators lookup
+      // /api/product-lookup uses. A bad/non-TikTok url or one with no id is a 400;
+      // a ScrapeCreators outage is a 502. ?debug=1 echoes the raw ScrapeCreators
+      // payload. Cross-origin GET, carries CORS.
+      if (pathname === "/api/product-by-url") {
+        if (req.method !== "GET") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        const rawUrl = (url.searchParams.get("url") || "").trim();
+        if (!rawUrl) {
+          return corsJson(
+            { ok: false, error: "url is required (?url=<tiktok product url>)" },
+            400,
+          );
+        }
+        const resolved = await resolveTiktokProductUrl(rawUrl);
+        if (!resolved.ok) {
+          return corsJson({ ok: false, error: resolved.error }, 400);
+        }
+        const debug = url.searchParams.get("debug") === "1";
+        try {
+          return corsJson(
+            await lookupProductByTiktokUrl(resolved.productId, { debug }),
+          );
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson(
+            {
+              ok: false,
+              productId: resolved.productId,
+              source: "tiktok",
+              error: msg,
+            },
+            502,
+          );
         }
       }
 

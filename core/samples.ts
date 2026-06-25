@@ -405,28 +405,7 @@ export async function lookupProductDetails(
     // Graylog offline -> proceed with the synthesized product below.
   }
 
-  const product: ProductAnalysis = existing ?? {
-    productId: id,
-    name: (name || "").trim() || id,
-    priceRange: "",
-    min_sku_original_price: 0,
-    category: "",
-    categoryRank: null,
-    seller: "",
-    creators: 0,
-    liveStreams: 0,
-    videos: 0,
-    gmv: 0,
-    customers: 0,
-    quantity: 0,
-    skuOrders: 0,
-    refunds: 0,
-    unitsRefunded: 0,
-    sampleCount: 0,
-    estimatedRetailValue: 0,
-    lastSeen: null,
-    image: null,
-  };
+  const product: ProductAnalysis = existing ?? minimalProduct(id, name);
 
   const lookup = await fetchScrapeCreatorsPrice(product);
   if (lookup.price <= 0) {
@@ -476,6 +455,250 @@ export async function lookupProductDetails(
     image: enriched.image ?? null,
     seller: enriched.seller || null,
     sourceUrl: lookup.sourceUrl || null,
+  };
+}
+
+// The bare ProductAnalysis a by-id/by-url ScrapeCreators lookup needs when the
+// product isn't in the shared catalog: the real id drives the by-URL PDP lookup
+// and the name (defaulting to the id) seeds the name-search fallback. Everything
+// else is a zero placeholder. Distinct from syntheticProduct(), which deliberately
+// "9"-prefixes the id to FORCE the name-search path; here we keep the real id so
+// the by-URL lookup is attempted first.
+function minimalProduct(id: string, name?: string): ProductAnalysis {
+  return {
+    productId: id,
+    name: (name || "").trim() || id,
+    priceRange: "",
+    min_sku_original_price: 0,
+    category: "",
+    categoryRank: null,
+    seller: "",
+    creators: 0,
+    liveStreams: 0,
+    videos: 0,
+    gmv: 0,
+    customers: 0,
+    quantity: 0,
+    skuOrders: 0,
+    refunds: 0,
+    unitsRefunded: 0,
+    sampleCount: 0,
+    estimatedRetailValue: 0,
+    lastSeen: null,
+    image: null,
+  };
+}
+
+// --- TikTok product-page URL -> product (for the inventory app) -------------
+// admin.thirsty.store lets a user paste/share a TikTok product URL; this turns
+// that URL into a product it can save as a sample (qr_code = productId,
+// product_json = product). Shape mirrors the inventory app's UpcMatch contract
+// plus an explicit `source` tag. `price` is always a number (0 when unknown,
+// never null) so the app can store it without null-handling.
+export type UrlMatch = {
+  ok: boolean;
+  productId: string;
+  name: string | null;
+  price: number;
+  image: string | null;
+  seller: string | null;
+  sourceUrl: string | null;
+  source: "tiktok";
+  // Raw ScrapeCreators response — the app persists this as product_json. Always
+  // present (null when unresolved) so the serialized shape stays stable.
+  product: Record<string, unknown> | null;
+  error?: string;
+  // Raw ScrapeCreators payload echoed under ?debug=1 (mirrors the other lookups).
+  debug?: SerpDebug;
+};
+
+// Short-link hosts that 30x-redirect to the real PDP url. They carry no id of
+// their own, so we follow the redirect server-side and extract from the target.
+const TIKTOK_SHORTLINK_HOSTS = new Set([
+  "vt.tiktok.com",
+  "vm.tiktok.com",
+  "t.tiktok.com",
+]);
+
+// Accept tiktok.com and any subdomain (shop.tiktok.com, www.tiktok.com, the
+// short-link hosts, regional variants like shop.tiktok.com stay covered).
+function isTiktokHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return h === "tiktok.com" || h.endsWith(".tiktok.com");
+}
+
+// Pull the numeric product id out of an already-final TikTok PDP url. Handles
+//   /view/product/<ID>            (shop.tiktok.com live-manager links)
+//   /shop/pdp/<slug>/<ID>         (www.tiktok.com share links)
+//   .../<ID>                      (any other path ending in the numeric id)
+// The query string is ignored so a numeric ?source=/&region= value can't be
+// mistaken for the id.
+function tiktokProductIdFromUrl(u: URL): string | null {
+  const path = u.pathname;
+  const patterns = [
+    /\/view\/product\/(\d{6,})/i,
+    /\/shop\/pdp\/[^/]+\/(\d{6,})/i,
+    /\/product\/(\d{6,})/i,
+  ];
+  for (const re of patterns) {
+    const m = path.match(re);
+    if (m) return m[1];
+  }
+  // Fallback: the last all-numeric path segment (TikTok ids are long).
+  const segments = path.split("/").filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (/^\d{6,}$/.test(segments[i])) return segments[i];
+  }
+  return null;
+}
+
+// Canonical PDP url for a product id, used as the response sourceUrl when the
+// ScrapeCreators lookup didn't supply one.
+function canonicalPdpUrl(productId: string): string {
+  return `https://shop.tiktok.com/view/product/${productId}`;
+}
+
+// Follow a short link to its final url server-side. Best-effort: any failure
+// (network error, timeout, non-redirecting host) returns null so the caller
+// surfaces a clean 400 rather than a 5xx. Bounded by an 8s timeout; the body is
+// dropped since we only need the final resolved url.
+async function followShortLink(shortUrl: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(shortUrl, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (compatible; thirsty-bot/1.0; +https://thirsty.store)",
+      },
+      signal: controller.signal,
+    });
+    await res.body?.cancel();
+    return res.url || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Resolve a pasted/shared TikTok product URL to a numeric product id. Validates
+// the host, follows vt/vm/t.tiktok.com short links server-side, then extracts
+// the id. Returns a clear error (caller -> 400) when the url isn't a TikTok url
+// or carries no extractable id. Never throws.
+export async function resolveTiktokProductUrl(
+  rawUrl: string,
+): Promise<
+  | { ok: true; productId: string; canonicalUrl: string }
+  | { ok: false; error: string }
+> {
+  const trimmed = String(rawUrl || "").trim();
+  if (!trimmed) return { ok: false, error: "url is required" };
+
+  let u: URL;
+  try {
+    u = new URL(trimmed);
+  } catch {
+    return { ok: false, error: "Invalid url" };
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    return { ok: false, error: "Invalid url" };
+  }
+  if (!isTiktokHost(u.hostname)) {
+    return { ok: false, error: "Not a TikTok url" };
+  }
+
+  // Short links carry no id; follow the redirect server-side and extract from
+  // the resolved PDP url. Only trust a redirect that lands on a NON-short TikTok
+  // host — otherwise (network error, timeout, or a still-short url) the short
+  // code itself could be mis-read as a numeric id, so fail cleanly instead.
+  if (TIKTOK_SHORTLINK_HOSTS.has(u.hostname.toLowerCase())) {
+    let resolved = false;
+    const finalUrl = await followShortLink(u.href);
+    if (finalUrl) {
+      try {
+        const fu = new URL(finalUrl);
+        if (
+          isTiktokHost(fu.hostname) &&
+          !TIKTOK_SHORTLINK_HOSTS.has(fu.hostname.toLowerCase())
+        ) {
+          u = fu;
+          resolved = true;
+        }
+      } catch {
+        // keep resolved=false -> clean miss below
+      }
+    }
+    if (!resolved) {
+      return {
+        ok: false,
+        error: "Could not resolve that TikTok short link to a product",
+      };
+    }
+  }
+
+  const productId = tiktokProductIdFromUrl(u);
+  if (!productId) {
+    return {
+      ok: false,
+      error: "Could not find a product id in that TikTok url",
+    };
+  }
+  return { ok: true, productId, canonicalUrl: canonicalPdpUrl(productId) };
+}
+
+// Look a TikTok product id up via ScrapeCreators by its PDP url — the same
+// /v1/tiktok/product call /api/product-lookup uses (fetchScrapeCreatorsPriceByUrl)
+// — and map it to the UrlMatch contract. We resolve STRICTLY by URL because we
+// have the exact id, and deliberately do NOT fall back to the name search the
+// price-recovery path uses: the only "name" available here is the bare numeric
+// id, and a TikTok Shop search on a number binds an arbitrary unrelated listing
+// to the user's product. Unlike lookupProductDetails this never throws on a
+// missing price — a real product that's out of stock (or whose price field we
+// can't map) still resolves with price 0 and its raw body echoed for the
+// inventory app to persist. Transient 5xx/429 are retried inside
+// fetchScrapeCreatorsPriceByUrl; a hard ScrapeCreators failure throws (-> 502).
+export async function lookupProductByTiktokUrl(
+  productId: string,
+  opts: { debug?: boolean } = {},
+): Promise<UrlMatch> {
+  const id = productId.trim();
+  if (!id) throw new Error("productId is required");
+
+  const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
+  if (!apiKey) throw new Error("SCRAPECREATORS_API_KEY is not configured");
+  const base =
+    (envValue("SCRAPECREATORS_API_BASE") || DEFAULT_SCRAPECREATORS_BASE)
+      .replace(/\/+$/, "");
+  const region = envValue("SCRAPECREATORS_REGION") || DEFAULT_REGION;
+
+  const lookup = await fetchScrapeCreatorsPriceByUrl(
+    base,
+    apiKey,
+    region,
+    minimalProduct(id, id),
+  );
+
+  // A resolved listing carries a title, a price, or an image. price 0 alone is a
+  // valid result (out of stock / unmapped price field), so it doesn't gate `ok`.
+  const hasData = Boolean(lookup.title || lookup.price > 0 || lookup.image);
+
+  return {
+    ok: hasData,
+    productId: id,
+    name: lookup.title || null,
+    price: lookup.price || 0,
+    image: lookup.image ?? null,
+    seller: lookup.seller ?? null,
+    sourceUrl: lookup.sourceUrl || canonicalPdpUrl(id),
+    source: "tiktok",
+    product: lookup.product ?? null,
+    ...(hasData
+      ? {}
+      : { error: "ScrapeCreators returned no product for that url" }),
+    ...(opts.debug ? { debug: { scrapecreators: lookup.product ?? null } } : {}),
   };
 }
 
