@@ -18,6 +18,7 @@ import {
   lookupProductByTiktokUrl,
   lookupProductByUpc,
   lookupProductDetails,
+  lookupProductsByKeyword,
   resolveTiktokProductUrl,
   type UnpricedSample,
   updateSamplePrice,
@@ -1163,6 +1164,47 @@ export async function legacyHandler(req: Request): Promise<Response> {
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return corsJson({ ok: false, image, error: msg }, 502);
+        }
+      }
+
+      // Keyword search for the inventory app's catalog search box: resolve a
+      // free-text query to ranked TikTok Shop listings (via ScrapeCreators) in
+      // the same UpcMatch shape /api/upc-lookup returns; match == candidates[0].
+      // Gated on SCRAPECREATORS_API_KEY, cached by (query, limit). Optional
+      // ?limit= (1..50, default 20). ?debug=1 echoes the raw ScrapeCreators
+      // payload, bypassing the cache. Cross-origin GET; carries CORS + an OPTIONS
+      // preflight.
+      if (pathname === "/api/product-search") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        if (req.method !== "GET") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        // Collapse internal whitespace + trim, matching lookupProductsByKeyword's
+        // own normalization so the echoed `query` is identical across 200/503/502.
+        const query = (url.searchParams.get("q") || url.searchParams.get("query") || "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!query) {
+          return corsJson(
+            { ok: false, error: "q is required (?q=<search terms>)" },
+            400,
+          );
+        }
+        const debug = url.searchParams.get("debug") === "1";
+        const limitParam = url.searchParams.get("limit");
+        const limit = limitParam ? Number(limitParam) : undefined;
+        try {
+          const result = await lookupProductsByKeyword(query, { limit, debug });
+          // SCRAPECREATORS_API_KEY unset → the feature is unavailable, not a bad
+          // request (mirrors /api/lens-lookup's SERPAPI_API_KEY handling).
+          const status =
+            !result.ok && /SCRAPECREATORS_API_KEY/.test(result.error || "")
+              ? 503
+              : 200;
+          return corsJson(result, status);
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, query, error: msg }, 502);
         }
       }
 
