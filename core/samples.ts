@@ -888,6 +888,23 @@ export type LensLookup = {
   debug?: SerpDebug;
 };
 
+// Result of the /api/product-search endpoint: a live TikTok Shop keyword search
+// via ScrapeCreators, every result mapped to the shared UpcMatch shape and
+// ranked best-first (priced listings first, then by title-match score) — the
+// candidate shape /api/upc-lookup returns. Backs the inventory app's catalog
+// search box. Keyed by `query` (echoed back).
+export type SearchLookup = {
+  ok: boolean;
+  query: string;
+  // Ranked candidates, best-first; match is candidates[0] (null when none).
+  match?: UpcMatch | null;
+  candidates?: UpcMatch[];
+  error?: string;
+  source?: "tiktok";
+  // Raw ScrapeCreators payload when the caller asks for debug (?debug=1).
+  debug?: SerpDebug;
+};
+
 // UPCitemdb: trial endpoint needs no key (rate-limited ~100/day, shared). A paid
 // plan key (UPCITEMDB_API_KEY) switches to the authenticated endpoint headers.
 async function fetchUpcItemDb(upc: string): Promise<UpcItem | null> {
@@ -1739,6 +1756,94 @@ async function computeLensLookup(
       debug: debugInfo,
     },
     matchErrored,
+  };
+}
+
+// A keyword search wants a fuller result set than the single-match lookups
+// (which cap at 10); allow up to SEARCH_MAX_LIMIT, defaulting to SEARCH_DEFAULT.
+const SEARCH_DEFAULT_LIMIT = 20;
+const SEARCH_MAX_LIMIT = 50;
+
+function clampSearchLimit(limit?: number): number {
+  if (limit === undefined || !Number.isFinite(limit)) return SEARCH_DEFAULT_LIMIT;
+  return Math.min(SEARCH_MAX_LIMIT, Math.max(1, Math.floor(limit)));
+}
+
+// Resolve a free-text query to ranked TikTok Shop listings via ScrapeCreators,
+// in the shared UpcMatch shape /api/upc-lookup returns; match == candidates[0].
+// Gated on SCRAPECREATORS_API_KEY (|| API_KEY) — returns ok:false with that
+// message when unset so the caller can answer 503. Cached by (limit, query): a
+// populated result lives for the positive TTL, an empty "no results" only for
+// the negative TTL so new inventory surfaces within the hour. A hard
+// ScrapeCreators failure throws (caller -> 502) and is not cached. `debug`
+// bypasses the cache and echoes the raw ScrapeCreators payload.
+export async function lookupProductsByKeyword(
+  query: string,
+  opts: { limit?: number; debug?: boolean } = {},
+): Promise<SearchLookup> {
+  const trimmed = String(query || "").replace(/\s+/g, " ").trim();
+  if (!trimmed) throw new Error("query is required");
+
+  const apiKey = envValue("SCRAPECREATORS_API_KEY") || envValue("API_KEY");
+  if (!apiKey) {
+    return {
+      ok: false,
+      query: trimmed,
+      error:
+        "product search unavailable: SCRAPECREATORS_API_KEY is not configured",
+    };
+  }
+
+  const limit = clampSearchLimit(opts.limit);
+  // Case-sensitive cache identity so the echoed `query` always matches the
+  // caller's request (the ranking itself is case-insensitive regardless).
+  const cacheKey = await hashKey(`${limit}:${trimmed}`);
+  if (!opts.debug) {
+    const cached = await cacheGet<SearchLookup>("search", cacheKey);
+    if (cached) return cached;
+  }
+
+  const lookup = await computeProductSearch(trimmed, apiKey, limit, opts.debug);
+
+  if (!opts.debug) {
+    const ttl = lookup.candidates && lookup.candidates.length > 0
+      ? lookupCacheTtl()
+      : lookupCacheNegTtl();
+    await cacheSet("search", cacheKey, lookup, ttl);
+  }
+  return lookup;
+}
+
+async function computeProductSearch(
+  query: string,
+  apiKey: string,
+  limit: number,
+  debug = false,
+): Promise<SearchLookup> {
+  const base = (envValue("SCRAPECREATORS_API_BASE") || DEFAULT_SCRAPECREATORS_BASE)
+    .replace(/\/+$/, "");
+  const region = envValue("SCRAPECREATORS_REGION") || DEFAULT_REGION;
+
+  // A non-OK ScrapeCreators response throws here -> propagates to the endpoint as
+  // a 502 (mirrors /api/product-by-url); an empty-but-OK result is a clean miss.
+  const { body } = await fetchScrapeCreatorsSearchBody(base, apiKey, region, query);
+
+  // A keyword search returns a selection list (up to SEARCH_MAX_LIMIT), not a
+  // single enriched match, so drop each candidate's raw `product` blob: at this
+  // count it bloats the response and pushes the cached value past Deno KV's
+  // 64 KiB per-value limit (which silently disables cross-instance caching). The
+  // tracker resolves full detail for the chosen candidate via /api/product-lookup;
+  // the raw payload is still available here under ?debug=1.
+  const candidates = rankUpcMatches(tiktokSearchCandidates(body, query), limit)
+    .map(({ product: _product, ...rest }) => rest);
+
+  return {
+    ok: true,
+    query,
+    source: "tiktok",
+    candidates,
+    match: candidates[0] ?? null,
+    ...(debug ? { debug: { scrapecreators: body } } : {}),
   };
 }
 
