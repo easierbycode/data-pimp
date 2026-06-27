@@ -93,21 +93,67 @@ const DEFAULT_STORE_PATH = ".thirsty/sample-prices.json";
 const DEFAULT_SCRAPECREATORS_BASE = "https://api.scrapecreators.com";
 const DEFAULT_REGION = "US";
 
+// Every tracked sample that still needs a price or already carries one -- the
+// backlog the Product Analysis dashboard counts as "unpriced + priced". Kept in
+// one place so /api/unpriced-samples and the catalog merge (listSampleProducts)
+// can never disagree on which samples make up the set.
+async function sampleProductsFromStore(
+  store: SampleStore,
+): Promise<UnpricedSample[]> {
+  const products = await fetchProductsWithStored(1000, store);
+  return products
+    .filter((product) => product.sampleCount > 0)
+    .filter((product) =>
+      product.min_sku_original_price <= 0 || store.edits[product.productId]
+    )
+    .map((product) => sampleFromProduct(product, store.edits[product.productId]));
+}
+
+// The full Product Analysis backlog (unbounded, unsorted-for-paging). The
+// catalog endpoint folds these into /api/products so audit-mode search in the
+// tracker can match samples that live only in Graylog, not yet in the Postgres
+// snapshot.
+//
+// /api/products is polled cross-origin by the tracker and each call would
+// otherwise pay two serial Graylog round-trips (edit records + recent products),
+// so the result is memoized briefly. The backlog changes slowly and a few
+// seconds of staleness is fine for catalog search; the Product Analysis
+// dashboard (listUnpricedSamples) bypasses this memo and stays fully live. The
+// in-flight promise is shared so concurrent polls collapse to one fetch, and a
+// rejection is never cached -- a Graylog outage retries on the next call rather
+// than being pinned for the whole TTL.
+const SAMPLE_PRODUCTS_TTL_MS = 60_000;
+let sampleProductsCache:
+  | { at: number; value: Promise<UnpricedSample[]> }
+  | null = null;
+
+export function listSampleProducts(): Promise<UnpricedSample[]> {
+  const now = Date.now();
+  if (
+    sampleProductsCache &&
+    now - sampleProductsCache.at < SAMPLE_PRODUCTS_TTL_MS
+  ) {
+    return sampleProductsCache.value;
+  }
+
+  const value = (async () => sampleProductsFromStore(await loadStore()))();
+  const entry = { at: now, value };
+  sampleProductsCache = entry;
+  // Don't pin a Graylog outage for the full TTL: drop the entry if it rejects so
+  // the next call retries instead of replaying the failure.
+  value.catch(() => {
+    if (sampleProductsCache === entry) sampleProductsCache = null;
+  });
+  return value;
+}
+
 export async function listUnpricedSamples(
   query = "",
   limit = 100,
 ): Promise<UnpricedSampleList> {
   const store = await loadStore();
-  const products = await fetchProductsWithStored(1000, store);
   const normalizedQuery = query.trim().toLowerCase();
-  const items = products
-    .filter((product) => product.sampleCount > 0)
-    .filter((product) =>
-      product.min_sku_original_price <= 0 || store.edits[product.productId]
-    )
-    .map((product) =>
-      sampleFromProduct(product, store.edits[product.productId])
-    )
+  const items = (await sampleProductsFromStore(store))
     .filter((sample) => matchesQuery(sample, normalizedQuery))
     .sort((a, b) =>
       Number(a.priced) - Number(b.priced) || a.name.localeCompare(b.name)

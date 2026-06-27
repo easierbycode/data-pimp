@@ -11,10 +11,12 @@ import {
   fetchPriceForSample,
   fetchProductWithEdits,
   fetchSampleValuationWithEdits,
+  listSampleProducts,
   listUnpricedSamples,
   lookupProductByImage,
   lookupProductByUpc,
   lookupProductDetails,
+  type UnpricedSample,
   updateSamplePrice,
   upsertSampleProduct,
 } from "./core/samples.ts";
@@ -173,6 +175,25 @@ function sampleRowToKioskProduct(row: Record<string, unknown>): KioskProduct {
     estimatedRetailValue: 0,
     lastSeen: row.created_at ? new Date(String(row.created_at)).toISOString() : null,
     image: row.picture_url ? String(row.picture_url) : null,
+  };
+}
+
+// Map a Product Analysis sample (Graylog-backed) into the same kiosk catalog
+// shape as sampleRowToKioskProduct, so /api/products can surface it alongside
+// the Postgres catalog for audit-mode search. `sample.name` already reflects any
+// apiTitle edit (see sampleFromProduct).
+function sampleProductToKioskProduct(sample: UnpricedSample): KioskProduct {
+  return {
+    productId: sample.productId,
+    name: sample.name,
+    priceRange: sample.price > 0 ? `$${sample.price.toFixed(2)}` : "",
+    min_sku_original_price: sample.price,
+    category: "",
+    seller: sample.apiSeller || "Unknown seller",
+    sampleCount: sample.sampleCount,
+    estimatedRetailValue: sample.sampleValue,
+    lastSeen: sample.lastSeen,
+    image: sample.image,
   };
 }
 
@@ -693,10 +714,31 @@ export async function legacyHandler(req: Request): Promise<Response> {
           ? parseInt(url.searchParams.get("limit")!, 10)
           : undefined;
         const rows = await Samples.list("-created_at") as Record<string, unknown>[];
-        const catalog = rows
+        const base = rows
           .map(sampleRowToKioskProduct)
           .filter((p) => p.productId && p.name);
-        return corsJson(limit ? catalog.slice(0, limit) : catalog);
+
+        // Fold the live Product Analysis backlog (Graylog-backed) into the
+        // catalog so audit-mode search in the tracker can match samples that
+        // exist only in Graylog -- not yet in this Postgres snapshot. Deduped by
+        // productId with the Postgres catalog winning on overlap (both key on
+        // the TikTok product id -- see seed-from-kiosk.ts). When the merge
+        // succeeds we return the full union so every sample stays searchable;
+        // `limit` only bounds the Postgres-only catalog we fall back to when
+        // Graylog is unavailable (the merge must never take the catalog down).
+        try {
+          const byId = new Map(base.map((p) => [p.productId, p]));
+          for (const sample of await listSampleProducts()) {
+            if (!sample.productId || !sample.name || byId.has(sample.productId)) {
+              continue;
+            }
+            byId.set(sample.productId, sampleProductToKioskProduct(sample));
+          }
+          return corsJson([...byId.values()]);
+        } catch (error) {
+          console.error("Product Analysis merge into /api/products failed:", error);
+          return corsJson(limit ? base.slice(0, limit) : base);
+        }
       }
 
       // Live ScrapeCreators detail lookup by product id. Consumed cross-origin
