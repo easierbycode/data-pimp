@@ -7,6 +7,7 @@ import {
   fetchSampleEditRecords,
   type ProductAnalysis,
   type SampleValuation,
+  type ValuationItem,
   sendGelfMessage,
 } from "./graylog.ts";
 import { cacheGet, cacheSet, hashKey } from "./cache.ts";
@@ -1940,6 +1941,29 @@ export async function fetchSampleValuationWithEdits(): Promise<
     resale30Value: totalRetailValue * 0.3,
     lastUpdated,
   };
+}
+
+// The edited per-product line items behind fetchSampleValuationWithEdits — the
+// same product set + price/sampleCount edits the live valuation displays. Feeding
+// these to recordSampleValuation makes a snapshot reproduce exactly what the user
+// saw (so it can be recomputed later with changed variables).
+export async function fetchValuationLineItems(): Promise<ValuationItem[]> {
+  const store = await loadStore();
+  const products = await fetchProductsWithStored(1000, store);
+  return products
+    .filter((product) => product.sampleCount > 0)
+    .map((product) => {
+      const s = sampleFromProduct(product, store.edits[product.productId]);
+      return {
+        productId: String(s.productId),
+        name: s.name,
+        category: product.category,
+        sampleCount: s.sampleCount,
+        unitRetail: s.price,
+        retailValue: s.sampleValue,
+        cost: 0,
+      };
+    });
 }
 
 export async function fetchComparisonWithEdits(): Promise<ComparisonRow[]> {
