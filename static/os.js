@@ -198,6 +198,17 @@ const FOLDERS = [
         width: 1180,
         height: 780,
       },
+      {
+        id: "install-extension",
+        name: "Install Extension",
+        icon: ICONS.boxes,
+        // Same-origin install help: download chrome.zip + load-unpacked steps
+        // (served by data-pimp at /install). Internal, so no sandbox — the
+        // download link works. Opened by the samples-import skill or from Apps.
+        url: "/install",
+        width: 600,
+        height: 720,
+      },
     ],
   },
   {
@@ -1038,3 +1049,39 @@ document.body.insertAdjacentHTML("afterbegin", ICON_GRADIENTS);
 renderDesktop();
 tickClock();
 setInterval(tickClock, 15000);
+
+// Profile / role switcher. Per-device only (localStorage) — the OS has no
+// auth/session to hang a server-side role on. DJ = default; KA = warehouse Karl,
+// who boots straight into a tiled Inventory + Kiosk workspace.
+const ROLE_KEY = "thirsty-os-role";
+const role = localStorage.getItem(ROLE_KEY) || "dj";
+const roleSwitch = document.getElementById("role-switch");
+if (roleSwitch) {
+  roleSwitch.value = role;
+  roleSwitch.addEventListener("change", () => {
+    localStorage.setItem(ROLE_KEY, roleSwitch.value);
+    location.reload(); // re-run boot so the layout branch below applies cleanly
+  });
+}
+
+// Warehouse boot layout: Inventory (LP Sample Tracker) tiled to the LEFT half,
+// defaulting to the "Cleared to Sell" filter; Kiosk tiled to the RIGHT half.
+// Reuses the real openApp() + snapWindow() primitives (windows keyed "app:"+id).
+if (role === "ka") {
+  const appsFolder = FOLDERS.find((f) => f.id === "apps");
+  const apps = (appsFolder && appsFolder.items) || [];
+  const inventory = apps.find((i) => i.id === "inventory");
+  const kiosk = apps.find((i) => i.id === "kiosk");
+  if (inventory) {
+    // ?status=cleared_to_sell pre-selects the warehouse filter (the tracker reads it).
+    openApp({ ...inventory, url: inventory.url + "?status=cleared_to_sell" });
+    const w = windows.get("app:inventory");
+    if (w) snapWindow(w, "left");
+  }
+  if (kiosk) {
+    openApp(kiosk);
+    const w = windows.get("app:kiosk");
+    if (w) snapWindow(w, "right");
+  }
+  if (statusEl) statusEl.textContent = "Warehouse · Karl";
+}

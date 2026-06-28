@@ -134,6 +134,21 @@ button {
   white-space: nowrap;
 }
 
+.role-switch {
+  margin-left: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.role-switch:hover { background: rgba(255, 255, 255, 0.1); }
+.role-switch:focus { outline: none; border-color: var(--gold); }
+
 .clock {
   color: var(--text-dim);
   font-weight: 600;

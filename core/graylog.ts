@@ -319,6 +319,47 @@ export async function fetchCreatorsForProduct(
   }
 }
 
+// Buyer/creator display-names who have an ORDER for a product, matched by product
+// NAME. Order-detail scrapes (source:tiktok-bookmarklet-orders) now stamp
+// `_creator` (a display name — see extension-seller/scrape-order.js) and carry
+// `_default_product` (the product name) but NO numeric product_id, so this is a
+// fuzzy name match — distinct from fetchCreatorsForProduct's affiliate-export id
+// match. Values are display-name form (not @handles); label them as such.
+export async function fetchOrderCreatorsByName(
+  productName: string,
+  limit = 1000,
+): Promise<string[]> {
+  const config = graylogConfigFromEnv();
+  const name = String(productName || "").trim();
+  if (!config || !name) return [];
+
+  const escaped = name.replace(/"/g, '\\"');
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 2,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `source:tiktok-bookmarklet-orders AND creator:* AND default_product:"${escaped}"`,
+      Math.max(200, Math.min(safeLimit, 1000)),
+      ["timestamp", "creator", "default_product"],
+    );
+    const seen = new Set<string>();
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (creator) seen.add(creator);
+    }
+    return [...seen].sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
 // Scheduled-listing intents (sample_schedule_json) paired with their fired
 // markers (sample_schedule_done_json), for the auto-list cron. 1-year window —
 // schedules are short-lived. Errors degrade to empty so the cron just no-ops.
