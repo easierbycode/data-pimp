@@ -40,6 +40,7 @@ import {
   envValue,
   fetchCreatorsForProduct,
   fetchKnownCreators,
+  fetchOrderCreatorsByName,
   graylogConfigFromEnv,
 } from "./core/graylog.ts";
 import { renderBarcodePng } from "./core/barcode.ts";
@@ -439,6 +440,10 @@ function renderOSShell(): Response {
         <span class="brand"><span class="brand-mark">◆</span> Thirsty&nbsp;OS</span>
         <span id="active-app" class="active-app" aria-live="polite" aria-atomic="true">Finder</span>
         <span id="menubar-status" class="mb-status"></span>
+        <select id="role-switch" class="role-switch" aria-label="Profile" title="Switch profile">
+          <option value="dj">DJ</option>
+          <option value="ka">Karl · Warehouse</option>
+        </select>
       </div>
       <div id="dock" class="dock" aria-label="Dock"></div>
       <div class="taskbar-right">
@@ -778,6 +783,12 @@ export async function legacyHandler(req: Request): Promise<Response> {
   // Product Analysis dashboard (migrated from the kiosk) + its assets.
   if (pathname === "/inventory" || pathname === "/inventory.html") {
     return await serveLocalFile("./static/inventory.html", "text/html; charset=utf-8");
+  }
+  // tok-scrape extension install help (download chrome.zip + load-unpacked).
+  // Same-origin so the OS opens it in a normal (unsandboxed) window and the
+  // download link works. Surfaced by the samples-import skill / the Apps folder.
+  if (pathname === "/install" || pathname === "/install.html") {
+    return await serveLocalFile("./static/install.html", "text/html; charset=utf-8");
   }
   if (pathname === "/ui.js") {
     return await serveLocalFile("./static/ui.js", "text/javascript; charset=utf-8");
@@ -1348,18 +1359,27 @@ export async function legacyHandler(req: Request): Promise<Response> {
         }
         const raw = Number(url.searchParams.get("limit"));
         const limit = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1000;
+        // Optional product name → also include creators who ORDERED it (order
+        // scrapes carry a display-name `_creator` + `_default_product` but no
+        // numeric product_id, so it's a name match — see fetchOrderCreatorsByName).
+        const name = (url.searchParams.get("name") || "").trim();
         const ordered = await fetchCreatorsForProduct(productId, limit);
+        const orderCreators = name
+          ? await fetchOrderCreatorsByName(name, limit)
+          : [];
         const all = url.searchParams.get("all") === "1"
           ? await fetchKnownCreators(limit)
           : undefined;
+        const merged = [
+          ...new Set([...ordered, ...orderCreators, ...(all || [])]),
+        ];
         return corsJson({
           productId,
           orderedCreators: ordered,
-          ...(all
-            ? { allKnown: all, creators: [...new Set([...ordered, ...all])] }
-            : { creators: ordered }),
+          orderCreators,
+          ...(all ? { allKnown: all, creators: merged } : { creators: merged }),
           note:
-            "orderedCreators are derived from affiliate-export, where `creator` is the agency label (not necessarily a TikTok @handle).",
+            "orderedCreators come from affiliate-export (creator = agency label); orderCreators come from order scrapes matched by product name (creator = buyer display name) — neither is guaranteed to be a TikTok @handle.",
         });
       }
 
