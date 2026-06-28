@@ -202,3 +202,34 @@ name only), so "order received → which content sold it" can't be joined
 automatically yet. Closing that needs the order scraper to capture a productId —
 out of scope for this skill. Until then, that hop is matched manually by product
 name against the catalog (`/api/products`).
+
+## Event 6 — sample valuation instance (recomputable)
+
+`recordSampleValuation` (`POST /api/sample-valuation/record`, MCP
+`record_sample_valuation`) snapshots a valuation to Graylog with **all raw inputs
+needed to recompute it later**, keyed by a `valuation_id` (+ `valuation_revision_num`).
+The live read (`GET /api/sample-valuation`, `fetchSampleValuation`) is unchanged —
+this is purely additive persistence.
+
+| field | type | meaning |
+| --- | --- | --- |
+| `sample_valuation_json` | JSON string | `{valuationId, revision, recordedAt, recomputedFrom?, params, items[], totals}` |
+| `valuation_id` | string | instance id (`val-<uuid>`) |
+| `valuation_revision_num` | number | 0 for the snapshot; +1 per recompute |
+| `retail_value_num` / `resale_value_num` / `net_num` / `cost_num` | number | flat totals for `--terms`/aggregation |
+
+`items[]` are the recompute fuel — per product: `productId, name, category,
+sampleCount, unitRetail, retailValue, cost, resaleRate?, affiliateRate?, affiliateLink?`.
+`params` = `{defaultResaleRate, resaleRates[3], maintainableCap, currency}`. Totals are
+**derived** (`computeValuationTotals`) so headline numbers match `fetchSampleValuation`;
+extra fields (`resaleValue` at the per-item rate, `affiliateValue`, `netValue`, `totalCost`)
+are additive.
+
+**Recompute later with changed variables** — `recomputeSampleValuation`
+(`POST /api/sample-valuation/recompute`, MCP `recompute_sample_valuation`): fetch the
+stored instance and `addItems` / `updateItems` (e.g. a product's `resaleRate` or
+`affiliateRate` for a different affiliate link) / `removeProductIds` / change `params`,
+and it re-derives the totals. Persists a new revision by default (`recomputedFrom`
+links it), so each scenario is itself queryable; `persist:false` for a preview.
+Query a period's valuations: `sample_valuation_json:*`, group by `valuation_id`,
+take max `valuation_revision_num`.

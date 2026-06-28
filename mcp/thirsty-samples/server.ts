@@ -387,6 +387,56 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "record_sample_valuation",
+    description:
+      "Snapshot a sample valuation to Graylog with ALL raw inputs (per-product " +
+      "line items + params + computed totals) under a valuation_id, so it can be " +
+      "recomputed later with changed variables. Without `items`, snapshots the " +
+      "live product-derived valuation. Returns the valuationId + totals.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        valuationId: { type: "string", description: "Reuse/override the instance id (else generated)." },
+        items: {
+          type: "array",
+          description:
+            "Raw line items [{productId,name,sampleCount,unitRetail,retailValue,cost,resaleRate,affiliateRate,affiliateLink}]; omit to snapshot the live valuation.",
+          items: { type: "object" },
+        },
+        params: { type: "object", description: "{defaultResaleRate,resaleRates[3],maintainableCap,currency} overrides." },
+        note: { type: "string" },
+        source: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "recompute_sample_valuation",
+    description:
+      "Re-run a stored valuation with changed variables — add/update/remove " +
+      "products, change a product's resale or affiliate rate, or tweak params — " +
+      "and get base vs recomputed totals. Persists the scenario as a new revision " +
+      "by default (persist:false for a preview).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        valuationId: { type: "string", description: "The instance to recompute." },
+        addItems: { type: "array", items: { type: "object" }, description: "New line items to add." },
+        updateItems: {
+          type: "array",
+          items: { type: "object" },
+          description: "[{productId, ...fields}] to change (e.g. resaleRate, affiliateRate, retailValue).",
+        },
+        removeProductIds: { type: "array", items: { type: "string" } },
+        params: { type: "object", description: "Param overrides (e.g. defaultResaleRate)." },
+        persist: { type: "boolean", description: "Save as a new revision (default true)." },
+        note: { type: "string" },
+      },
+      required: ["valuationId"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -540,6 +590,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             campaign: args.campaign,
             campaignId: args.campaignId,
             operator: args.operator,
+            note: args.note,
+          },
+        });
+        break;
+      }
+
+      case "record_sample_valuation": {
+        result = await api("/api/sample-valuation/record", {
+          method: "POST",
+          body: {
+            valuationId: args.valuationId,
+            items: args.items,
+            params: args.params,
+            note: args.note,
+            source: args.source,
+          },
+        });
+        break;
+      }
+
+      case "recompute_sample_valuation": {
+        result = await api("/api/sample-valuation/recompute", {
+          method: "POST",
+          body: {
+            valuationId: args.valuationId,
+            addItems: args.addItems,
+            updateItems: args.updateItems,
+            removeProductIds: args.removeProductIds,
+            params: args.params,
+            persist: args.persist,
             note: args.note,
           },
         });
