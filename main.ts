@@ -1399,15 +1399,18 @@ export async function legacyHandler(req: Request): Promise<Response> {
       }
 
       // Mark a sample sold and attribute the resale revenue to a creator.
+      // CORS: the LP Sample Tracker (admin.thirsty.store) POSTs here cross-origin
+      // in graylogOnly mode to attribute resale revenue per creator.
       if (pathname === "/api/sample-sold") {
+        if (req.method === "OPTIONS") return corsPreflight();
         if (req.method !== "POST") {
-          return json({ ok: false, error: "Method not allowed" }, 405);
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
         }
         try {
-          return json(await recordSampleSold(await readJsonBody(req)));
+          return corsJson(await recordSampleSold(await readJsonBody(req)));
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
-          return json({ ok: false, error: msg }, 400);
+          return corsJson({ ok: false, error: msg }, 400);
         }
       }
 
