@@ -42,7 +42,10 @@ import {
   fetchE2EContext,
   fetchKnownCreators,
   fetchOrderCreatorsByName,
+  fetchSampleValuationInstance,
   graylogConfigFromEnv,
+  recomputeSampleValuation,
+  recordSampleValuation,
 } from "./core/graylog.ts";
 import { renderBarcodePng } from "./core/barcode.ts";
 
@@ -1329,6 +1332,50 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       if (pathname === "/api/sample-valuation") {
         return json(await fetchSampleValuationWithEdits());
+      }
+
+      // Persist a valuation INSTANCE (all raw inputs) so it can be recomputed
+      // later with changed variables. CORS — usable cross-origin from the demos.
+      if (pathname === "/api/sample-valuation/record") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        if (req.method !== "POST") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return corsJson(await recordSampleValuation(await readJsonBody(req)));
+        } catch (error) {
+          return corsJson(
+            { ok: false, error: error instanceof Error ? error.message : String(error) },
+            400,
+          );
+        }
+      }
+      // Fetch the latest stored revision of a valuation instance.
+      if (pathname === "/api/sample-valuation/instance") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        return corsJson(
+          await fetchSampleValuationInstance(url.searchParams.get("id") || ""),
+        );
+      }
+      // Re-run a stored valuation with changed variables (add/update/remove
+      // products, change resale/affiliate rates or params). Body: { valuationId,
+      // addItems?, updateItems?, removeProductIds?, params?, persist?, note? }.
+      if (pathname === "/api/sample-valuation/recompute") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        if (req.method !== "POST") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          const body = await readJsonBody(req) as Record<string, unknown>;
+          return corsJson(
+            await recomputeSampleValuation(String(body.valuationId || ""), body),
+          );
+        } catch (error) {
+          return corsJson(
+            { ok: false, error: error instanceof Error ? error.message : String(error) },
+            400,
+          );
+        }
       }
 
       // ---- Sample lifecycle (status changes + resale revenue) ----
