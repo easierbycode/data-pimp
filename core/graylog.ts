@@ -230,6 +230,48 @@ export async function fetchSampleEditRecords(
   }
 }
 
+// Distinct creator handles seen anywhere in Graylog. Every scraper source and
+// our own resale events (sample_sold_json) carry a `creator` field, so a single
+// `creator:*` sweep enumerates them. Backs the sample-lifecycle skill's live
+// attribution list (the user opted to derive creators from Graylog rather than
+// maintain a static allow-list) and mirrors graylog-query's `--terms creator`.
+// Widened to ~5y because creator activity is bursty and a 30d window routinely
+// misses real handles. Real @-handles sort first; bare agency labels (which
+// affiliate-export mirrors into `creator`) follow.
+export async function fetchKnownCreators(limit = 1000): Promise<string[]> {
+  const config = graylogConfigFromEnv();
+  if (!config) return [];
+
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 5,
+    };
+    const messages = await searchGraylog(
+      wide,
+      "creator:*",
+      Math.max(200, Math.min(safeLimit, 1000)),
+      ["timestamp", "creator"],
+    );
+    const seen = new Set<string>();
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (creator) seen.add(creator);
+    }
+    return [...seen].sort((a, b) => {
+      const aRank = a.startsWith("@") ? 0 : 1;
+      const bRank = b.startsWith("@") ? 0 : 1;
+      return aRank - bRank || a.localeCompare(b);
+    });
+  } catch {
+    return [];
+  }
+}
+
 export function graylogConfigFromEnv(): GraylogConfig | null {
   const url = normalizeGraylogUrl(
     envValue("GRAYLOG_API_URL") || envValue("GRAYLOG_URL"),
