@@ -22,8 +22,9 @@
 // systems reconcile even when a qr_code holds a barcode instead of a real id.
 
 import { sendGelfMessage } from "./graylog.ts";
-import { InventoryTransactions, Samples } from "../db.ts";
+import { Bundles, InventoryTransactions, Samples } from "../db.ts";
 import sampleStatuses from "./sample-statuses.json" with { type: "json" };
+import campaignConfig from "./campaign-config.json" with { type: "json" };
 
 export type SampleStatusEntry = {
   value: string;
@@ -157,12 +158,181 @@ export type ListingResult = {
   message: string;
 };
 
+export type CampaignEntry = {
+  id: string;
+  name: string;
+  productMatch?: string[];
+  productIds?: string[];
+  dailyVideoGoal?: number;
+  endsAt?: string;
+  promo?: string;
+};
+
+export type AgencyIntakeInput = {
+  productId?: string;
+  qrCode?: string;
+  name?: string;
+  sampleIds?: Array<string | number>;
+  agencyBucket?: string;
+  qty?: number | string;
+  operator?: string;
+  note?: string;
+};
+
+export type AgencyIntakeResult = {
+  ok: boolean;
+  productId: string | null;
+  name: string | null;
+  agencyBucket: string;
+  qty: number;
+  sampleIds: number[];
+  postgres: { created: number; updated: number; reason?: string };
+  graylog: boolean;
+  message: string;
+};
+
+export type AssignmentInput = SampleRef & {
+  creator?: string;
+  agencyBucket?: string;
+  campaign?: string;
+  campaignId?: string;
+  operator?: string;
+  note?: string;
+};
+
+export type AssignmentResult = {
+  ok: boolean;
+  sampleId: number | null;
+  productId: string | null;
+  name: string | null;
+  creator: string;
+  fromStatus: string | null;
+  agencyBucket: string | null;
+  campaign: string | null;
+  enrichment: string[];
+  postgres: { updated: boolean; transactionId: number | null; reason?: string };
+  graylog: boolean;
+  message: string;
+};
+
 const STATUSES = sampleStatuses as SampleStatusEntry[];
 
 // The full synced status vocabulary (statuses + badges) — served verbatim so the
 // MCP/skill validate against the same single source the tracker uses.
 export function listSampleStatuses(): SampleStatusEntry[] {
   return STATUSES;
+}
+
+const CAMPAIGNS = campaignConfig as {
+  defaultDailyVideoGoal?: number;
+  campaigns?: CampaignEntry[];
+};
+
+// Match a product to a configured campaign by exact productId or a case-
+// insensitive name substring. CONFIG-driven — there is no campaign data source
+// yet, so a match only tells the enrichment note which goal/promo text to show.
+function matchCampaign(
+  productId: string | null,
+  name: string | null,
+): CampaignEntry | null {
+  const pid = String(productId || "").trim();
+  const nm = String(name || "").toLowerCase();
+  for (const c of CAMPAIGNS.campaigns ?? []) {
+    if (pid && Array.isArray(c.productIds) && c.productIds.includes(pid)) return c;
+    if (
+      nm && Array.isArray(c.productMatch) &&
+      c.productMatch.some((t) => nm.includes(String(t).toLowerCase()))
+    ) return c;
+  }
+  return null;
+}
+
+function daysUntil(iso: string): number | null {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return Math.floor((t - Date.now()) / 86_400_000);
+}
+
+// Best-effort audit transaction (the sample-row write is the source of truth).
+async function safeTxn(
+  sampleId: unknown,
+  recipient: string,
+  operator: string,
+  scannedCode: string,
+  notes: string,
+  action: string,
+): Promise<void> {
+  try {
+    await InventoryTransactions.create({
+      action,
+      sample_id: sampleId,
+      operator: operator || null,
+      checked_out_to: recipient || null,
+      scanned_code: scannedCode || null,
+      notes,
+    });
+  } catch {
+    // audit only — never block the status write on it
+  }
+}
+
+// "Nice-to-know" lines for an assignment. Bundle membership is REAL
+// (samples.bundle_id → bundles + siblings); the daily-video goal and promo are
+// CONFIG from campaign-config.json and are labelled `[from campaign-config]` so
+// nobody mistakes them for measured data. No goal/promo data is invented.
+async function buildEnrichment(
+  row: SampleRow | null,
+  campaign: CampaignEntry | null,
+): Promise<string[]> {
+  const lines: string[] = [];
+
+  const bundleId = row?.bundle_id;
+  if (bundleId !== undefined && bundleId !== null) {
+    try {
+      const bundles = await Bundles.filter(
+        { id: String(bundleId) },
+        undefined,
+        1,
+      ) as SampleRow[];
+      const bundle = bundles[0];
+      if (bundle) {
+        const siblings = await Samples.filter(
+          { bundle_id: String(bundleId) },
+          undefined,
+          50,
+        ) as SampleRow[];
+        const extra = siblings.length > 1 ? ` (${siblings.length} items)` : "";
+        lines.push(
+          `Heads up: this sample is part of the "${
+            String(bundle.name ?? "").trim() || "?"
+          }" bundle${extra}.`,
+        );
+      }
+    } catch {
+      // bundle enrichment is best-effort
+    }
+  }
+
+  if (campaign) {
+    const goal = campaign.dailyVideoGoal ?? CAMPAIGNS.defaultDailyVideoGoal ?? 3;
+    const left = campaign.endsAt ? daysUntil(campaign.endsAt) : null;
+    let goalLine = `Campaign "${campaign.name}": aim for ${goal} video${
+      goal === 1 ? "" : "s"
+    }/day to hit goal`;
+    if (left !== null && left >= 0) {
+      goalLine += ` — ends ${campaign.endsAt} (~${left} day${
+        left === 1 ? "" : "s"
+      } left)`;
+    }
+    lines.push(`${goalLine}. [goal from campaign-config]`);
+    if (campaign.promo) {
+      lines.push(
+        `Offer: want to join the ${campaign.promo}? [promo from campaign-config]`,
+      );
+    }
+  }
+
+  return lines;
 }
 
 // Only `kind:"status"` values can live in the single `samples.status` column;
@@ -180,7 +350,7 @@ function isStatusValue(value: string): boolean {
 // key for a sale we prefer a not-yet-sold row (newest first).
 async function resolveSampleRow(
   ref: SampleRef,
-  opts: { preferUnsold?: boolean } = {},
+  opts: { preferUnsold?: boolean; preferReserved?: boolean } = {},
 ): Promise<SampleRow | null> {
   const id = String(ref.sampleId ?? "").trim();
   if (id) {
@@ -196,9 +366,15 @@ async function resolveSampleRow(
       25,
     ) as SampleRow[];
     if (!rows.length) return null;
+    const statusOf = (r: SampleRow) => String(r.status ?? "").trim();
+    // Fulfillment pulls from the agency bucket first (a `reserved` unit), then
+    // any not-yet-sold unit, then whatever's newest.
+    if (opts.preferReserved) {
+      return rows.find((r) => statusOf(r) === "reserved") ??
+        rows.find((r) => statusOf(r) !== "sold") ?? rows[0];
+    }
     if (opts.preferUnsold) {
-      const unsold = rows.find((r) => String(r.status ?? "").trim() !== "sold");
-      return unsold ?? rows[0];
+      return rows.find((r) => statusOf(r) !== "sold") ?? rows[0];
     }
     return rows[0];
   }
@@ -725,6 +901,287 @@ export async function recordSampleListing(
     message: `Listed ${name ?? productId ?? "sample"} at $${
       askPrice.toFixed(2)
     } on ${marketplace} for ${creator} (recorded to ${where}).${warning}`,
+  };
+}
+
+// Agency intake — credit a bulk lot of one product to an agency bucket (e.g.
+// "kyle") BEFORE any creator is assigned. Units sit in `reserved` with
+// checked_out_to = the bucket. With `sampleIds`, credits existing rows; with
+// `productId` + `qty`, creates that many reserved rows (a fresh shipment). Emits
+// one lot-level Graylog `sample_intake_json` event.
+export async function recordAgencyIntake(
+  input: AgencyIntakeInput,
+): Promise<AgencyIntakeResult> {
+  const agencyBucket = String(input.agencyBucket || "").trim();
+  if (!agencyBucket) {
+    throw new Error(
+      "agencyBucket is required — which agency/admin bucket to credit (e.g. kyle)",
+    );
+  }
+  const explicitIds = Array.isArray(input.sampleIds)
+    ? input.sampleIds.map((x) => String(x).trim()).filter(Boolean)
+    : [];
+  const productId = String(input.productId ?? input.qrCode ?? "").trim();
+  if (!explicitIds.length && !productId) {
+    throw new Error("productId (or sampleIds) is required");
+  }
+
+  const now = new Date().toISOString();
+  const note = String(input.note || "").trim();
+  const operator = String(input.operator || "").trim();
+
+  // Name: explicit, else borrowed from an existing row for this productId.
+  let name = String(input.name || "").trim();
+  if (!name && productId) {
+    try {
+      const existing = await Samples.filter(
+        { qr_code: productId },
+        "-created_at",
+        1,
+      ) as SampleRow[];
+      name = existing[0] ? String(existing[0].name ?? "").trim() : "";
+    } catch {
+      // fall through to productId as the name
+    }
+  }
+  if (!name) name = productId || "sample";
+
+  const sampleIds: number[] = [];
+  let created = 0;
+  let updated = 0;
+  const reasons: string[] = [];
+
+  if (explicitIds.length) {
+    for (const id of explicitIds) {
+      try {
+        const r = await Samples.update(id, {
+          status: "reserved",
+          checked_out_to: agencyBucket,
+          checked_out_at: now,
+        }) as SampleRow | undefined;
+        if (r?.id != null) {
+          sampleIds.push(Number(r.id));
+          updated++;
+          await safeTxn(
+            r.id,
+            agencyBucket,
+            operator,
+            productId || String(r.qr_code ?? ""),
+            `agency intake: credited to ${agencyBucket}${note ? ` | ${note}` : ""}`,
+            "agency_intake",
+          );
+        }
+      } catch (error) {
+        reasons.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+  } else {
+    const qty = Math.max(1, Math.min(200, Math.trunc(numOrZero(input.qty) || 1)));
+    for (let i = 0; i < qty; i++) {
+      try {
+        const r = await Samples.create({
+          name,
+          qr_code: productId,
+          status: "reserved",
+          checked_out_to: agencyBucket,
+          checked_out_at: now,
+          notes: `agency intake → ${agencyBucket}${note ? ` | ${note}` : ""}`,
+        }) as SampleRow | undefined;
+        if (r?.id != null) {
+          sampleIds.push(Number(r.id));
+          created++;
+          await safeTxn(
+            r.id,
+            agencyBucket,
+            operator,
+            productId,
+            `agency intake: credited to ${agencyBucket}`,
+            "agency_intake",
+          );
+        }
+      } catch (error) {
+        reasons.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+  }
+
+  const qty = sampleIds.length;
+  const graylog = await sendGelfMessage(
+    `thirsty agency intake: ${name} ×${qty} → bucket ${agencyBucket}`,
+    {
+      sample_intake_json: JSON.stringify({
+        productId: productId || null,
+        sampleIds,
+        name,
+        agencyBucket,
+        qty,
+        note: note || undefined,
+        intakeAt: now,
+      }),
+      sample_event: "agency_intake",
+      agency_bucket: agencyBucket,
+      product_id: productId || undefined,
+      qty_num: qty,
+      sample_source: "skill-agency-intake",
+    },
+  );
+
+  const where = [qty ? "Postgres" : "", graylog ? "Graylog" : ""]
+    .filter(Boolean).join(" + ") || "nothing";
+  const warn = reasons.length
+    ? ` WARNING: ${reasons.length} unit(s) failed: ${reasons.join("; ")}.`
+    : "";
+  return {
+    ok: qty > 0 || graylog,
+    productId: productId || null,
+    name,
+    agencyBucket,
+    qty,
+    sampleIds,
+    postgres: {
+      created,
+      updated,
+      reason: reasons.length ? reasons.join("; ") : undefined,
+    },
+    graylog,
+    message: `Agency intake: ${qty} × ${name} credited to bucket "${agencyBucket}" (recorded to ${where}).${warn}`,
+  };
+}
+
+// Fulfillment — assign one unit to a creator: moves it to CHECKED OUT
+// (checked_out_to = creator, the exact field-set the tracker's useCheckOut
+// writes), attaches a matched campaign, records a `check_out` transaction, emits
+// a `sample_assignment_json` Graylog event, and returns an enrichment note
+// (bundle membership + configured goal/promo).
+export async function recordSampleAssignment(
+  input: AssignmentInput,
+): Promise<AssignmentResult> {
+  const creator = String(input.creator || "").trim();
+  if (!creator) {
+    throw new Error("creator is required — which creator to assign this sample to?");
+  }
+
+  const row = await resolveSampleRow(input, { preferReserved: true });
+  const sampleId = row ? Number(row.id) : null;
+  const productId = productIdOf(row, input);
+  const name = row ? String(row.name ?? "").trim() || null : null;
+  const fromStatus = row ? String(row.status ?? "").trim() || null : null;
+  const agencyBucket = String(input.agencyBucket || "").trim() ||
+    (fromStatus === "reserved" && row
+      ? String(row.checked_out_to ?? "").trim() || null
+      : null);
+  const now = new Date().toISOString();
+  const note = String(input.note || "").trim();
+  const operator = String(input.operator || "").trim();
+
+  const campaignEntry = matchCampaign(productId, name);
+  const campaign = String(input.campaign || "").trim() ||
+    (campaignEntry ? campaignEntry.name : null);
+  const campaignId = String(input.campaignId || "").trim() ||
+    (campaignEntry ? campaignEntry.id : "");
+
+  let updated = false;
+  let transactionId: number | null = null;
+  const reasons: string[] = [];
+  if (row) {
+    try {
+      await Samples.update(String(row.id), {
+        status: "checked_out",
+        checked_out_to: creator,
+        checked_out_at: now,
+      });
+      updated = true;
+    } catch (error) {
+      reasons.push(error instanceof Error ? error.message : String(error));
+    }
+  } else {
+    reasons.push("no matching sample row in Postgres (Graylog event still written)");
+  }
+
+  const enrichment = await buildEnrichment(row, campaignEntry);
+
+  if (row) {
+    try {
+      const summary = `assigned to ${creator}${
+        agencyBucket ? ` from bucket ${agencyBucket}` : ""
+      }${campaign ? ` | campaign ${campaign}` : ""}${note ? ` | ${note}` : ""}${
+        enrichment.length ? ` | ${enrichment.join(" ")}` : ""
+      }`;
+      const tx = await InventoryTransactions.create({
+        action: "check_out",
+        sample_id: row.id,
+        operator: operator || null,
+        checked_out_to: creator,
+        scanned_code: productId || null,
+        notes: summary,
+      }) as SampleRow | undefined;
+      transactionId = tx && tx.id != null ? Number(tx.id) : null;
+    } catch (error) {
+      reasons.push(
+        `transaction: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  const graylog = await sendGelfMessage(
+    `thirsty sample assigned: ${name ?? productId ?? "sample"} → ${creator}`,
+    {
+      sample_assignment_json: JSON.stringify({
+        productId,
+        sampleId,
+        name,
+        creator,
+        agencyBucket: agencyBucket || undefined,
+        campaign: campaign || undefined,
+        campaignId: campaignId || undefined,
+        fromStatus,
+        assignedAt: now,
+        note: note || undefined,
+      }),
+      creator,
+      sample_status: "checked_out",
+      sample_event: "assigned",
+      product_id: productId ?? undefined,
+      sample_id: sampleId != null ? String(sampleId) : undefined,
+      agency_bucket: agencyBucket || undefined,
+      campaign: campaign || undefined,
+      campaign_id: campaignId || undefined,
+      sample_source: "skill-assignment",
+    },
+  );
+
+  const targets: string[] = [];
+  if (updated) targets.push("Postgres");
+  if (graylog) targets.push("Graylog");
+  const where = targets.length ? targets.join(" + ") : "nothing";
+  const warnings: string[] = [];
+  if (!graylog) warnings.push("Graylog assignment event was NOT written");
+  if (updated && transactionId === null) {
+    warnings.push("the check-out transaction was NOT recorded");
+  }
+  const warn = warnings.length ? ` WARNING: ${warnings.join("; ")}.` : "";
+
+  return {
+    ok: updated || graylog,
+    sampleId,
+    productId,
+    name,
+    creator,
+    fromStatus,
+    agencyBucket: agencyBucket || null,
+    campaign: campaign || null,
+    enrichment,
+    postgres: {
+      updated,
+      transactionId,
+      reason: reasons.length ? reasons.join("; ") : undefined,
+    },
+    graylog,
+    message: `Assigned ${name ?? productId ?? "sample"} to ${creator} — checked out${
+      campaign ? `, campaign "${campaign}"` : ""
+    } (persisted to ${where}).${warn}${
+      enrichment.length ? " " + enrichment.join(" ") : ""
+    }`,
   };
 }
 

@@ -272,6 +272,53 @@ export async function fetchKnownCreators(limit = 1000): Promise<string[]> {
   }
 }
 
+// Distinct creators who *ordered* a given product, for the assigned-creator
+// dropdown. The only Graylog source carrying both a top-level `product_id` and a
+// `creator` on one message is tiktok-affiliate-export, so that's the basis.
+// (Caveat: affiliate-export's `creator` is mirrored from the AGENCY label, not a
+// real @handle — callers should treat these as agency-derived. The order-list
+// scrape carries neither creator nor product_id, so it can't contribute — the
+// known order-received gap.) Mirrors fetchKnownCreators; product_id matched on
+// both analyzed + .keyword like the creator convention.
+export async function fetchCreatorsForProduct(
+  productId: string,
+  limit = 1000,
+): Promise<string[]> {
+  const config = graylogConfigFromEnv();
+  const pid = String(productId || "").trim();
+  if (!config || !pid) return [];
+
+  const escaped = pid.replace(/"/g, '\\"');
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 5,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `source:tiktok-affiliate-export AND (product_id:"${escaped}" OR product_id.keyword:"${escaped}")`,
+      Math.max(200, Math.min(safeLimit, 1000)),
+      ["timestamp", "creator", "product_id"],
+    );
+    const seen = new Set<string>();
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (creator) seen.add(creator);
+    }
+    return [...seen].sort((a, b) => {
+      const aRank = a.startsWith("@") ? 0 : 1;
+      const bRank = b.startsWith("@") ? 0 : 1;
+      return aRank - bRank || a.localeCompare(b);
+    });
+  } catch {
+    return [];
+  }
+}
+
 export function graylogConfigFromEnv(): GraylogConfig | null {
   const url = normalizeGraylogUrl(
     envValue("GRAYLOG_API_URL") || envValue("GRAYLOG_URL"),

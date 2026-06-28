@@ -26,13 +26,16 @@ import {
 } from "./core/samples.ts";
 import {
   listSampleStatuses,
+  recordAgencyIntake,
   recordBulkSampleSold,
+  recordSampleAssignment,
   recordSampleListing,
   recordSampleSold,
   recordSampleStatus,
 } from "./core/lifecycle.ts";
 import {
   envValue,
+  fetchCreatorsForProduct,
   fetchKnownCreators,
   graylogConfigFromEnv,
 } from "./core/graylog.ts";
@@ -1328,6 +1331,33 @@ export async function legacyHandler(req: Request): Promise<Response> {
         return json({ creators: await fetchKnownCreators(limit) });
       }
 
+      // Creators who ordered a given product (the derived assigned-creator
+      // dropdown). ?all=1 unions in every known creator so an admin can also
+      // assign someone who hasn't ordered it yet. Derived from affiliate-export
+      // (the only source with product_id + creator) — see fetchCreatorsForProduct.
+      if (pathname === "/api/product-creators") {
+        const productId = (url.searchParams.get("productId") ||
+          url.searchParams.get("product") || "").trim();
+        if (!productId) {
+          return json({ ok: false, error: "productId is required" }, 400);
+        }
+        const raw = Number(url.searchParams.get("limit"));
+        const limit = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1000;
+        const ordered = await fetchCreatorsForProduct(productId, limit);
+        const all = url.searchParams.get("all") === "1"
+          ? await fetchKnownCreators(limit)
+          : undefined;
+        return json({
+          productId,
+          orderedCreators: ordered,
+          ...(all
+            ? { allKnown: all, creators: [...new Set([...ordered, ...all])] }
+            : { creators: ordered }),
+          note:
+            "orderedCreators are derived from affiliate-export, where `creator` is the agency label (not necessarily a TikTok @handle).",
+        });
+      }
+
       // Update a sample's status (rejects "sold" — that goes through the sold
       // flow so revenue is attributed to a creator). Validation failures return
       // a clean 400 (not the outer 500 + stack) so the MCP surfaces the reason.
@@ -1380,6 +1410,34 @@ export async function legacyHandler(req: Request): Promise<Response> {
         }
         try {
           return json(await recordBulkSampleSold(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 400);
+        }
+      }
+
+      // Agency intake: credit a bulk lot of one product to an agency bucket
+      // (reserved), before any creator is assigned.
+      if (pathname === "/api/agency-intake") {
+        if (req.method !== "POST") {
+          return json({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return json(await recordAgencyIntake(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 400);
+        }
+      }
+
+      // Fulfillment: assign a unit to a creator → checked out (+ campaign match
+      // + enrichment note). Returns the note for the admin.
+      if (pathname === "/api/sample-assign") {
+        if (req.method !== "POST") {
+          return json({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return json(await recordSampleAssignment(await readJsonBody(req)));
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return json({ ok: false, error: msg }, 400);
