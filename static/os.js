@@ -1085,3 +1085,32 @@ if (role === "ka") {
   }
   if (statusEl) statusEl.textContent = "Warehouse · Karl";
 }
+
+// E2E / demo workspace: ?workspace=samples-import[&ids=...&creator=@x&autostart=1]
+// tiles the Samples-Import app (LEFT, auto-replaying the run's product ids) and
+// Apps/Inventory (RIGHT, the imported rows in a table, editable/enhanceable via
+// "Fetch from API"). The visual half of the sample-e2e skill. Reuses openApp +
+// snapWindow; the ids/creator pass straight through to the import app's demo mode.
+const wsParams = new URLSearchParams(location.search);
+if (wsParams.get("workspace") === "samples-import") {
+  const apps = (FOLDERS.find((f) => f.id === "apps") || {}).items || [];
+  const demos = (FOLDERS.find((f) => f.id === "demos") || {}).items || [];
+  const importApp = demos.find((i) => i.id === "samples-import");
+  const inventory = apps.find((i) => i.id === "inventory");
+  if (importApp) {
+    const q = new URLSearchParams();
+    ["ids", "creator", "autostart", "api"].forEach((k) => {
+      if (wsParams.get(k)) q.set(k, wsParams.get(k));
+    });
+    const qs = q.toString();
+    openApp({ ...importApp, url: importApp.url + (qs ? "?" + qs : "") });
+    const w = windows.get("app:samples-import");
+    if (w) snapWindow(w, "left");
+  }
+  if (inventory) {
+    openApp(inventory);
+    const w = windows.get("app:inventory");
+    if (w) snapWindow(w, "right");
+  }
+  if (statusEl) statusEl.textContent = "Samples-Import · e2e";
+}
