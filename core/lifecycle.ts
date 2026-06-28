@@ -242,6 +242,10 @@ export type ImportInput = {
   autoListAfterDays?: number | string;
   marketplace?: string;
   askPrice?: number | string;
+  // Preview only: compute campaign match + enrichment + the would-be schedule,
+  // but write NOTHING (no Postgres row, no audit transaction, no Graylog event).
+  // Used by the E2E demo so it can show the lifecycle without polluting inventory.
+  dryRun?: boolean;
 };
 
 export type ScheduledListing = {
@@ -262,6 +266,7 @@ export type ImportResult = {
   scheduledListing: ScheduledListing | null;
   postgres: { created: boolean; transactionId: number | null; reason?: string };
   graylog: boolean;
+  dryRun?: boolean;
   message: string;
 };
 
@@ -1306,6 +1311,7 @@ export async function recordSampleImport(
   }
   const productId = String(input.productId ?? input.qrCode ?? "").trim();
   if (!productId) throw new Error("productId is required");
+  const dryRun = input.dryRun === true;
 
   const now = new Date().toISOString();
   const name = String(input.name || "").trim() || productId;
@@ -1334,15 +1340,19 @@ export async function recordSampleImport(
   let bundleRow: SampleRow | null = null;
   let transactionId: number | null = null;
   const reasons: string[] = [];
-  try {
-    const row = await Samples.create(createData) as SampleRow | undefined;
-    if (row?.id != null) {
-      sampleId = Number(row.id);
-      created = true;
-      bundleRow = row;
+  if (dryRun) {
+    reasons.push("dry-run: nothing written");
+  } else {
+    try {
+      const row = await Samples.create(createData) as SampleRow | undefined;
+      if (row?.id != null) {
+        sampleId = Number(row.id);
+        created = true;
+        bundleRow = row;
+      }
+    } catch (error) {
+      reasons.push(error instanceof Error ? error.message : String(error));
     }
-  } catch (error) {
-    reasons.push(error instanceof Error ? error.message : String(error));
   }
 
   const campaignEntry = matchCampaign(productId, name);
@@ -1353,13 +1363,13 @@ export async function recordSampleImport(
   // Optional auto-listing schedule (stub — records intent for the cron).
   let scheduledListing: ScheduledListing | null = null;
   const days = numOrZero(input.autoListAfterDays);
-  if (created && days > 0) {
+  if ((created || dryRun) && days > 0) {
     const marketplace = String(input.marketplace || "ebay").trim() || "ebay";
     const askNum = numOrZero(input.askPrice);
     const askPrice = askNum > 0 ? askNum : (price > 0 ? round2(price) : 0);
     const listAt = new Date(Date.now() + days * 86_400_000).toISOString();
     const scheduleId = `sched-${crypto.randomUUID()}`;
-    const ok = await sendGelfMessage(
+    const ok = dryRun ? true : await sendGelfMessage(
       `thirsty sample listing scheduled: ${name} → ${marketplace} in ${days}d`,
       {
         sample_schedule_json: JSON.stringify({
@@ -1412,7 +1422,7 @@ export async function recordSampleImport(
     }
   }
 
-  const graylog = await sendGelfMessage(
+  const graylog = dryRun ? false : await sendGelfMessage(
     `thirsty sample imported: ${name} → ${creator}`,
     {
       sample_assignment_json: JSON.stringify({
@@ -1455,7 +1465,7 @@ export async function recordSampleImport(
   const warn = warnings.length ? ` WARNING: ${warnings.join("; ")}.` : "";
 
   return {
-    ok: created || graylog,
+    ok: dryRun || created || graylog,
     sampleId,
     productId,
     name,
@@ -1469,11 +1479,16 @@ export async function recordSampleImport(
       reason: reasons.length ? reasons.join("; ") : undefined,
     },
     graylog,
-    message: `Imported ${name} → assigned to ${creator}${
-      campaign ? `, campaign "${campaign}"` : ""
-    } (persisted to ${where}).${warn}${
-      enrichment.length ? " " + enrichment.join(" ") : ""
-    }`,
+    dryRun: dryRun || undefined,
+    message: dryRun
+      ? `DRY-RUN — would import ${name} → assign to ${creator}${
+        campaign ? `, campaign "${campaign}"` : ""
+      } (nothing written).${enrichment.length ? " " + enrichment.join(" ") : ""}`
+      : `Imported ${name} → assigned to ${creator}${
+        campaign ? `, campaign "${campaign}"` : ""
+      } (persisted to ${where}).${warn}${
+        enrichment.length ? " " + enrichment.join(" ") : ""
+      }`,
   };
 }
 
