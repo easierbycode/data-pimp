@@ -256,6 +256,20 @@ const FOLDERS = [
         height: 840,
       },
       {
+        id: "e2e",
+        name: "E2E",
+        icon: ICONS.content,
+        // One-click sample-lifecycle demo: /e2e resolves the latest creator's
+        // recent items (or a default product) from analytics, then runs the
+        // Samples-Import import live. Same-origin page (no sandbox), opened
+        // full-screen so the demo has room to breathe — still draggable/restorable.
+        url: "/e2e",
+        allow: "fullscreen",
+        maximized: true,
+        width: 1100,
+        height: 760,
+      },
+      {
         id: "content-by-sample",
         name: "Content by Sample",
         icon: ICONS.content,
@@ -880,6 +894,10 @@ function openApp(item) {
   iframe.addEventListener("load", hide);
   win.loaderTimer = setTimeout(hide, 8000); // safety net for cross-origin loads
   win.el.querySelector(".window-body").appendChild(iframe);
+
+  // Apps can request a full-screen window (e.g. the E2E demo). Still draggable:
+  // the title-bar zoom button / Ctrl+Alt+Down restores it to the floating rect.
+  if (item.maximized) toggleMax(win);
 
   flashStatus(`Opening ${item.name}`);
 }

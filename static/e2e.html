@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E2E · Sample Lifecycle Demo</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex; flex-direction: column;
+      font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0b0b0f; color: #e8e8ea;
+    }
+    header {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-bottom: 1px solid #1f1f27; background: #111118;
+    }
+    .logo {
+      width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+      display: grid; place-items: center; font-size: 18px;
+      background: linear-gradient(135deg, #ff7a18, #af002d 80%);
+    }
+    .title { font-weight: 600; font-size: 15px; }
+    .sub { color: #9a9aa6; font-size: 12px; }
+    .ctx {
+      margin-left: auto; display: flex; align-items: center; gap: 10px;
+      flex-wrap: wrap; justify-content: flex-end;
+    }
+    .chip {
+      font-size: 12px; padding: 4px 9px; border-radius: 999px;
+      background: #1a1a22; border: 1px solid #2a2a35; color: #cfcfd6;
+      white-space: nowrap;
+    }
+    .chip b { color: #ffb27a; font-weight: 600; }
+    button {
+      font: inherit; font-size: 13px; cursor: pointer; color: #0b0b0f;
+      background: linear-gradient(135deg, #ff9a3c, #ff7a18); border: 0;
+      padding: 7px 14px; border-radius: 8px; font-weight: 600;
+    }
+    button:active { transform: translateY(1px); }
+    .stage { flex: 1 1 auto; position: relative; background: #0b0b0f; }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .overlay {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      background: #0b0b0f; color: #9a9aa6; gap: 10px; text-align: center; padding: 24px;
+    }
+    .overlay.hidden { display: none; }
+    .spinner {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 3px solid #2a2a35; border-top-color: #ff7a18;
+      animation: spin 0.8s linear infinite; margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    code { color: #ffb27a; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">▶</div>
+    <div>
+      <div class="title">E2E · Sample Lifecycle Demo</div>
+      <div class="sub">Resolves the latest creator's recent items (or a default product) and runs the import live.</div>
+    </div>
+    <div class="ctx">
+      <span class="chip" id="ctx-creator">creator: …</span>
+      <span class="chip" id="ctx-ids">items: …</span>
+      <span class="chip" id="ctx-source">source: …</span>
+      <button id="rerun" type="button">↻ Re-run</button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <iframe id="demo" title="Samples-Import demo" allow="fullscreen"
+      referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="overlay" id="overlay">
+      <div>
+        <div class="spinner"></div>
+        <div id="overlay-msg" style="margin-top:10px">Resolving latest creator + items from analytics…</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+    // The Samples-Import demo lives on GH Pages; it reads ?ids/&creator/&autostart
+    // (and &api for the backend). It calls the live thirsty.store import API.
+    var IMPORT_BASE = "https://easierbycode.com/tok-scrape/samples-import/www/";
+    var API = location.origin; // served from thirsty.store → talk to the same backend
+    var esc = function (s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    };
+
+    function setChips(ctx) {
+      document.getElementById("ctx-creator").innerHTML = "creator: <b>" + esc(ctx.creator) + "</b>";
+      document.getElementById("ctx-ids").innerHTML =
+        "items: <b>" + (ctx.ids ? ctx.ids.length : 0) + "</b> (" +
+        esc((ctx.ids || []).join(", ")) + ")";
+      document.getElementById("ctx-source").innerHTML = "source: <b>" + esc(ctx.source) + "</b>";
+    }
+
+    function runDemo(ctx) {
+      setChips(ctx);
+      var u = new URL(IMPORT_BASE);
+      u.searchParams.set("api", API);
+      u.searchParams.set("autostart", "1");
+      u.searchParams.set("creator", ctx.creator);
+      u.searchParams.set("ids", (ctx.ids || []).join(","));
+      var iframe = document.getElementById("demo");
+      var overlay = document.getElementById("overlay");
+      iframe.addEventListener("load", function () { overlay.classList.add("hidden"); }, { once: true });
+      // Safety net for cross-origin load events that don't fire.
+      setTimeout(function () { overlay.classList.add("hidden"); }, 6000);
+      iframe.src = u.toString();
+    }
+
+    function load() {
+      var overlay = document.getElementById("overlay");
+      var msg = document.getElementById("overlay-msg");
+      overlay.classList.remove("hidden");
+      msg.textContent = "Resolving latest creator + items from analytics…";
+      fetch(API + "/api/e2e-context")
+        .then(function (r) { return r.json(); })
+        .then(function (ctx) {
+          if (!ctx || !ctx.creator || !ctx.ids || !ctx.ids.length) {
+            ctx = { creator: "@e2e-demo", ids: ["1731301163454206492"], source: "default (client fallback)" };
+          }
+          runDemo(ctx);
+        })
+        .catch(function () {
+          runDemo({ creator: "@e2e-demo", ids: ["1731301163454206492"], source: "default (offline)" });
+        });
+    }
+
+    document.getElementById("rerun").addEventListener("click", function () {
+      // Re-resolve context (a newer creator may have posted) and reload the demo.
+      var iframe = document.getElementById("demo");
+      iframe.removeAttribute("src");
+      load();
+    });
+
+    load();
+  </script>
+</body>
+</html>

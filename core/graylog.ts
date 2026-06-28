@@ -447,6 +447,93 @@ export async function hasResaleEventForSample(
   }
 }
 
+// Context for the one-click E2E demo (Demos/E2E): the latest creator to post and
+// a few of their recent products, so the demo runs the lifecycle on real data.
+// Priority: latest order_list creator + their last 3 ordered product_ids →
+// latest resale (sold) creator + their sold product_ids → any known creator +
+// the default id → a static default. searchGraylog sorts timestamp Descending,
+// so index 0 is the most recent. Always returns something usable.
+export async function fetchE2EContext(
+  defaultId: string,
+): Promise<{ creator: string; ids: string[]; source: string }> {
+  const fallback = { creator: "@e2e-demo", ids: [defaultId], source: "default" };
+  const config = graylogConfigFromEnv();
+  if (!config) {
+    return { ...fallback, source: "default (graylog unconfigured)" };
+  }
+  const wide: GraylogConfig = {
+    ...config,
+    rangeSeconds: 60 * 60 * 24 * 365 * 2,
+  };
+
+  // The most recent up-to-3 distinct product_ids belonging to `creator`.
+  const recentIdsFor = (
+    messages: Record<string, unknown>[],
+    creator: string,
+  ): string[] => {
+    const ids: string[] = [];
+    for (const m of messages) {
+      if (String(m.creator ?? "").trim() !== creator) continue;
+      const pid = String(m.product_id ?? "").trim();
+      if (pid && !ids.includes(pid)) ids.push(pid);
+      if (ids.length >= 3) break;
+    }
+    return ids;
+  };
+
+  try {
+    // "Latest creator to post" = most recent order_list scrape.
+    const orders = await searchGraylog(
+      wide,
+      `source:tiktok-bookmarklet-orders AND creator:*`,
+      100,
+      ["timestamp", "creator", "product_id"],
+    );
+    if (orders.length) {
+      const creator = String(orders[0].creator ?? "").trim();
+      if (creator) {
+        const ids = recentIdsFor(orders, creator);
+        if (ids.length) {
+          return { creator, ids, source: "graylog: latest creator order_list items" };
+        }
+      }
+    }
+    // Fallback: latest resale (sold) creator + their sold items.
+    const sold = await searchGraylog(
+      wide,
+      `sample_sold_json:* AND creator:*`,
+      100,
+      ["timestamp", "creator", "product_id"],
+    );
+    if (sold.length) {
+      const creator = String(sold[0].creator ?? "").trim();
+      if (creator) {
+        const ids = recentIdsFor(sold, creator);
+        if (ids.length) {
+          return { creator, ids, source: "graylog: latest creator sold items" };
+        }
+        return {
+          creator,
+          ids: [defaultId],
+          source: "graylog: latest sold creator + default id",
+        };
+      }
+    }
+    // Fallback: any known creator + the default product.
+    const known = await fetchKnownCreators(1);
+    if (known.length) {
+      return {
+        creator: known[0],
+        ids: [defaultId],
+        source: "graylog: known creator + default id",
+      };
+    }
+  } catch {
+    return { ...fallback, source: "default (graylog error)" };
+  }
+  return fallback;
+}
+
 // Scheduled-listing intents (sample_schedule_json) paired with their fired
 // markers (sample_schedule_done_json), for the auto-list cron. 1-year window —
 // schedules are short-lived. Errors degrade to empty so the cron just no-ops.
