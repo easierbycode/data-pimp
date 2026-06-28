@@ -9,14 +9,27 @@
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
-      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
       font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #0b0b0f; color: #e8e8ea;
     }
-    header {
-      flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px; border-bottom: 1px solid #1f1f27; background: #111118;
+
+    /* The demo fills the whole window; the controls bar overlays the top only
+       when revealed (hidden by default so the demo is unobstructed). */
+    .stage { position: absolute; inset: 0; background: #0b0b0f; }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+    .bar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 64px 12px 16px; /* right room for the info toggle */
+      border-bottom: 1px solid #1f1f27; background: #111118ee;
+      backdrop-filter: blur(6px); box-shadow: 0 8px 24px #0008;
+      transform: translateY(-110%); opacity: 0; pointer-events: none;
+      transition: transform .25s ease, opacity .25s ease;
     }
+    .bar.shown { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
     .logo {
       width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
       display: grid; place-items: center; font-size: 18px;
@@ -46,10 +59,28 @@
       background: #1a1a22; border: 1px solid #2a2a35; color: #cfcfd6; user-select: none;
     }
     .toggle input { accent-color: #ff7a18; margin: 0; }
-    .stage { flex: 1 1 auto; position: relative; background: #0b0b0f; }
-    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+    /* Floating info toggle — always visible, reveals/hides the controls bar. */
+    .infobtn {
+      position: absolute; top: 12px; right: 14px; z-index: 30;
+      width: 34px; height: 34px; padding: 0; border-radius: 50%;
+      display: grid; place-items: center; font-size: 17px; font-weight: 700;
+      font-style: italic; line-height: 1; cursor: pointer;
+      color: #cfcfd6; background: #1a1a22cc; border: 1px solid #2a2a35;
+      backdrop-filter: blur(4px); box-shadow: 0 2px 8px #0006;
+      transition: background .2s ease, color .2s ease;
+    }
+    .infobtn:hover { border-color: #3a3a48; }
+    .infobtn.is-open { background: linear-gradient(135deg, #ff9a3c, #ff7a18); color: #0b0b0f; }
+    /* Gentle pulse so the toggle is noticeable before the bar is first revealed. */
+    .infobtn.hint { animation: pulse 1.6s ease-in-out 3; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 2px 8px #0006; }
+      50% { box-shadow: 0 0 0 6px #ff7a1833; }
+    }
+
     .overlay {
-      position: absolute; inset: 0; display: grid; place-items: center;
+      position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
       background: #0b0b0f; color: #9a9aa6; gap: 10px; text-align: center; padding: 24px;
     }
     .overlay.hidden { display: none; }
@@ -59,11 +90,26 @@
       animation: spin 0.8s linear infinite; margin: 0 auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    code { color: #ffb27a; }
   </style>
 </head>
 <body>
-  <header>
+  <div class="stage">
+    <iframe id="demo" title="Samples-Import demo" allow="fullscreen"
+      referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="overlay" id="overlay">
+      <div>
+        <div class="spinner"></div>
+        <div id="overlay-msg" style="margin-top:10px">Resolving latest creator + items from analytics…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls collapsed behind this toggle by default so they don't block the
+       demo; auto-revealed when a run finishes. -->
+  <button class="infobtn hint" id="infobtn" type="button"
+    title="Show demo controls (creator, dry-run, replay)" aria-label="Toggle demo controls">i</button>
+
+  <div class="bar" id="bar">
     <div class="logo">▶</div>
     <div>
       <div class="title">E2E · Sample Lifecycle Demo</div>
@@ -76,18 +122,7 @@
       <label class="toggle" title="Dry-run computes the campaign/enrichment and shows the flow, but writes no inventory.">
         <input type="checkbox" id="dry" checked /> Dry-run
       </label>
-      <button id="rerun" type="button">↻ Re-run</button>
-    </div>
-  </header>
-
-  <div class="stage">
-    <iframe id="demo" title="Samples-Import demo" allow="fullscreen"
-      referrerpolicy="strict-origin-when-cross-origin"></iframe>
-    <div class="overlay" id="overlay">
-      <div>
-        <div class="spinner"></div>
-        <div id="overlay-msg" style="margin-top:10px">Resolving latest creator + items from analytics…</div>
-      </div>
+      <button id="rerun" type="button">↻ Replay</button>
     </div>
   </div>
 
@@ -96,12 +131,30 @@
     // The Samples-Import demo lives on GH Pages; it reads ?ids/&creator/&autostart
     // (and &api for the backend). It calls the live thirsty.store import API.
     var IMPORT_BASE = "https://easierbycode.com/tok-scrape/samples-import/www/";
+    var IMPORT_ORIGIN = "https://easierbycode.com";
     var API = location.origin; // served from thirsty.store → talk to the same backend
     var esc = function (s) {
       return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
       });
     };
+
+    var bar = document.getElementById("bar");
+    var infobtn = document.getElementById("infobtn");
+    function showBar() { bar.classList.add("shown"); infobtn.classList.add("is-open"); infobtn.classList.remove("hint"); }
+    function hideBar() { bar.classList.remove("shown"); infobtn.classList.remove("is-open"); }
+    infobtn.addEventListener("click", function () {
+      bar.classList.contains("shown") ? hideBar() : showBar();
+    });
+
+    // The embedded Samples-Import posts {source:"samples-import",type:"imported"}
+    // to this window when a batch finishes — reveal the controls so the user can
+    // inspect the result, replay, or flip dry-run/live.
+    window.addEventListener("message", function (e) {
+      if (e.origin !== IMPORT_ORIGIN) return;
+      if (!e.data || e.data.source !== "samples-import" || e.data.type !== "imported") return;
+      showBar();
+    });
 
     function setChips(ctx) {
       document.getElementById("ctx-creator").innerHTML = "creator: <b>" + esc(ctx.creator) + "</b>";
