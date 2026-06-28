@@ -309,6 +309,84 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "list_product_creators",
+    description:
+      "The DERIVED assigned-creator candidate list for a product: creators who " +
+      "ordered it (from affiliate-export). Use this to populate the 'which " +
+      "creator?' choice for assign_sample. Pass includeAllKnown to also offer " +
+      "creators who haven't ordered it. Note: ordered-creator values come from " +
+      "affiliate-export where `creator` is the AGENCY label, not necessarily a " +
+      "TikTok @handle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        productId: {
+          type: "string",
+          description: "TikTok productId / qr_code to find creators for.",
+        },
+        includeAllKnown: {
+          type: "boolean",
+          description: "Also union in every known creator (default false).",
+        },
+        limit: { type: "number", description: "Max creators (default 1000)." },
+      },
+      required: ["productId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "agency_intake",
+    description:
+      "Credit a BULK lot of one product to an agency bucket (e.g. admin 'kyle') " +
+      "before any creator is assigned — the units sit in 'reserved'. Use " +
+      "`productId` + `qty` for a fresh shipment (creates that many reserved " +
+      "units), or `sampleIds` to credit existing units. Later, assign_sample " +
+      "moves a unit from the bucket to a creator.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        productId: { type: "string", description: "TikTok productId / qr_code." },
+        name: { type: "string", description: "Product name (else derived/uses productId)." },
+        qty: { type: ["number", "string"], description: "How many units arrived (with productId). Default 1, max 200." },
+        sampleIds: {
+          type: "array",
+          description: "Credit these existing sample ids instead of creating new ones.",
+          items: { type: ["string", "number"] },
+        },
+        agencyBucket: { type: "string", description: "Bucket/admin to credit, e.g. 'kyle'." },
+        operator: { type: "string", description: "Who recorded the intake." },
+        note: { type: "string", description: "Optional note." },
+      },
+      required: ["agencyBucket"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "assign_sample",
+    description:
+      "Assign/fulfill a sample to a creator — moves one unit to CHECKED OUT " +
+      "(checked_out_to = creator), pulling from the agency bucket if it's " +
+      "reserved, attaching a matched campaign, and returning an enrichment note " +
+      "(bundle membership + the campaign's daily-video goal + any promo). " +
+      "Confirm the creator against list_product_creators for that product first. " +
+      "Prefer a specific sampleId.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sampleId: { type: ["string", "number"], description: "Sample's Postgres id (preferred)." },
+        productId: { type: "string", description: "TikTok productId / qr_code (if sampleId omitted)." },
+        creator: { type: "string", description: "Creator @handle to assign to." },
+        agencyBucket: { type: "string", description: "Bucket it came from (else inferred from a reserved unit)." },
+        campaign: { type: "string", description: "Campaign name (else auto-matched from config)." },
+        campaignId: { type: "string", description: "Campaign id (optional)." },
+        operator: { type: "string", description: "Who performed the assignment." },
+        note: { type: "string", description: "Optional note." },
+      },
+      required: ["creator"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -422,6 +500,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             orderRef: args.orderRef,
             note: args.note,
             force: args.force,
+          },
+        });
+        break;
+      }
+
+      case "list_product_creators": {
+        const q = new URLSearchParams({ productId: String(args.productId ?? "") });
+        if (args.includeAllKnown) q.set("all", "1");
+        if (args.limit) q.set("limit", String(args.limit));
+        result = await api(`/api/product-creators?${q.toString()}`);
+        break;
+      }
+
+      case "agency_intake": {
+        result = await api("/api/agency-intake", {
+          method: "POST",
+          body: {
+            productId: args.productId,
+            name: args.name,
+            qty: args.qty,
+            sampleIds: args.sampleIds,
+            agencyBucket: args.agencyBucket,
+            operator: args.operator,
+            note: args.note,
+          },
+        });
+        break;
+      }
+
+      case "assign_sample": {
+        result = await api("/api/sample-assign", {
+          method: "POST",
+          body: {
+            sampleId: args.sampleId,
+            productId: args.productId,
+            creator: args.creator,
+            agencyBucket: args.agencyBucket,
+            campaign: args.campaign,
+            campaignId: args.campaignId,
+            operator: args.operator,
+            note: args.note,
           },
         });
         break;

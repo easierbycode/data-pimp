@@ -80,6 +80,45 @@ the content-GMV question and the resale-net question.
 A `product_id` carrying a `sample_listing_json` with no later `sample_sold_json`
 is still on the market.
 
+## Event 4 — agency intake (bulk lot → bucket)
+
+`short_message`: `thirsty agency intake: <name> ×<qty> → bucket <agency_bucket>`
+
+Written by `recordAgencyIntake`. Postgres: each unit set/created `reserved` with
+`checked_out_to = <agency_bucket>` + an `agency_intake` transaction.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `sample_intake_json` | JSON string | `{productId, sampleIds, name, agencyBucket, qty, note?, intakeAt}` |
+| `sample_event` | string | `agency_intake` |
+| `agency_bucket` | string | the bucket/admin credited (e.g. `kyle`) |
+| `qty_num` | number | units in the lot |
+| `product_id` | string | join key |
+| `sample_source` | string | `skill-agency-intake` |
+
+## Event 5 — assignment (fulfillment → checked out)
+
+`short_message`: `thirsty sample assigned: <name> → <creator>`
+
+Written by `recordSampleAssignment`. Postgres: the exact check-out field-set
+(`status='checked_out'`, `checked_out_to=<creator>`, `checked_out_at`) + a
+`check_out` transaction whose `notes` carry the campaign + enrichment summary.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `sample_assignment_json` | JSON string | `{productId, sampleId, name, creator, agencyBucket?, campaign?, campaignId?, fromStatus, assignedAt, note?}` |
+| `creator` | string | who it's assigned to (reuses the lifecycle creator vocabulary) |
+| `sample_status` | string | `checked_out` |
+| `sample_event` | string | `assigned` |
+| `agency_bucket` | string | the bucket it came from, if any |
+| `campaign` / `campaign_id` | string | matched campaign (config-driven — no campaign data source yet) |
+| `product_id` / `sample_id` | string | join keys |
+| `sample_source` | string | `skill-assignment` |
+
+The assignment response also returns an `enrichment[]` note: **bundle** membership
+(REAL, from `samples.bundle_id`) + the campaign's **daily-video goal** and
+**promo** (CONFIG from `core/campaign-config.json`, labelled `[from campaign-config]`).
+
 ## Read-back recipes (`graylog-query`)
 
 `--terms` only counts; it can't SUM — fetch rows and sum the `*_num` field
@@ -137,9 +176,22 @@ python3 .../graylog_query.py --all -q 'product_id:"1729..."' \
   --fields source,creator,sample_status,gmv_num,sample_status_json,sample_sold_json
 ```
 
+**Who's assigned what / agency-bucket holdings:**
+```bash
+# assignments (per creator)
+python3 .../graylog_query.py --all -q 'sample_event:assigned' \
+  --fields creator,product_id,sample_id,agency_bucket,campaign --sort timestamp:desc
+# agency intakes (per bucket)
+python3 .../graylog_query.py --all -q 'sample_event:agency_intake' \
+  --terms agency_bucket
+```
+(Current assignment is also the live Postgres truth: `GET /api/samples?status=checked_out`
+→ `checked_out_to` is the creator; `status=reserved` → `checked_out_to` is the bucket.)
+
 ## Lifecycle join — current reach and the gap
 
-`product_id` links: **intake** (`samples.qr_code`) → **status changes**
+`product_id` links: **intake** (`samples.qr_code`) → **agency bucket** (Event 4)
+→ **assignment / checkout to a creator** (Event 5) → **status changes**
 (Event 1) → **content** (`source:tiktok-bookmarklet-product-analysis` etc.,
 which carry `Product ID` + `creator`) → **listing** (Event 3) → **resale**
 (Event 2).

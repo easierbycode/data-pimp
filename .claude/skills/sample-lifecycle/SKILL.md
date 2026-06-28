@@ -1,20 +1,20 @@
 ---
 name: sample-lifecycle
 description: >-
-  Update a sample's status, or mark a sample SOLD and attribute the resale
-  revenue to a creator account, in the LP Sample Tracker (thirsty.store /
-  admin.thirsty.store). Trigger whenever the user wants to change a sample's
-  state, list it for resale, or log a sale — e.g. "mark <product> as sold", "this
-  sold on eBay for $40", "set <product> to cleared to sell", "reserve sample 42",
-  "discontinue this one", "list this on eBay for $45", "I put it up on OfferUp",
-  "log a resale", "sold a bulk lot of 12 samples for $300", "attribute this sale
-  to @wizardofdealz". Each action writes a
-  Graylog event (and, for status/sold, the inventory truth to Postgres), so a
-  creator's listings and resale revenue are immediately queryable. For READ-ONLY
-  questions about the data ("how much resale revenue did @x make", "what's listed
-  where", "which samples sold this month", "what's in Graylog") use the
-  graylog-query skill instead — this skill only WRITES.
-allowed-tools: mcp__thirsty-samples__list_samples, mcp__thirsty-samples__list_sample_statuses, mcp__thirsty-samples__list_creators, mcp__thirsty-samples__update_sample_status, mcp__thirsty-samples__list_on_marketplace, mcp__thirsty-samples__mark_sample_sold, mcp__thirsty-samples__bulk_sample_sold
+  Manage a sample's full lifecycle in the LP Sample Tracker (thirsty.store /
+  admin.thirsty.store): change status, ASSIGN a sample to a creator, intake an
+  agency bulk lot, list it for resale, or log a (bulk) sale. Trigger whenever the
+  user wants to act on a sample — e.g. "assign 1 Cupids Desire Drops to
+  @boosteddealsdaily", "check this out to @x", "we got 50 of <product> for the
+  agency / credit them to kyle", "mark <product> as sold", "this sold on eBay for
+  $40", "set <product> to cleared to sell", "reserve sample 42", "list this on
+  eBay for $45", "sold a bulk lot of 12 samples for $300", "attribute this sale to
+  @wizardofdealz". Each action writes a Graylog event (and, for
+  status/sold/assign, the inventory truth to Postgres). For READ-ONLY questions
+  ("how much resale revenue did @x make", "what's listed where", "which samples
+  sold this month", "who's assigned what") use the graylog-query skill instead —
+  this skill only WRITES.
+allowed-tools: mcp__thirsty-samples__list_samples, mcp__thirsty-samples__list_sample_statuses, mcp__thirsty-samples__list_creators, mcp__thirsty-samples__list_product_creators, mcp__thirsty-samples__update_sample_status, mcp__thirsty-samples__list_on_marketplace, mcp__thirsty-samples__mark_sample_sold, mcp__thirsty-samples__bulk_sample_sold, mcp__thirsty-samples__agency_intake, mcp__thirsty-samples__assign_sample
 ---
 
 # sample-lifecycle
@@ -120,6 +120,39 @@ One marketplace sale across several samples (a lot), attributed per-creator.
 5. **Report honestly.** Echo `message` (it reports `soldCount/itemCount`, the lot
    `bulkId`, and net) and surface any per-item `failures` (e.g. a unit that was
    already sold).
+
+## Workflow 5 — Agency bulk intake (credit a lot to a bucket)
+
+When a bulk sample order arrives for an agency (e.g. "we got 50 Cupids Desire
+Drops for kyle's agency"), credit them to an agency bucket **before** any creator
+is assigned. The units sit in `reserved` (held), `checked_out_to = <bucket>`.
+
+1. **Gather** the `productId` (or name), the `agencyBucket` (e.g. `kyle`), and
+   `qty`.
+2. **Write it.** Call `agency_intake` (`productId` + `qty` + `agencyBucket`). It
+   creates that many `reserved` units and emits a `sample_intake_json` event.
+   (To credit units that already exist, pass `sampleIds` instead of `qty`.)
+3. **Report.** Echo `message` (how many credited to which bucket) + the
+   `sampleIds`.
+
+## Workflow 6 — Assign / fulfill a sample to a creator
+
+"Assign 1 Cupids Desire Drops to @boosteddealsdaily." Moves one unit out of the
+agency bucket to that creator and **checks it out**.
+
+1. **Resolve the unit** via `list_samples` (prefer a specific `sampleId`; a
+   `reserved` bucket unit is pulled first when you pass a `productId`).
+2. **Confirm the creator.** Call `list_product_creators` for that product — the
+   derived candidate list (creators who ordered it; pass `includeAllKnown` to
+   also offer others). Confirm the exact handle; don't guess.
+3. **Write it.** Call `assign_sample` (`sampleId`/`productId` + `creator`). It
+   sets the sample to `checked_out` (`checked_out_to = creator`), auto-matches a
+   campaign, records a `check_out` transaction, and emits `sample_assignment_json`.
+4. **Surface the note.** The result's `message` + `enrichment[]` carry the
+   nice-to-know lines: any **bundle** the sample belongs to (real), and — if the
+   product matches a configured campaign — the **daily-video goal** and **promo**
+   (both labelled `[from campaign-config]`, since no measured goal exists yet).
+   Relay these to the admin.
 
 ## Reading it back — composing with `graylog-query`
 

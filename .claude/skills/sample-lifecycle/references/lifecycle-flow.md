@@ -25,7 +25,7 @@ flowchart TD
         D2{"Selects 1–5"}:::decision
         S3["🤖 add to catalog: /api/sample-products upsert<br/>+ tracker sample row · productId = qr_code"]:::skill
         D3{"productId unique?"}:::decision
-        S4["🤖 NEW unique sample-product lifecycle starts<br/>sample_id + qr_code (+ creator_id ⬜)"]:::skill
+        S4["🤖 NEW unique sample-product lifecycle starts<br/>sample_id + qr_code (creator set via assign_sample ✅)"]:::skill
         EX["🤖 attach as another physical unit<br/>of an existing product"]:::skill
     end
 
@@ -50,6 +50,19 @@ flowchart TD
     S4 --> ATTR
     S5 --> ATTR
     S6 -. needs productId .-> ATTR
+
+    subgraph ASSIGN["1b · ASSIGN — agency fulfillment + creator assignment — ✅ built"]
+        H8["🧑 'we got 50 Cupids Desire Drops for kyle's agency'"]:::human
+        S10["🤖 agency_intake ✅<br/>N units → reserved, credited to bucket (kyle)<br/>sample_intake_json"]:::skill
+        H9["🧑 'assign 1 Cupids Desire Drops to @boosteddealsdaily'"]:::human
+        S11["🤖 list_product_creators ✅ (derived dropdown:<br/>creators who ordered it — affiliate-export)"]:::skill
+        S12["🤖 assign_sample ✅ → checked_out + creator<br/>+ campaign match + enrichment note<br/>(bundle REAL · daily-goal/promo CONFIG)"]:::skill
+    end
+
+    S4 --> H8 --> S10 --> H9
+    H9 --> S11 --> S12
+    S12 --> ATTR
+    S12 -. assigned creator makes content .-> H3
 
     subgraph LIST["3 · LIST ON MARKETPLACE — ✅ built"]
         H5["🧑 'List this on eBay / OfferUp / FB Marketplace for $45'"]:::human
@@ -99,15 +112,21 @@ flowchart TD
 ## What's built vs. remaining
 
 - **✅ Built:** intake lookup (`/api/upc-lookup`, `/api/image-lookup`,
-  `/api/sample-products`), `update_sample_status`, `list_on_marketplace`,
-  `mark_sample_sold`, `bulk_sample_sold` (one sale across N sample_ids → per-sample
-  `sample_sold_json` + shared `bulk_id`, so existing revenue queries include bulk
-  lots), and `graylog-query` read-back.
-- **⬜ Proposed next:** a stored `creator_id` on the sample at intake (so content
-  attribution doesn't rely on matching scraper `creator` + `product_id`).
-- **⚠ Gap:** the order-received scrape carries no `productId`/`creator`, so the
-  order node can't auto-join (the dotted edge) until the scraper captures a
-  productId — out of scope for this skill.
+  `/api/sample-products`), `update_sample_status`, `list_product_creators`
+  (derived assigned-creator dropdown), `agency_intake` (bulk lot → reserved
+  bucket), `assign_sample` (fulfillment → `checked_out` + campaign match +
+  bundle/goal/promo enrichment note), `list_on_marketplace`, `mark_sample_sold`,
+  `bulk_sample_sold`, and `graylog-query` read-back. Creator attribution is set
+  via `assign_sample` (`checked_out_to`), so no `creator_id`-at-intake column is
+  needed.
+- **🟡 Config, not measured:** campaign membership + daily-video goal + promo come
+  from `core/campaign-config.json` (no campaign/goal/promo data source exists yet
+  — the enrichment note labels them `[from campaign-config]`). Bundle membership
+  in the note IS real (`samples.bundle_id`).
+- **⚠ Gap:** the order-received / order-list scrape carries no `productId`/`creator`,
+  so it can't itself feed the derived dropdown — creators-for-product are derived
+  from `tiktok-affiliate-export` instead. Closing the order-scrape gap needs a
+  tok-scrape change to stamp `_creator`/`_product_id` — out of scope here.
 
 See [lifecycle-events.md](lifecycle-events.md) for the exact event field schemas
 and the `graylog-query` read-back recipes.
