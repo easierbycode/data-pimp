@@ -40,6 +40,12 @@
       padding: 7px 14px; border-radius: 8px; font-weight: 600;
     }
     button:active { transform: translateY(1px); }
+    .toggle {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      font-size: 12px; padding: 4px 10px; border-radius: 999px;
+      background: #1a1a22; border: 1px solid #2a2a35; color: #cfcfd6; user-select: none;
+    }
+    .toggle input { accent-color: #ff7a18; margin: 0; }
     .stage { flex: 1 1 auto; position: relative; background: #0b0b0f; }
     iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
     .overlay {
@@ -67,6 +73,9 @@
       <span class="chip" id="ctx-creator">creator: …</span>
       <span class="chip" id="ctx-ids">items: …</span>
       <span class="chip" id="ctx-source">source: …</span>
+      <label class="toggle" title="Dry-run computes the campaign/enrichment and shows the flow, but writes no inventory.">
+        <input type="checkbox" id="dry" checked /> Dry-run
+      </label>
       <button id="rerun" type="button">↻ Re-run</button>
     </div>
   </header>
@@ -109,6 +118,8 @@
       u.searchParams.set("autostart", "1");
       u.searchParams.set("creator", ctx.creator);
       u.searchParams.set("ids", (ctx.ids || []).join(","));
+      // Default: dry-run (no inventory written). Uncheck to run a real import.
+      if (document.getElementById("dry").checked) u.searchParams.set("dryrun", "1");
       var iframe = document.getElementById("demo");
       var overlay = document.getElementById("overlay");
       iframe.addEventListener("load", function () { overlay.classList.add("hidden"); }, { once: true });
@@ -137,6 +148,13 @@
 
     document.getElementById("rerun").addEventListener("click", function () {
       // Re-resolve context (a newer creator may have posted) and reload the demo.
+      var iframe = document.getElementById("demo");
+      iframe.removeAttribute("src");
+      load();
+    });
+
+    // Toggling Dry-run/Live re-runs in the chosen mode (Live writes inventory).
+    document.getElementById("dry").addEventListener("change", function () {
       var iframe = document.getElementById("demo");
       iframe.removeAttribute("src");
       load();
