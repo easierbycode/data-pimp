@@ -21,7 +21,12 @@
 // `product_id` on Graylog events. `sample_id` is stamped alongside so the two
 // systems reconcile even when a qr_code holds a barcode instead of a real id.
 
-import { fetchScheduleRecords, sendGelfMessage } from "./graylog.ts";
+import {
+  fetchAssignedCreatorForSample,
+  fetchScheduleRecords,
+  hasResaleEventForSample,
+  sendGelfMessage,
+} from "./graylog.ts";
 import { Bundles, InventoryTransactions, Samples } from "../db.ts";
 import sampleStatuses from "./sample-statuses.json" with { type: "json" };
 import campaignConfig from "./campaign-config.json" with { type: "json" };
@@ -78,6 +83,12 @@ export type SoldInput = SampleRef & {
   // Re-sell an already-sold sample on purpose (re-attribution). Off by default
   // because the Graylog revenue total can't be un-inflated — see the guard.
   force?: boolean;
+  // Emit ONLY the per-creator Graylog revenue event — skip the Postgres update,
+  // the audit transaction, and the double-sell guard. For callers that already
+  // own the Postgres sale (the LP Sample Tracker dashboard) but want the resale
+  // revenue attributed per creator. Creator is resolved from assignment history
+  // when not supplied.
+  graylogOnly?: boolean;
   // Set by recordBulkSampleSold to tie a per-sample sale back to its bulk lot.
   bulkId?: string;
   bulkTotal?: number | string;
@@ -538,13 +549,7 @@ export async function recordSampleStatus(
 // and the analytics event to Graylog. `creator`, `salePrice`, and `marketplace`
 // are required; fees/shipping/costBasis are optional and feed the computed net.
 export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
-  const creator = String(input.creator || "").trim();
-  if (!creator) {
-    throw new Error(
-      "creator is required — which creator account should this resale revenue " +
-        "be attributed to?",
-    );
-  }
+  const graylogOnly = input.graylogOnly === true;
   const salePrice = toNumber(input.salePrice);
   if (!(salePrice > 0)) {
     throw new Error("salePrice must be a positive number");
@@ -561,17 +566,72 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
   const costBasis = numOrZero(input.costBasis);
   const net = round2(salePrice - fees - shipping - costBasis);
 
-  const row = await resolveSampleRow(input, { preferUnsold: true });
+  const row = await resolveSampleRow(input, { preferUnsold: !graylogOnly });
   const sampleId = row ? Number(row.id) : null;
   const productId = productIdOf(row, input);
   const name = row ? String(row.name ?? "").trim() || null : null;
   const previousStatus = row ? String(row.status ?? "").trim() || null : null;
 
+  // Creator is required for attribution. In graylogOnly mode the caller (the
+  // tracker dashboard) often can't supply one — checked_out_to is cleared on
+  // check-in — so resolve it from the sample's assignment history, then fall
+  // back to a still-present checked_out_to on the row.
+  let creator = String(input.creator || "").trim();
+  if (!creator && graylogOnly) {
+    creator =
+      (await fetchAssignedCreatorForSample(
+        sampleId ?? undefined,
+        productId ?? undefined,
+      )) ||
+      (row && row.checked_out_to
+        ? String(row.checked_out_to).trim()
+        : "");
+  }
+  if (!creator) {
+    throw new Error(
+      "creator is required — which creator account should this resale revenue " +
+        "be attributed to?",
+    );
+  }
+
+  // Idempotency backstop for graylogOnly: that mode skips the double-sell guard
+  // below (the caller owns Postgres state), so refuse to re-emit a resale event
+  // for a sample that already has one — GELF is append-only and gmv_num is summed
+  // client-side, so a re-emit would permanently double-count the creator's GMV.
+  // force:true re-attributes on purpose.
+  if (
+    graylogOnly && input.force !== true && sampleId != null &&
+    (await hasResaleEventForSample(sampleId))
+  ) {
+    return {
+      ok: true,
+      sampleId,
+      productId,
+      name,
+      creator,
+      marketplace,
+      salePrice,
+      fees,
+      shipping,
+      costBasis,
+      net,
+      postgres: {
+        updated: false,
+        transactionId: null,
+        reason: "graylogOnly: caller owns the sale",
+      },
+      graylog: false,
+      message:
+        `Resale revenue for sample ${sampleId} was already attributed — skipped ` +
+        "to avoid double-counting (pass force:true to re-attribute).",
+    };
+  }
+
   // Guard against double-selling. GELF revenue events are append-only and the
   // read side sums `gmv_num` client-side, so a second sale permanently inflates
   // the creator's attributed revenue — the Postgres overwrite self-heals, the
   // analytics total can't. Refuse unless the caller explicitly re-attributes.
-  if (previousStatus === "sold" && input.force !== true) {
+  if (!graylogOnly && previousStatus === "sold" && input.force !== true) {
     const soldAt = row ? String(row.sold_at ?? "").trim() : "";
     throw new Error(
       `Sample ${row?.id ?? productId ?? "?"} is already sold${
@@ -590,7 +650,11 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
   let updated = false;
   let transactionId: number | null = null;
   const reasons: string[] = [];
-  if (row) {
+  if (graylogOnly) {
+    // The caller owns the Postgres sale + audit transaction; we only emit the
+    // analytics event below. Nothing to write here.
+    reasons.push("graylogOnly: Postgres update + audit transaction skipped (caller owns the sale)");
+  } else if (row) {
     try {
       await Samples.update(String(row.id), {
         status: "sold",
@@ -665,7 +729,9 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
       product_id: productId ?? undefined,
       sample_id: sampleId != null ? String(sampleId) : undefined,
       sample_status: "sold",
-      sample_source: bulkId ? "skill-bulk-resale" : "skill-resale",
+      sample_source: graylogOnly
+        ? "tracker-resale"
+        : (bulkId ? "skill-bulk-resale" : "skill-resale"),
       bulk_id: bulkId || undefined,
       bulk_total_num: bulkTotal ?? undefined,
     },

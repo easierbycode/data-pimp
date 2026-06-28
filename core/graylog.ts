@@ -360,6 +360,93 @@ export async function fetchOrderCreatorsByName(
   }
 }
 
+// Resolve which creator a physical sample was assigned to, from its assignment
+// history (sample_assignment_json events emitted by recordSampleImport /
+// recordSampleAssignment, keyed by sample_id + product_id + creator). Used to
+// attribute resale revenue when the caller (the tracker dashboard) can't supply
+// a creator — checked_out_to is cleared on check-in, but the assignment event
+// is append-only. Prefers an exact sample_id match, then the most recent.
+export async function fetchAssignedCreatorForSample(
+  sampleId?: string | number,
+  productId?: string,
+): Promise<string | null> {
+  const config = graylogConfigFromEnv();
+  const sid = String(sampleId ?? "").trim();
+  const pid = String(productId ?? "").trim();
+  if (!config || (!sid && !pid)) return null;
+
+  const idClauses: string[] = [];
+  if (sid) idClauses.push(`sample_id:"${sid.replace(/"/g, '\\"')}"`);
+  if (pid) idClauses.push(`product_id:"${pid.replace(/"/g, '\\"')}"`);
+  const idClause = idClauses.length > 1
+    ? `(${idClauses.join(" OR ")})`
+    : idClauses[0];
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 2,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `creator:* AND sample_assignment_json:* AND ${idClause}`,
+      200,
+      ["timestamp", "creator", "sample_id", "product_id"],
+    );
+    let best: { creator: string; ts: string; sidMatch: boolean } | null = null;
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (!creator) continue;
+      const ts = typeof message.timestamp === "string" ? message.timestamp : "";
+      const sidMatch = !!sid && String(message.sample_id ?? "") === sid;
+      // Prefer an exact sample_id match; among equals, the most recent timestamp.
+      if (
+        !best ||
+        (sidMatch && !best.sidMatch) ||
+        (sidMatch === best.sidMatch && ts > best.ts)
+      ) {
+        best = { creator, ts, sidMatch };
+      }
+    }
+    return best ? best.creator : null;
+  } catch {
+    return null;
+  }
+}
+
+// Has this sample already had a tracker-resale revenue event written? Used as an
+// idempotency backstop in recordSampleSold's graylogOnly mode, which skips the
+// double-sell guard (the caller owns Postgres state). GELF is append-only and
+// gmv_num is summed client-side, so a re-emit would double-count a creator's
+// resale GMV. On any error we return false (don't block — best-effort; the
+// caller's UI already gates re-fire).
+export async function hasResaleEventForSample(
+  sampleId?: string | number,
+): Promise<boolean> {
+  const config = graylogConfigFromEnv();
+  const sid = String(sampleId ?? "").trim();
+  if (!config || !sid) return false;
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 2,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `sample_sold_json:* AND sample_source:"tracker-resale" AND sample_id:"${
+        sid.replace(/"/g, '\\"')
+      }"`,
+      1,
+      ["timestamp", "sample_id"],
+    );
+    return messages.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Scheduled-listing intents (sample_schedule_json) paired with their fired
 // markers (sample_schedule_done_json), for the auto-list cron. 1-year window —
 // schedules are short-lived. Errors degrade to empty so the cron just no-ops.
