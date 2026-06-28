@@ -39,6 +39,7 @@ import {
 import {
   envValue,
   fetchCreatorsForProduct,
+  fetchE2EContext,
   fetchKnownCreators,
   fetchOrderCreatorsByName,
   graylogConfigFromEnv,
@@ -790,6 +791,9 @@ export async function legacyHandler(req: Request): Promise<Response> {
   if (pathname === "/install" || pathname === "/install.html") {
     return await serveLocalFile("./static/install.html", "text/html; charset=utf-8");
   }
+  if (pathname === "/e2e" || pathname === "/e2e.html") {
+    return await serveLocalFile("./static/e2e.html", "text/html; charset=utf-8");
+  }
   if (pathname === "/ui.js") {
     return await serveLocalFile("./static/ui.js", "text/javascript; charset=utf-8");
   }
@@ -1343,6 +1347,15 @@ export async function legacyHandler(req: Request): Promise<Response> {
         const raw = Number(url.searchParams.get("limit"));
         const limit = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1000;
         return json({ creators: await fetchKnownCreators(limit) });
+      }
+
+      // Context for the one-click E2E demo (Demos/E2E): the latest creator + a
+      // few of their recent products, or a default product. CORS — the /e2e
+      // page fetches it client-side. ?id=<productId> overrides the default.
+      if (pathname === "/api/e2e-context") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        const def = (url.searchParams.get("id") || "1731301163454206492").trim();
+        return corsJson(await fetchE2EContext(def));
       }
 
       // Creators who ordered a given product (the derived assigned-creator
