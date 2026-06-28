@@ -319,6 +319,44 @@ export async function fetchCreatorsForProduct(
   }
 }
 
+// Scheduled-listing intents (sample_schedule_json) paired with their fired
+// markers (sample_schedule_done_json), for the auto-list cron. 1-year window —
+// schedules are short-lived. Errors degrade to empty so the cron just no-ops.
+export async function fetchScheduleRecords(): Promise<
+  { scheduled: Record<string, unknown>[]; done: Set<string> }
+> {
+  const config = graylogConfigFromEnv();
+  if (!config) return { scheduled: [], done: new Set() };
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365,
+    };
+    const sched = await searchGraylog(wide, "sample_schedule_json:*", 500, [
+      "timestamp",
+      "sample_schedule_json",
+    ]);
+    const doneMsgs = await searchGraylog(
+      wide,
+      "sample_schedule_done_json:*",
+      500,
+      ["timestamp", "sample_schedule_done_json"],
+    );
+    const scheduled = sched
+      .map((m) => parseJsonValue(m.sample_schedule_json))
+      .filter(isRecord);
+    const done = new Set<string>();
+    for (const m of doneMsgs) {
+      const rec = parseJsonValue(m.sample_schedule_done_json);
+      if (isRecord(rec) && rec.scheduleId) done.add(String(rec.scheduleId));
+    }
+    return { scheduled, done };
+  } catch {
+    return { scheduled: [], done: new Set() };
+  }
+}
+
 export function graylogConfigFromEnv(): GraylogConfig | null {
   const url = normalizeGraylogUrl(
     envValue("GRAYLOG_API_URL") || envValue("GRAYLOG_URL"),

@@ -230,6 +230,21 @@ const FOLDERS = [
         height: 780,
       },
       {
+        id: "samples-import",
+        name: "Samples-Import",
+        icon: ICONS.mobile,
+        // Admin import tool: paste/upload a list of TikTok productIds, hydrate
+        // each, and add to inventory assigned to a creator. Reuses the Samples
+        // demo's order-modal preview; calls the live thirsty.store import API.
+        url: "https://easierbycode.com/tok-scrape/samples-import/www/",
+        allow: "fullscreen",
+        external: true,
+        // Wider than the phone Samples demo (paste box + creator picker +
+        // auto-list panel) and resizable — not mobile-locked.
+        width: 520,
+        height: 840,
+      },
+      {
         id: "content-by-sample",
         name: "Content by Sample",
         icon: ICONS.content,

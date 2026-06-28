@@ -25,10 +25,13 @@ import {
   upsertSampleProduct,
 } from "./core/samples.ts";
 import {
+  fetchDueListingSchedules,
   listSampleStatuses,
+  markListingScheduleDone,
   recordAgencyIntake,
   recordBulkSampleSold,
   recordSampleAssignment,
+  recordSampleImport,
   recordSampleListing,
   recordSampleSold,
   recordSampleStatus,
@@ -1335,11 +1338,13 @@ export async function legacyHandler(req: Request): Promise<Response> {
       // dropdown). ?all=1 unions in every known creator so an admin can also
       // assign someone who hasn't ordered it yet. Derived from affiliate-export
       // (the only source with product_id + creator) — see fetchCreatorsForProduct.
+      // CORS — read cross-origin by the Samples-Import demo (easierbycode.com).
       if (pathname === "/api/product-creators") {
+        if (req.method === "OPTIONS") return corsPreflight();
         const productId = (url.searchParams.get("productId") ||
           url.searchParams.get("product") || "").trim();
         if (!productId) {
-          return json({ ok: false, error: "productId is required" }, 400);
+          return corsJson({ ok: false, error: "productId is required" }, 400);
         }
         const raw = Number(url.searchParams.get("limit"));
         const limit = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1000;
@@ -1347,7 +1352,7 @@ export async function legacyHandler(req: Request): Promise<Response> {
         const all = url.searchParams.get("all") === "1"
           ? await fetchKnownCreators(limit)
           : undefined;
-        return json({
+        return corsJson({
           productId,
           orderedCreators: ordered,
           ...(all
@@ -1441,6 +1446,21 @@ export async function legacyHandler(req: Request): Promise<Response> {
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return json({ ok: false, error: msg }, 400);
+        }
+      }
+
+      // Import a product as a NEW sample assigned to a creator — the
+      // Samples-Import demo loop. Called cross-origin (easierbycode.com) → CORS.
+      if (pathname === "/api/sample-import") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        if (req.method !== "POST") {
+          return corsJson({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return corsJson(await recordSampleImport(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return corsJson({ ok: false, error: msg }, 400);
         }
       }
 
@@ -1578,6 +1598,62 @@ function renderMemberUnavailable(): Response {
   </body>
 </html>`;
   return new Response(html, { status: 503, headers });
+}
+
+// Auto-list scheduled samples: hourly, fire any due `sample_schedule_json`
+// intents (recorded by recordSampleImport's auto-list option) as a STUB eBay
+// draft listing + a status flip to `cleared_to_sell`, then mark them done so the
+// at-least-once cron doesn't re-list. Only the central deployment (DATABASE_URL +
+// Graylog) runs it; a thin client no-ops. NOTE: "draft eBay listing" is a stub —
+// recordSampleListing records a Graylog listing intent; nothing posts to eBay.
+// `Deno.cron` is stable on Deno Deploy at runtime but gated behind the unstable
+// type lib for `deno check`; feature-detect + cast so the type-check passes and
+// runtimes without cron skip gracefully.
+const denoCron = (Deno as unknown as {
+  cron?: (
+    name: string,
+    schedule: string,
+    handler: () => void | Promise<void>,
+  ) => void;
+}).cron;
+if (denoCron) {
+  denoCron("thirsty-sample-auto-list", "0 * * * *", async () => {
+    if (REMOTE_API) return; // thin client: the central deploy owns the cron
+    try {
+      const due = await fetchDueListingSchedules();
+      for (const s of due) {
+        try {
+          if (s.askPrice > 0) {
+            await recordSampleListing({
+              sampleId: s.sampleId ?? undefined,
+              productId: s.productId,
+              creator: s.creator,
+              marketplace: s.marketplace,
+              askPrice: s.askPrice,
+              note: "auto-listed (scheduled draft — not posted to eBay)",
+            });
+            await recordSampleStatus({
+              sampleId: s.sampleId ?? undefined,
+              productId: s.productId,
+              status: "cleared_to_sell",
+              source: "skill-cron",
+              note: `auto-list fired (${s.marketplace})`,
+            });
+          }
+          await markListingScheduleDone(s.scheduleId); // always: avoid re-firing
+        } catch (e) {
+          console.error("[auto-list] schedule", s.scheduleId, "failed:", e);
+        }
+      }
+      if (due.length) {
+        console.log(`[auto-list] fired ${due.length} scheduled listing(s)`);
+      }
+    } catch (e) {
+      console.error("[auto-list] cron error:", e);
+    }
+  });
+} else {
+  console.error("[auto-list] Deno.cron unavailable — auto-listing won't fire");
 }
 
 Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, (req) => {

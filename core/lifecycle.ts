@@ -21,7 +21,7 @@
 // `product_id` on Graylog events. `sample_id` is stamped alongside so the two
 // systems reconcile even when a qr_code holds a barcode instead of a real id.
 
-import { sendGelfMessage } from "./graylog.ts";
+import { fetchScheduleRecords, sendGelfMessage } from "./graylog.ts";
 import { Bundles, InventoryTransactions, Samples } from "../db.ts";
 import sampleStatuses from "./sample-statuses.json" with { type: "json" };
 import campaignConfig from "./campaign-config.json" with { type: "json" };
@@ -211,6 +211,45 @@ export type AssignmentResult = {
   campaign: string | null;
   enrichment: string[];
   postgres: { updated: boolean; transactionId: number | null; reason?: string };
+  graylog: boolean;
+  message: string;
+};
+
+export type ImportInput = {
+  productId?: string;
+  qrCode?: string;
+  name?: string;
+  price?: number | string;
+  image?: string;
+  seller?: string;
+  creator?: string;
+  campaign?: string;
+  operator?: string;
+  note?: string;
+  // Optional auto-listing schedule: after `autoListAfterDays`, a cron emits a
+  // (stub) marketplace listing for this sample. e.g. 10 videos at 5/day → 2 days.
+  autoListAfterDays?: number | string;
+  marketplace?: string;
+  askPrice?: number | string;
+};
+
+export type ScheduledListing = {
+  scheduleId: string;
+  listAt: string;
+  marketplace: string;
+  askPrice: number;
+};
+
+export type ImportResult = {
+  ok: boolean;
+  sampleId: number | null;
+  productId: string | null;
+  name: string | null;
+  creator: string;
+  campaign: string | null;
+  enrichment: string[];
+  scheduledListing: ScheduledListing | null;
+  postgres: { created: boolean; transactionId: number | null; reason?: string };
   graylog: boolean;
   message: string;
 };
@@ -1183,6 +1222,246 @@ export async function recordSampleAssignment(
       enrichment.length ? " " + enrichment.join(" ") : ""
     }`,
   };
+}
+
+// Import a product as a NEW inventory sample assigned directly to a creator —
+// the Samples-Import flow (paste/upload productIds → hydrate → assign). Creates a
+// Postgres row in `checked_out` (checked_out_to = creator), logs a `check_out`
+// transaction, matches a campaign, emits `sample_assignment_json`
+// (sample_event "imported"), and returns the enrichment note. Optionally
+// schedules a (stub) marketplace listing after N days via a `sample_schedule_json`
+// event the auto-list cron acts on.
+export async function recordSampleImport(
+  input: ImportInput,
+): Promise<ImportResult> {
+  const creator = String(input.creator || "").trim();
+  if (!creator) {
+    throw new Error("creator is required — assign the import to a creator");
+  }
+  const productId = String(input.productId ?? input.qrCode ?? "").trim();
+  if (!productId) throw new Error("productId is required");
+
+  const now = new Date().toISOString();
+  const name = String(input.name || "").trim() || productId;
+  const price = numOrZero(input.price);
+  const image = String(input.image || "").trim();
+  const seller = String(input.seller || "").trim();
+  const note = String(input.note || "").trim();
+  const operator = String(input.operator || "").trim();
+
+  // Build the row with only present columns (db.ts insertRow keeps undefined
+  // keys, so omit them rather than insert nulls for optional fields).
+  const createData: Record<string, unknown> = {
+    name,
+    qr_code: productId,
+    status: "checked_out",
+    checked_out_to: creator,
+    checked_out_at: now,
+    notes: `imported & assigned to ${creator}${note ? ` | ${note}` : ""}`,
+  };
+  if (seller) createData.brand = seller;
+  if (image) createData.picture_url = image;
+  if (price > 0) createData.current_price = price;
+
+  let sampleId: number | null = null;
+  let created = false;
+  let bundleRow: SampleRow | null = null;
+  let transactionId: number | null = null;
+  const reasons: string[] = [];
+  try {
+    const row = await Samples.create(createData) as SampleRow | undefined;
+    if (row?.id != null) {
+      sampleId = Number(row.id);
+      created = true;
+      bundleRow = row;
+    }
+  } catch (error) {
+    reasons.push(error instanceof Error ? error.message : String(error));
+  }
+
+  const campaignEntry = matchCampaign(productId, name);
+  const campaign = String(input.campaign || "").trim() ||
+    (campaignEntry ? campaignEntry.name : null);
+  const campaignId = campaignEntry ? campaignEntry.id : "";
+
+  // Optional auto-listing schedule (stub — records intent for the cron).
+  let scheduledListing: ScheduledListing | null = null;
+  const days = numOrZero(input.autoListAfterDays);
+  if (created && days > 0) {
+    const marketplace = String(input.marketplace || "ebay").trim() || "ebay";
+    const askNum = numOrZero(input.askPrice);
+    const askPrice = askNum > 0 ? askNum : (price > 0 ? round2(price) : 0);
+    const listAt = new Date(Date.now() + days * 86_400_000).toISOString();
+    const scheduleId = `sched-${crypto.randomUUID()}`;
+    const ok = await sendGelfMessage(
+      `thirsty sample listing scheduled: ${name} → ${marketplace} in ${days}d`,
+      {
+        sample_schedule_json: JSON.stringify({
+          scheduleId, productId, sampleId, name, creator, marketplace, askPrice,
+          listAt, scheduledAt: now,
+        }),
+        sample_event: "listing_scheduled",
+        schedule_id: scheduleId,
+        list_at: listAt,
+        product_id: productId,
+        sample_id: sampleId != null ? String(sampleId) : undefined,
+        creator,
+        marketplace,
+        ask_price_num: askPrice,
+        sample_source: "skill-import",
+      },
+    );
+    if (ok) scheduledListing = { scheduleId, listAt, marketplace, askPrice };
+  }
+
+  const enrichment = await buildEnrichment(bundleRow, campaignEntry);
+  if (scheduledListing) {
+    enrichment.push(
+      `Auto-listing: a draft ${scheduledListing.marketplace} listing is scheduled ` +
+        `for ${scheduledListing.listAt.slice(0, 10)} (~${days} day(s)). ` +
+        "[stub — records intent, does not post to eBay yet]",
+    );
+  }
+
+  if (created) {
+    try {
+      const summary = `imported & assigned to ${creator}${
+        campaign ? ` | campaign ${campaign}` : ""
+      }${scheduledListing ? ` | auto-list ${scheduledListing.listAt.slice(0, 10)}` : ""}${
+        note ? ` | ${note}` : ""
+      }`;
+      const tx = await InventoryTransactions.create({
+        action: "check_out",
+        sample_id: sampleId,
+        operator: operator || null,
+        checked_out_to: creator,
+        scanned_code: productId,
+        notes: summary,
+      }) as SampleRow | undefined;
+      transactionId = tx && tx.id != null ? Number(tx.id) : null;
+    } catch (error) {
+      reasons.push(
+        `transaction: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  const graylog = await sendGelfMessage(
+    `thirsty sample imported: ${name} → ${creator}`,
+    {
+      sample_assignment_json: JSON.stringify({
+        productId,
+        sampleId,
+        name,
+        creator,
+        campaign: campaign || undefined,
+        campaignId: campaignId || undefined,
+        price: price || undefined,
+        image: image || undefined,
+        seller: seller || undefined,
+        importedAt: now,
+        note: note || undefined,
+      }),
+      creator,
+      sample_status: "checked_out",
+      sample_event: "imported",
+      product_id: productId,
+      sample_id: sampleId != null ? String(sampleId) : undefined,
+      campaign: campaign || undefined,
+      campaign_id: campaignId || undefined,
+      sample_source: "skill-import",
+    },
+  );
+
+  const targets: string[] = [];
+  if (created) targets.push("Postgres");
+  if (graylog) targets.push("Graylog");
+  const where = targets.length ? targets.join(" + ") : "nothing";
+  const warnings: string[] = [];
+  if (!created) {
+    warnings.push(
+      `Postgres row was NOT created${reasons.length ? ` (${reasons.join("; ")})` : ""}`,
+    );
+  } else if (transactionId === null) {
+    warnings.push("the check-out transaction was NOT recorded");
+  }
+  if (!graylog) warnings.push("Graylog event was NOT written");
+  const warn = warnings.length ? ` WARNING: ${warnings.join("; ")}.` : "";
+
+  return {
+    ok: created || graylog,
+    sampleId,
+    productId,
+    name,
+    creator,
+    campaign: campaign || null,
+    enrichment,
+    scheduledListing,
+    postgres: {
+      created,
+      transactionId,
+      reason: reasons.length ? reasons.join("; ") : undefined,
+    },
+    graylog,
+    message: `Imported ${name} → assigned to ${creator}${
+      campaign ? `, campaign "${campaign}"` : ""
+    } (persisted to ${where}).${warn}${
+      enrichment.length ? " " + enrichment.join(" ") : ""
+    }`,
+  };
+}
+
+// Find scheduled-listing intents that are due (list_at <= now) and not yet
+// fired, for the auto-list cron. Pairs sample_schedule_json events with their
+// sample_schedule_done_json markers and returns only the unfired, due ones.
+export async function fetchDueListingSchedules(): Promise<
+  Array<
+    {
+      scheduleId: string;
+      productId: string;
+      sampleId: number | null;
+      name: string;
+      creator: string;
+      marketplace: string;
+      askPrice: number;
+      listAt: string;
+    }
+  >
+> {
+  const records = await fetchScheduleRecords();
+  const nowMs = Date.now();
+  const due = [];
+  for (const r of records.scheduled) {
+    const id = String(r.scheduleId || "").trim();
+    if (!id || records.done.has(id)) continue;
+    const listAt = String(r.listAt || "");
+    const t = Date.parse(listAt);
+    if (!Number.isFinite(t) || t > nowMs) continue;
+    due.push({
+      scheduleId: id,
+      productId: String(r.productId || ""),
+      sampleId: r.sampleId != null ? Number(r.sampleId) : null,
+      name: String(r.name || ""),
+      creator: String(r.creator || ""),
+      marketplace: String(r.marketplace || "ebay"),
+      askPrice: numOrZero(r.askPrice),
+      listAt,
+    });
+  }
+  return due;
+}
+
+// Mark a scheduled listing as fired so the at-least-once cron doesn't re-list it.
+export async function markListingScheduleDone(scheduleId: string): Promise<void> {
+  await sendGelfMessage(`thirsty sample listing fired: ${scheduleId}`, {
+    sample_schedule_done_json: JSON.stringify({
+      scheduleId,
+      firedAt: new Date().toISOString(),
+    }),
+    sample_event: "listing_fired",
+    schedule_id: scheduleId,
+    sample_source: "skill-cron",
+  });
 }
 
 // Human-readable outcome line. Honest about partial success: a Graylog write can
