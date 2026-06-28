@@ -1,6 +1,6 @@
 # Sample-lifecycle Graylog events
 
-The two events this skill writes, and how `graylog-query` reads them back. Both
+The events this skill writes, and how `graylog-query` reads them back. All
 are emitted by `core/lifecycle.ts` via `sendGelfMessage()` (defined in
 `core/graylog.ts`), which sends GELF `version:"1.1"`, `host:"thirsty-store-kiosk"`,
 single-`_`-prefixes every field, and drops empty/null values. Graylog strips the
@@ -51,6 +51,28 @@ Note: affiliate-export's `creator` is an *agency label*, but these resale events
 are authored by the skill, so the real `@handle` is stamped directly — resale
 revenue attributes more cleanly than affiliate data.
 
+## Event 3 — listing (marketplace)
+
+`short_message`: `thirsty sample listed: <name> @ $<askPrice> on <marketplace> → <creator>`
+
+Analytics-only — written by `recordSampleListing`; it does **not** touch Postgres
+(a listing is intent-to-sell, not an inventory status). It marks the step between
+the content-GMV question and the resale-net question.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `sample_listing_json` | JSON string | `{productId, sampleId, name, creator, marketplace, askPrice, listingUrl?, listedAt, note?}` |
+| `creator` | string | attribution handle (same convention as Events 1–2) |
+| `ask_price_num` | number | the listing/ask price — compare to the eventual `gmv_num`/`net_num` |
+| `marketplace` | string | `ebay` / `offerup` / `fbmarketplace` / … |
+| `product_id` | string | join key |
+| `sample_id` | string | Postgres id (when a row matched) |
+| `sample_event` | string | `listed` (flat, filterable) |
+| `sample_source` | string | `skill-listing` |
+
+A `product_id` carrying a `sample_listing_json` with no later `sample_sold_json`
+is still on the market.
+
 ## Read-back recipes (`graylog-query`)
 
 `--terms` only counts; it can't SUM — fetch rows and sum the `*_num` field
@@ -77,6 +99,18 @@ python3 .../graylog_query.py --last 90d \
   --fields creator,product_id,marketplace,gmv_num,net_num --sort gmv_num:desc
 ```
 
+**What's currently listed for resale (and where):**
+```bash
+python3 .../graylog_query.py --all -q 'sample_listing_json:*' \
+  --fields creator,product_id,marketplace,ask_price_num --sort timestamp:desc
+```
+A `product_id` with a `sample_listing_json` and no later `sample_sold_json` is
+still on the market. `--terms marketplace` shows where listings cluster.
+
+**Ask vs. actual — did listings sell for what we asked?**
+Pull `sample_listing_json:*` (`ask_price_num`) and `sample_sold_json:*`
+(`gmv_num`) for the same `product_id` and compare per product.
+
 **Status history of one sample/product:**
 ```bash
 python3 .../graylog_query.py --all -q 'product_id:"1729..." AND sample_status_json:*' \
@@ -94,7 +128,8 @@ python3 .../graylog_query.py --all -q 'product_id:"1729..."' \
 
 `product_id` links: **intake** (`samples.qr_code`) → **status changes**
 (Event 1) → **content** (`source:tiktok-bookmarklet-product-analysis` etc.,
-which carry `Product ID` + `creator`) → **resale** (Event 2).
+which carry `Product ID` + `creator`) → **listing** (Event 3) → **resale**
+(Event 2).
 
 The weak link is **order-received** (`source:tiktok-bookmarklet-orders`): those
 scrape events carry neither `product_id` nor `creator` (product is matched by

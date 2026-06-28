@@ -26,6 +26,7 @@ import {
 } from "./core/samples.ts";
 import {
   listSampleStatuses,
+  recordSampleListing,
   recordSampleSold,
   recordSampleStatus,
 } from "./core/lifecycle.ts";
@@ -1348,6 +1349,21 @@ export async function legacyHandler(req: Request): Promise<Response> {
         }
         try {
           return json(await recordSampleSold(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 400);
+        }
+      }
+
+      // List a sample on a resale marketplace — analytics-only Graylog event
+      // (the step between the content-GMV and resale-net questions). No Postgres
+      // status change: a listing is intent-to-sell, not an inventory state.
+      if (pathname === "/api/sample-listing") {
+        if (req.method !== "POST") {
+          return json({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return json(await recordSampleListing(await readJsonBody(req)));
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return json({ ok: false, error: msg }, 400);

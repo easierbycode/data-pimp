@@ -96,6 +96,28 @@ export type SoldResult = {
   message: string;
 };
 
+export type ListingInput = SampleRef & {
+  creator?: string;
+  marketplace?: string;
+  askPrice?: number | string;
+  listingUrl?: string;
+  note?: string;
+  operator?: string;
+};
+
+export type ListingResult = {
+  ok: boolean;
+  sampleId: number | null;
+  productId: string | null;
+  name: string | null;
+  creator: string;
+  marketplace: string;
+  askPrice: number;
+  listingUrl: string | null;
+  graylog: boolean;
+  message: string;
+};
+
 const STATUSES = sampleStatuses as SampleStatusEntry[];
 
 // The full synced status vocabulary (statuses + badges) — served verbatim so the
@@ -422,6 +444,87 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
       marketplace,
       warnings,
     }),
+  };
+}
+
+// Record that a sample has been LISTED for resale on a marketplace — the step
+// between "how much GMV did my content drive?" and "what did the listing sell
+// for?". Analytics-only on purpose: a listing is intent-to-sell, not an
+// inventory-status change (there is no "listed" status), so this emits a Graylog
+// event and does NOT mutate Postgres. The event reuses the lifecycle vocabulary
+// (creator + product_id + sample_id) plus ask_price_num, so graylog-query can
+// answer "what's listed where" and compare ask price to the eventual sale.
+export async function recordSampleListing(
+  input: ListingInput,
+): Promise<ListingResult> {
+  const creator = String(input.creator || "").trim();
+  if (!creator) {
+    throw new Error(
+      "creator is required — which creator account is this listing attributed to?",
+    );
+  }
+  const marketplace = String(input.marketplace || "").trim();
+  if (!marketplace) {
+    throw new Error(
+      "marketplace is required (e.g. ebay, offerup, fbmarketplace)",
+    );
+  }
+  const askPrice = toNumber(input.askPrice);
+  if (!(askPrice > 0)) {
+    throw new Error("askPrice must be a positive number");
+  }
+
+  const row = await resolveSampleRow(input, { preferUnsold: true });
+  const sampleId = row ? Number(row.id) : null;
+  const productId = productIdOf(row, input);
+  const name = row ? String(row.name ?? "").trim() || null : null;
+  const listingUrl = String(input.listingUrl || "").trim() || null;
+  const note = String(input.note || "").trim();
+  const now = new Date().toISOString();
+
+  const graylog = await sendGelfMessage(
+    `thirsty sample listed: ${name ?? productId ?? "sample"} @ $${
+      askPrice.toFixed(2)
+    } on ${marketplace} → ${creator}`,
+    {
+      sample_listing_json: JSON.stringify({
+        productId,
+        sampleId,
+        name,
+        creator,
+        marketplace,
+        askPrice,
+        listingUrl: listingUrl || undefined,
+        listedAt: now,
+        note: note || undefined,
+      }),
+      creator,
+      ask_price_num: askPrice,
+      marketplace,
+      product_id: productId ?? undefined,
+      sample_id: sampleId != null ? String(sampleId) : undefined,
+      sample_event: "listed",
+      sample_source: "skill-listing",
+    },
+  );
+
+  const where = graylog ? "Graylog" : "nothing";
+  const warning = graylog
+    ? ""
+    : " WARNING: Graylog listing event was NOT written.";
+  return {
+    ok: graylog,
+    sampleId,
+    productId,
+    name,
+    creator,
+    marketplace,
+    askPrice,
+    listingUrl,
+    graylog,
+    message: `Listed ${name ?? productId ?? "sample"} at $${
+      askPrice.toFixed(2)
+    } on ${marketplace} for ${creator} (recorded to ${where}).${warning}`,
   };
 }
 
