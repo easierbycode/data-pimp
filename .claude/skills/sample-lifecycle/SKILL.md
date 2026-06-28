@@ -4,14 +4,16 @@ description: >-
   Update a sample's status, or mark a sample SOLD and attribute the resale
   revenue to a creator account, in the LP Sample Tracker (thirsty.store /
   admin.thirsty.store). Trigger whenever the user wants to change a sample's
-  state or log a resale — e.g. "mark <product> as sold", "this sold on eBay for
-  $40", "set <product> to cleared to sell", "reserve sample 42", "discontinue
-  this one", "log a resale", "attribute this sale to @wizardofdealz". Each action
-  writes the inventory truth to Postgres AND a Graylog event, so a creator's
-  resale revenue is immediately queryable. For READ-ONLY questions about the data
-  ("how much resale revenue did @x make", "which samples sold this month", "what's
-  in Graylog") use the graylog-query skill instead — this skill only WRITES.
-allowed-tools: mcp__thirsty-samples__list_samples, mcp__thirsty-samples__list_sample_statuses, mcp__thirsty-samples__list_creators, mcp__thirsty-samples__update_sample_status, mcp__thirsty-samples__mark_sample_sold
+  state, list it for resale, or log a sale — e.g. "mark <product> as sold", "this
+  sold on eBay for $40", "set <product> to cleared to sell", "reserve sample 42",
+  "discontinue this one", "list this on eBay for $45", "I put it up on OfferUp",
+  "log a resale", "attribute this sale to @wizardofdealz". Each action writes a
+  Graylog event (and, for status/sold, the inventory truth to Postgres), so a
+  creator's listings and resale revenue are immediately queryable. For READ-ONLY
+  questions about the data ("how much resale revenue did @x make", "what's listed
+  where", "which samples sold this month", "what's in Graylog") use the
+  graylog-query skill instead — this skill only WRITES.
+allowed-tools: mcp__thirsty-samples__list_samples, mcp__thirsty-samples__list_sample_statuses, mcp__thirsty-samples__list_creators, mcp__thirsty-samples__update_sample_status, mcp__thirsty-samples__list_on_marketplace, mcp__thirsty-samples__mark_sample_sold
 ---
 
 # sample-lifecycle
@@ -36,7 +38,7 @@ what") is the `graylog-query` skill's job — see *Reading it back* below.
 2. **Validate the target status.** Call `list_sample_statuses` and confirm the
    requested status is one of the exclusive lifecycle statuses — `available`,
    `checked_out`, `reserved`, `cleared_to_sell`, `discontinued`. (`sold` is also
-   `kind:"status"` but is rejected here — route sales through Workflow 2.) Map
+   `kind:"status"` but is rejected here — route sales through Workflow 3.) Map
    the user's words to the canonical `value` (e.g. "clear it to sell" →
    `cleared_to_sell`).
 3. **Write it.** Call `update_sample_status` with `sampleId` (or `productId`),
@@ -46,9 +48,29 @@ what") is the `graylog-query` skill's job — see *Reading it back* below.
    Graylog event did **not** write — don't report unqualified success.
 
 > "Sold" is **not** a plain status here. `update_sample_status` rejects it on
-> purpose, because a sale must attribute revenue to a creator → use Workflow 2.
+> purpose, because a sale must attribute revenue to a creator → use Workflow 3.
 
-## Workflow 2 — Mark a sample SOLD (with creator attribution)
+## Workflow 2 — List a sample on a marketplace
+
+Records that a sample is up for resale — the step between "how much GMV did my
+content drive?" and "what did the listing sell for?". This is **analytics-only**:
+it emits a Graylog listing event and does **not** change the sample's status
+(a listing is intent-to-sell, not an inventory state).
+
+1. **Resolve the sample** via `list_samples` (prefer a specific `sampleId`).
+2. **Confirm the creator** (via `list_creators`) the listing is attributed to —
+   the same handle you'd attribute the eventual sale to.
+3. **Gather** `marketplace` + `askPrice` (plus optional `listingUrl`, `note`).
+4. **Write it.** Call `list_on_marketplace`; it emits `sample_listing_json`
+   (`creator` + `product_id` + `ask_price_num` + `marketplace`).
+5. **Report honestly.** Echo `message`; if `graylog` is `false`, the listing was
+   **not** recorded.
+
+> A listing does not mark the sample sold. When it actually sells, follow
+> Workflow 3 (`mark_sample_sold`). Comparing `ask_price_num` to the final
+> `gmv_num`/`net_num` is then a `graylog-query` question.
+
+## Workflow 3 — Mark a sample SOLD (with creator attribution)
 
 This is the revenue path. The creator-attribution prompt is mandatory.
 
@@ -101,6 +123,14 @@ python3 .../graylog_query.py --all -q 'product_id:"1729..."' \
 ```
 This stitches the sample's status changes and its sale alongside the scraper
 sources (videos/lives) that share the same `product_id` + `creator`.
+
+**What's listed for resale, and where:**
+```bash
+python3 .../graylog_query.py --all -q 'sample_listing_json:*' \
+  --fields creator,product_id,marketplace,ask_price_num --sort timestamp:desc
+```
+A `product_id` with a `sample_listing_json` but no later `sample_sold_json` is
+still on the market; `--terms marketplace` shows where listings cluster.
 
 Full field/query reference: [references/lifecycle-events.md](references/lifecycle-events.md).
 

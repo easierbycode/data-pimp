@@ -217,6 +217,44 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "list_on_marketplace",
+    description:
+      "Record that a sample has been LISTED for resale on a marketplace " +
+      "(eBay/OfferUp/FB Marketplace) — the step between 'how much GMV did my " +
+      "content drive' and 'what did it sell for'. Analytics-only: emits a " +
+      "Graylog listing event (creator + product_id + ask_price_num); it does " +
+      "NOT change the sample's status or mark it sold. Identify the sample by " +
+      "sampleId (preferred) or productId.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sampleId: { type: ["string", "number"], description: "Sample's Postgres id." },
+        productId: {
+          type: "string",
+          description: "TikTok productId / qr_code (used if sampleId omitted).",
+        },
+        creator: {
+          type: "string",
+          description:
+            "Creator @handle the listing is attributed to (validate against " +
+            "list_creators).",
+        },
+        marketplace: {
+          type: "string",
+          description: "Where it's listed: ebay, offerup, fbmarketplace, etc.",
+        },
+        askPrice: {
+          type: ["number", "string"],
+          description: "Listing/ask price (recorded as ask_price_num).",
+        },
+        listingUrl: { type: "string", description: "Optional URL of the live listing." },
+        note: { type: "string", description: "Optional note." },
+      },
+      required: ["creator", "marketplace", "askPrice"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -294,6 +332,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             orderRef: args.orderRef,
             note: args.note,
             force: args.force,
+          },
+        });
+        break;
+      }
+
+      case "list_on_marketplace": {
+        result = await api("/api/sample-listing", {
+          method: "POST",
+          body: {
+            sampleId: args.sampleId,
+            productId: args.productId,
+            creator: args.creator,
+            marketplace: args.marketplace,
+            askPrice: args.askPrice,
+            listingUrl: args.listingUrl,
+            note: args.note,
           },
         });
         break;
