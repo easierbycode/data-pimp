@@ -11,6 +11,7 @@ import {
   fetchPriceForSample,
   fetchProductWithEdits,
   fetchSampleValuationWithEdits,
+  fetchValuationLineItems,
   listSampleProducts,
   listUnpricedSamples,
   lookupProductByImage,
@@ -1342,7 +1343,11 @@ export async function legacyHandler(req: Request): Promise<Response> {
           return corsJson({ ok: false, error: "Method not allowed" }, 405);
         }
         try {
-          return corsJson(await recordSampleValuation(await readJsonBody(req)));
+          const body = await readJsonBody(req);
+          // No explicit items → snapshot the live (edited) valuation so the
+          // recorded instance reproduces what GET /api/sample-valuation shows.
+          if (!Array.isArray(body.items)) body.items = await fetchValuationLineItems();
+          return corsJson(await recordSampleValuation(body));
         } catch (error) {
           return corsJson(
             { ok: false, error: error instanceof Error ? error.message : String(error) },
