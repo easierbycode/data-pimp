@@ -24,7 +24,16 @@ import {
   updateSamplePrice,
   upsertSampleProduct,
 } from "./core/samples.ts";
-import { envValue, graylogConfigFromEnv } from "./core/graylog.ts";
+import {
+  listSampleStatuses,
+  recordSampleSold,
+  recordSampleStatus,
+} from "./core/lifecycle.ts";
+import {
+  envValue,
+  fetchKnownCreators,
+  graylogConfigFromEnv,
+} from "./core/graylog.ts";
 import { renderBarcodePng } from "./core/barcode.ts";
 
 const pool = new Pool({
@@ -1297,6 +1306,52 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       if (pathname === "/api/sample-valuation") {
         return json(await fetchSampleValuationWithEdits());
+      }
+
+      // ---- Sample lifecycle (status changes + resale revenue) ----
+      // Backs the sample-lifecycle skill / thirsty-samples MCP. Writes inventory
+      // truth to Postgres AND an analytics event to Graylog (see core/lifecycle.ts).
+      // Open like the sibling sample/transaction writes — no auth gate by design.
+
+      // The synced status vocabulary, so callers validate against one source.
+      if (pathname === "/api/sample-statuses") {
+        return json(listSampleStatuses());
+      }
+
+      // Distinct creator handles seen in Graylog — the live attribution list for
+      // the sold flow (mirrors graylog-query's `--terms creator`).
+      if (pathname === "/api/creators") {
+        const raw = Number(url.searchParams.get("limit"));
+        const limit = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1000;
+        return json({ creators: await fetchKnownCreators(limit) });
+      }
+
+      // Update a sample's status (rejects "sold" — that goes through the sold
+      // flow so revenue is attributed to a creator). Validation failures return
+      // a clean 400 (not the outer 500 + stack) so the MCP surfaces the reason.
+      if (pathname === "/api/sample-status") {
+        if (req.method !== "POST") {
+          return json({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return json(await recordSampleStatus(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 400);
+        }
+      }
+
+      // Mark a sample sold and attribute the resale revenue to a creator.
+      if (pathname === "/api/sample-sold") {
+        if (req.method !== "POST") {
+          return json({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return json(await recordSampleSold(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 400);
+        }
       }
 
       // Kiosk-fleet heartbeat (in-memory; powers the dashboard's Fleet panel).
