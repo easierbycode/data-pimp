@@ -184,6 +184,33 @@
       font-size: 14px; padding: 10px 22px; border-radius: 999px; display: none; cursor: pointer; }
     .replay.show { display: block; }
 
+    /* ---- info icon + "recreate with Claude" modal ---- */
+    .infobtn { position: fixed; z-index: 9001; top: 14px; right: 16px; width: 32px; height: 32px; padding: 0;
+      border-radius: 50%; display: grid; place-items: center; font: italic 700 16px/1 Georgia, serif; cursor: pointer;
+      color: #cfcfd6; background: #1a1a22cc; border: 1px solid #2a2a35; backdrop-filter: blur(4px); box-shadow: 0 2px 8px #0006; }
+    .infobtn:hover { border-color: #3a3a48; color: #fff; }
+    .howto-ov { position: fixed; inset: 0; z-index: 9000; display: none; place-items: center; padding: 24px;
+      background: rgba(4,6,12,.72); backdrop-filter: blur(4px); }
+    .howto-ov.show { display: grid; animation: fade .2s ease; }
+    .howto { width: min(580px, 96vw); max-height: 90vh; overflow: auto; background: #11151f; color: var(--fg);
+      border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; box-shadow: 0 40px 90px -30px #000; }
+    .howto h3 { margin: 0 0 4px; font-size: 18px; }
+    .howto .lead { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .step { display: flex; gap: 11px; padding: 11px 0; border-top: 1px solid var(--border); }
+    .step:first-of-type { border-top: 0; }
+    .step .n { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #1d2433; color: var(--orange);
+      display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+    .step .d { font-size: 13px; line-height: 1.5; } .step .d b { color: var(--fg); }
+    .sk { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--sky);
+      background: #0c1320; border: 1px solid #1d2c40; border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+    .howto-foot { margin-top: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .copybtn { background: linear-gradient(135deg, #ff9a3c, #ff7a18); color: #0b0b0f; border: 0; font-weight: 700;
+      font-size: 13px; padding: 9px 16px; border-radius: 9px; cursor: pointer; }
+    .closebtn { background: #1d2433; color: var(--fg); border: 1px solid var(--border); font-size: 13px;
+      padding: 9px 16px; border-radius: 9px; cursor: pointer; }
+    .copynote { color: var(--green); font-size: 12px; opacity: 0; transition: opacity .2s; }
+    .copynote.show { opacity: 1; }
+
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
 </head>
@@ -245,6 +272,25 @@
   </div>
 
   <button class="replay" id="replay">↻ Replay</button>
+
+  <!-- info icon → "recreate with Claude" -->
+  <button class="infobtn" id="infobtn" type="button" title="Recreate this with Claude" aria-label="How to recreate this with Claude">i</button>
+  <div class="howto-ov" id="howto-ov">
+    <div class="howto">
+      <h3>🤖 Recreate this with Claude</h3>
+      <p class="lead">Everything you just watched is a real Thirsty skill. Each step is something you can just ask Claude to do:</p>
+      <div class="step"><div class="n">1</div><div class="d"><span class="sk">samples-import</span> &nbsp;<b>Import &amp; assign</b> — paste your TikTok <i>order_list</i> product IDs; Claude hydrates each and adds them to inventory, assigned to a creator.</div></div>
+      <div class="step"><div class="n">2</div><div class="d"><span class="sk">sample-lifecycle</span> &nbsp;<b>Cleared to Sell</b> — “set the Ninja Air Fryer to <i>cleared_to_sell</i>.”</div></div>
+      <div class="step"><div class="n">3</div><div class="d"><span class="sk">list_on_marketplace</span> + <span class="sk">ebay-listing</span> &nbsp;<b>Draft the eBay listing</b> — Claude drafts it and opens eBay’s create-listing page pre-filled (it never publishes for you).</div></div>
+      <div class="step"><div class="n">4</div><div class="d"><span class="sk">sample-lifecycle</span> &nbsp;<b>Mark sold</b> — “mark it sold on eBay for $72,” attributing the resale revenue to the creator.</div></div>
+      <div class="step"><div class="n">5</div><div class="d"><span class="sk">graylog-query</span> &nbsp;<b>See the payoff</b> — “show that creator’s resale revenue,” next to the free-sample retail value = total value created.</div></div>
+      <div class="howto-foot">
+        <button class="copybtn" id="copybtn">📋 Copy the full prompt</button>
+        <button class="closebtn" id="howto-close">Close</button>
+        <span class="copynote" id="copynote">Copied — paste it into Claude ✓</span>
+      </div>
+    </div>
+  </div>
 
   <svg class="cursor" id="cursor" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8-6 1.5L9.5 18 5 3z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg>
   <div class="ring" id="ring"></div>
@@ -448,9 +494,51 @@
     }
 
     $("replay").addEventListener("click", run);
+
+    // ---- "Recreate with Claude" info modal ----
+    var demoCreator = "@sample_squad";
+    function buildPrompt() {
+      var c = demoCreator;
+      return [
+        "Walk a TikTok Shop sample through its full resale lifecycle using my Thirsty skills, and show me the money at each step:",
+        "",
+        "1. Import + assign — use the samples-import flow to add these TikTok Shop product IDs to inventory, assigned to creator " + c + ":",
+        "   1731301163454206492",
+        "   (replace with your own order_list product IDs)",
+        "",
+        "2. Cleared to Sell — use the sample-lifecycle skill to set the \"Ninja AF101 Air Fryer 4qt\" sample's status to cleared_to_sell.",
+        "",
+        "3. List on eBay — use list_on_marketplace to draft an eBay listing for it at $72.00, then use the ebay-listing browser skill to open eBay's create-listing page pre-filled (do not publish).",
+        "",
+        "4. Mark sold — use the sample-lifecycle skill to mark it sold on eBay for $72.00, attributing the resale revenue to " + c + ".",
+        "",
+        "5. Show the payoff — use graylog-query to report " + c + "'s resale revenue (gmv + net) next to the free-sample retail value, so I can see the total value created."
+      ].join("\n");
+    }
+    function hideHowto() { $("howto-ov").classList.remove("show"); }
+    $("infobtn").addEventListener("click", function () { $("howto-ov").classList.add("show"); });
+    $("howto-close").addEventListener("click", hideHowto);
+    $("howto-ov").addEventListener("click", function (e) { if (e.target === $("howto-ov")) hideHowto(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") hideHowto(); });
+    function fallbackCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    $("copybtn").addEventListener("click", function () {
+      var text = buildPrompt();
+      var note = $("copynote");
+      var done = function () { note.classList.add("show"); setTimeout(function () { note.classList.remove("show"); }, 2400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+      } else { fallbackCopy(text); done(); }
+    });
+
     // Flavor: use the latest real creator handle if available (non-blocking).
     fetch("/api/e2e-context").then(function (r) { return r.json(); }).then(function (c) {
-      if (c && c.creator) $("creator").innerHTML = "creator <b>" + String(c.creator).replace(/[<>]/g, "") + "</b>";
+      if (c && c.creator) { demoCreator = String(c.creator); $("creator").innerHTML = "creator <b>" + demoCreator.replace(/[<>]/g, "") + "</b>"; }
     }).catch(function () {});
     run();
   </script>
