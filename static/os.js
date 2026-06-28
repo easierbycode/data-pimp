@@ -1045,6 +1045,36 @@ globalThis.addEventListener("message", (e) => {
   openBrowser(data.url);
 });
 
+// Cross-origin relay: when the LEFT pane (Samples-Import, easierbycode.com)
+// finishes an import batch it posts {source:"samples-import",type:"imported"}
+// up to this shell; relay a refresh into the RIGHT pane (Inventory,
+// admin.thirsty.store) so its table re-fetches and the new rows appear. The
+// shell is the only window that can reach both panes (they can't see each
+// other). Origins are validated explicitly at both hops — never "*".
+const SAMPLES_IMPORT_ORIGIN = "https://easierbycode.com"; // demos item "samples-import"
+const INVENTORY_ORIGIN = "https://admin.thirsty.store"; // apps item "inventory"
+globalThis.addEventListener("message", (e) => {
+  if (e.origin !== SAMPLES_IMPORT_ORIGIN) return;
+  const data = e.data;
+  if (!data || data.source !== "samples-import" || data.type !== "imported") return;
+  // The window-state object only holds `el`; reach the iframe via the DOM.
+  const postRefresh = () => {
+    const inv = windows.get("app:inventory");
+    const frame = inv && inv.el.querySelector("iframe");
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage(
+        { source: "thirsty-os", type: "refresh-inventory" },
+        INVENTORY_ORIGIN,
+      );
+    }
+  };
+  postRefresh();
+  // The Inventory pane is a separate-origin SPA; if its listener isn't wired
+  // yet (still booting in the workspace launch), re-post once shortly after.
+  setTimeout(postRefresh, 2500);
+  flashStatus("Refreshing Inventory");
+});
+
 document.body.insertAdjacentHTML("afterbegin", ICON_GRADIENTS);
 renderDesktop();
 tickClock();
