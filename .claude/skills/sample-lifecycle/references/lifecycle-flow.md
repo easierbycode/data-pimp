@@ -62,7 +62,7 @@ flowchart TD
         H6["🧑 'Mark it sold on eBay for $40 → @wizardofdealz'"]:::human
         S8["🤖 mark_sample_sold ✅<br/>Postgres status=sold · Graylog sample_sold_json<br/>creator + gmv_num + net_num"]:::skill
         H7["🧑 'Sold a bulk lot of 12 samples for $300'"]:::human
-        S9["🤖 bulk_sample_sold ⬜ STUB<br/>allocate revenue across sample_ids/creators"]:::stub
+        S9["🤖 bulk_sample_sold ✅<br/>allocate the lot across sample_ids/creators<br/>→ per-sample sample_sold_json + bulk_id"]:::skill
     end
 
     S7 --> H6 --> S8
@@ -78,7 +78,7 @@ flowchart TD
         Q3["🧑 'Where do we make the most $ per sample product?'"]:::human
         A3["🤖 graylog-query: net_num by marketplace / product_id"]:::skill
         Q4["🧑 'Same questions for bulk sales?'"]:::human
-        A4["🤖 needs bulk_sold_json ⬜"]:::stub
+        A4["🤖 graylog-query: bulk lots are normal<br/>sample_sold_json (bulk_id) — same recipes"]:::skill
     end
 
     ATTR --> ASK
@@ -100,10 +100,11 @@ flowchart TD
 
 - **✅ Built:** intake lookup (`/api/upc-lookup`, `/api/image-lookup`,
   `/api/sample-products`), `update_sample_status`, `list_on_marketplace`,
-  `mark_sample_sold`, and `graylog-query` read-back.
-- **⬜ Stubs / proposed next:** `bulk_sample_sold` (one sale across N sample_ids →
-  per-sample `sample_sold_json` so existing per-creator/per-marketplace revenue
-  queries work on bulk too), and a stored `creator_id` on the sample at intake.
+  `mark_sample_sold`, `bulk_sample_sold` (one sale across N sample_ids → per-sample
+  `sample_sold_json` + shared `bulk_id`, so existing revenue queries include bulk
+  lots), and `graylog-query` read-back.
+- **⬜ Proposed next:** a stored `creator_id` on the sample at intake (so content
+  attribution doesn't rely on matching scraper `creator` + `product_id`).
 - **⚠ Gap:** the order-received scrape carries no `productId`/`creator`, so the
   order node can't auto-join (the dotted edge) until the scraper captures a
   productId — out of scope for this skill.

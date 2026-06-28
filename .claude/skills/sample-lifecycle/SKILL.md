@@ -7,13 +7,14 @@ description: >-
   state, list it for resale, or log a sale — e.g. "mark <product> as sold", "this
   sold on eBay for $40", "set <product> to cleared to sell", "reserve sample 42",
   "discontinue this one", "list this on eBay for $45", "I put it up on OfferUp",
-  "log a resale", "attribute this sale to @wizardofdealz". Each action writes a
+  "log a resale", "sold a bulk lot of 12 samples for $300", "attribute this sale
+  to @wizardofdealz". Each action writes a
   Graylog event (and, for status/sold, the inventory truth to Postgres), so a
   creator's listings and resale revenue are immediately queryable. For READ-ONLY
   questions about the data ("how much resale revenue did @x make", "what's listed
   where", "which samples sold this month", "what's in Graylog") use the
   graylog-query skill instead — this skill only WRITES.
-allowed-tools: mcp__thirsty-samples__list_samples, mcp__thirsty-samples__list_sample_statuses, mcp__thirsty-samples__list_creators, mcp__thirsty-samples__update_sample_status, mcp__thirsty-samples__list_on_marketplace, mcp__thirsty-samples__mark_sample_sold
+allowed-tools: mcp__thirsty-samples__list_samples, mcp__thirsty-samples__list_sample_statuses, mcp__thirsty-samples__list_creators, mcp__thirsty-samples__update_sample_status, mcp__thirsty-samples__list_on_marketplace, mcp__thirsty-samples__mark_sample_sold, mcp__thirsty-samples__bulk_sample_sold
 ---
 
 # sample-lifecycle
@@ -99,6 +100,26 @@ This is the revenue path. The creator-attribution prompt is mandatory.
 > would double-count the creator's revenue (Graylog events are append-only). If
 > the user genuinely needs to re-attribute, confirm first, then pass
 > `force: true` to `mark_sample_sold`.
+
+## Workflow 4 — Mark a bulk lot sold
+
+One marketplace sale across several samples (a lot), attributed per-creator.
+
+1. **Resolve the units** via `list_samples` — collect a `sampleId` per item
+   (preferred over productId so each physical unit is unambiguous).
+2. **Confirm the creator(s).** Each item can carry its own `creator`, or set a
+   lot-level `creator` as the default. Confirm handles via `list_creators`.
+3. **Gather** the lot `totalPrice` + `marketplace` (plus optional lot-level
+   `fees`/`shipping`/`costBasis`, allocated across items by gross share). Give an
+   item an explicit `price` to pin its share; otherwise the remaining total is
+   split equally.
+4. **Write it.** Call `bulk_sample_sold` with `items`, `totalPrice`,
+   `marketplace`. It emits one `sample_sold_json` per sample tagged with a shared
+   `bulk_id`, so every per-creator/per-marketplace revenue query already counts
+   the lot.
+5. **Report honestly.** Echo `message` (it reports `soldCount/itemCount`, the lot
+   `bulkId`, and net) and surface any per-item `failures` (e.g. a unit that was
+   already sold).
 
 ## Reading it back — composing with `graylog-query`
 

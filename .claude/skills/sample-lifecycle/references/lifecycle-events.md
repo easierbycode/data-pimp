@@ -51,6 +51,13 @@ Note: affiliate-export's `creator` is an *agency label*, but these resale events
 are authored by the skill, so the real `@handle` is stamped directly — resale
 revenue attributes more cleanly than affiliate data.
 
+**Bulk lots.** A bulk sale (`recordBulkSampleSold`) emits one Event-2 record
+**per sample**, each with its own allocated `gmv_num`/`net_num` and `creator`,
+plus two fields tying it to the lot: **`bulk_id`** (shared across the lot) and
+**`bulk_total_num`** (the lot's gross); `sample_source` becomes
+`skill-bulk-resale`. Because each item is a normal `sample_sold_json`, every
+recipe below already counts bulk lots — query `bulk_id:"<id>"` to isolate one.
+
 ## Event 3 — listing (marketplace)
 
 `short_message`: `thirsty sample listed: <name> @ $<askPrice> on <marketplace> → <creator>`
@@ -82,6 +89,12 @@ client-side. Match handles with both forms: `(creator:"@x" OR creator.keyword:"@
 ```bash
 python3 .../graylog_query.py --all -q 'sample_sold_json:*' \
   --fields creator,product_id,marketplace,gmv_num,net_num --sort timestamp:desc
+```
+
+**One bulk lot's per-sample breakdown:**
+```bash
+python3 .../graylog_query.py --all -q 'bulk_id:"bulk-..."' \
+  --fields creator,product_id,sample_id,gmv_num,net_num,bulk_total_num
 ```
 
 **One creator's resale revenue, by marketplace:**

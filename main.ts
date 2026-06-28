@@ -26,6 +26,7 @@ import {
 } from "./core/samples.ts";
 import {
   listSampleStatuses,
+  recordBulkSampleSold,
   recordSampleListing,
   recordSampleSold,
   recordSampleStatus,
@@ -1364,6 +1365,21 @@ export async function legacyHandler(req: Request): Promise<Response> {
         }
         try {
           return json(await recordSampleListing(await readJsonBody(req)));
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return json({ ok: false, error: msg }, 400);
+        }
+      }
+
+      // Mark a BULK lot sold: one sale across N samples, attributed per-creator.
+      // Allocates the total + emits one sample_sold_json per sample (tagged with
+      // a shared bulk_id), so existing revenue queries include bulk lots.
+      if (pathname === "/api/sample-bulk-sold") {
+        if (req.method !== "POST") {
+          return json({ ok: false, error: "Method not allowed" }, 405);
+        }
+        try {
+          return json(await recordBulkSampleSold(await readJsonBody(req)));
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           return json({ ok: false, error: msg }, 400);
