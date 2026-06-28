@@ -77,6 +77,9 @@ export type SoldInput = SampleRef & {
   // Re-sell an already-sold sample on purpose (re-attribution). Off by default
   // because the Graylog revenue total can't be un-inflated — see the guard.
   force?: boolean;
+  // Set by recordBulkSampleSold to tie a per-sample sale back to its bulk lot.
+  bulkId?: string;
+  bulkTotal?: number | string;
 };
 
 export type SoldResult = {
@@ -93,6 +96,42 @@ export type SoldResult = {
   net: number;
   postgres: { updated: boolean; transactionId: number | null; reason?: string };
   graylog: boolean;
+  message: string;
+};
+
+export type BulkSoldItemInput = SampleRef & {
+  creator?: string;
+  price?: number | string;
+  note?: string;
+};
+
+export type BulkSoldInput = {
+  items?: BulkSoldItemInput[];
+  totalPrice?: number | string;
+  marketplace?: string;
+  creator?: string;
+  fees?: number | string;
+  shipping?: number | string;
+  costBasis?: number | string;
+  buyer?: string;
+  orderRef?: string;
+  note?: string;
+  force?: boolean;
+  bulkId?: string;
+  operator?: string;
+};
+
+export type BulkSoldResult = {
+  ok: boolean;
+  bulkId: string;
+  marketplace: string;
+  totalPrice: number;
+  allocatedTotal: number;
+  itemCount: number;
+  soldCount: number;
+  netTotal: number;
+  items: SoldResult[];
+  failures: { item: number; ref: string; error: string }[];
   message: string;
 };
 
@@ -372,6 +411,11 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
     reasons.push("no matching sample row in Postgres (Graylog event still written)");
   }
 
+  // Bulk-lot provenance (only present when called from recordBulkSampleSold).
+  const bulkId = String(input.bulkId || "").trim();
+  const bulkTotalNum = toNumber(input.bulkTotal);
+  const bulkTotal = Number.isFinite(bulkTotalNum) ? bulkTotalNum : null;
+
   const graylog = await sendGelfMessage(
     `thirsty sample sold: ${name ?? productId ?? "sample"} $${
       salePrice.toFixed(2)
@@ -392,6 +436,8 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
         orderRef: orderRef || undefined,
         soldAt: now,
         note: note || undefined,
+        bulkId: bulkId || undefined,
+        bulkTotal: bulkTotal ?? undefined,
       }),
       creator,
       gmv_num: salePrice,
@@ -404,7 +450,9 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
       product_id: productId ?? undefined,
       sample_id: sampleId != null ? String(sampleId) : undefined,
       sample_status: "sold",
-      sample_source: "skill-resale",
+      sample_source: bulkId ? "skill-bulk-resale" : "skill-resale",
+      bulk_id: bulkId || undefined,
+      bulk_total_num: bulkTotal ?? undefined,
     },
   );
 
@@ -444,6 +492,158 @@ export async function recordSampleSold(input: SoldInput): Promise<SoldResult> {
       marketplace,
       warnings,
     }),
+  };
+}
+
+// Mark a BULK lot sold: one marketplace sale spread across N samples, each
+// attributed to a (possibly different) creator. Allocates the lot total across
+// items (explicit per-item `price`, else an equal split of the remainder) and
+// allocates lot-level fees/shipping/costBasis proportionally to each item's
+// gross, then writes ONE per-sample sale via recordSampleSold stamped with a
+// shared bulk_id. Because each item still emits a normal sample_sold_json, every
+// existing per-creator / per-marketplace revenue query includes bulk lots with
+// no new read logic. Per-item failures (e.g. already-sold) are collected, not
+// fatal, so one bad unit doesn't strand the rest of the lot.
+export async function recordBulkSampleSold(
+  input: BulkSoldInput,
+): Promise<BulkSoldResult> {
+  const items = Array.isArray(input.items) ? input.items : [];
+  if (!items.length) {
+    throw new Error("items is required — the samples in the bulk lot");
+  }
+  const marketplace = String(input.marketplace || "").trim();
+  if (!marketplace) {
+    throw new Error(
+      "marketplace is required (e.g. ebay, offerup, fbmarketplace)",
+    );
+  }
+  const totalPrice = toNumber(input.totalPrice);
+  if (!(totalPrice > 0)) {
+    throw new Error("totalPrice must be a positive number");
+  }
+  const lotCreator = String(input.creator || "").trim();
+
+  // Validate creator + explicit price for every item up front, so a bad input
+  // never writes a partial lot.
+  const prepared = items.map((it, i) => {
+    const creator = String(it.creator || lotCreator || "").trim();
+    if (!creator) {
+      throw new Error(
+        `item ${i + 1}: creator is required (set item.creator or a lot-level creator)`,
+      );
+    }
+    let explicit: number | null = null;
+    if (it.price !== undefined) {
+      const p = toNumber(it.price);
+      if (!Number.isFinite(p) || p < 0) {
+        throw new Error(`item ${i + 1}: price must be a non-negative number`);
+      }
+      explicit = p;
+    }
+    return { it, creator, explicit };
+  });
+
+  // Allocate gross: honor explicit prices, split the remainder equally across
+  // the rest (last unpriced item absorbs the rounding remainder).
+  const explicitSum = round2(
+    prepared.reduce((sum, p) => sum + (p.explicit ?? 0), 0),
+  );
+  const remaining = round2(totalPrice - explicitSum);
+  const unpricedCount = prepared.filter((p) => p.explicit === null).length;
+  if (remaining < -0.001) {
+    throw new Error(
+      `explicit item prices ($${explicitSum.toFixed(2)}) exceed totalPrice ($${
+        totalPrice.toFixed(2)
+      })`,
+    );
+  }
+  if (unpricedCount === 0 && Math.abs(remaining) > 0.01) {
+    throw new Error(
+      `explicit item prices ($${explicitSum.toFixed(2)}) do not sum to totalPrice ($${
+        totalPrice.toFixed(2)
+      })`,
+    );
+  }
+  const per = unpricedCount
+    ? Math.floor((remaining / unpricedCount) * 100) / 100
+    : 0;
+  let unpricedSeen = 0;
+  const grosses = prepared.map((p) => {
+    if (p.explicit !== null) return p.explicit;
+    unpricedSeen++;
+    return unpricedSeen === unpricedCount
+      ? round2(remaining - per * (unpricedCount - 1))
+      : per;
+  });
+  if (grosses.some((g) => !(g > 0))) {
+    throw new Error(
+      "allocation produced a non-positive per-item price — give explicit item " +
+        "prices or a larger totalPrice",
+    );
+  }
+
+  const allocatedTotal = round2(grosses.reduce((sum, g) => sum + g, 0));
+  const fees = numOrZero(input.fees);
+  const shipping = numOrZero(input.shipping);
+  const costBasis = numOrZero(input.costBasis);
+  const bulkId = String(input.bulkId || "").trim() || `bulk-${crypto.randomUUID()}`;
+
+  const results: SoldResult[] = [];
+  const failures: { item: number; ref: string; error: string }[] = [];
+  for (let i = 0; i < prepared.length; i++) {
+    const { it, creator } = prepared[i];
+    const gross = grosses[i];
+    const share = allocatedTotal > 0 ? gross / allocatedTotal : 0;
+    try {
+      const result = await recordSampleSold({
+        sampleId: it.sampleId,
+        productId: it.productId,
+        qrCode: it.qrCode,
+        creator,
+        salePrice: gross,
+        marketplace,
+        fees: round2(fees * share),
+        shipping: round2(shipping * share),
+        costBasis: round2(costBasis * share),
+        buyer: input.buyer,
+        orderRef: input.orderRef,
+        note: [input.note, it.note].map((n) => String(n || "").trim())
+          .filter(Boolean).join(" | ") || undefined,
+        force: input.force,
+        operator: input.operator,
+        bulkId,
+        bulkTotal: totalPrice,
+      });
+      results.push(result);
+    } catch (error) {
+      failures.push({
+        item: i + 1,
+        ref: String(it.sampleId ?? it.productId ?? it.qrCode ?? i + 1),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const netTotal = round2(results.reduce((sum, r) => sum + r.net, 0));
+  const tail = failures.length
+    ? ` WARNING: ${failures.length} item(s) failed: ${
+      failures.map((f) => `#${f.item} (${f.ref}): ${f.error}`).join("; ")
+    }.`
+    : "";
+  return {
+    ok: failures.length === 0 && results.length > 0,
+    bulkId,
+    marketplace,
+    totalPrice,
+    allocatedTotal,
+    itemCount: items.length,
+    soldCount: results.length,
+    netTotal,
+    items: results,
+    failures,
+    message: `Bulk-sold ${results.length}/${items.length} sample(s) for $${
+      totalPrice.toFixed(2)
+    } via ${marketplace} (net $${netTotal.toFixed(2)}, lot ${bulkId}).${tail}`,
   };
 }
 

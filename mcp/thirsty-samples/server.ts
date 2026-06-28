@@ -255,6 +255,60 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "bulk_sample_sold",
+    description:
+      "Mark a BULK lot sold — one marketplace sale spread across several " +
+      "samples, each attributed to a creator. Allocates the lot total across " +
+      "items (explicit per-item price, else an equal split) and emits one " +
+      "sample_sold_json per sample tagged with a shared bulk_id, so the normal " +
+      "per-creator / per-marketplace revenue queries include bulk lots. Prefer " +
+      "explicit sampleIds. ALWAYS confirm the per-item (or lot) creator(s) first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          description:
+            "The samples in the lot. Each: sampleId (preferred) or productId, " +
+            "an optional creator (falls back to the lot-level creator), an " +
+            "optional explicit price (else the remaining total is split equally).",
+          items: {
+            type: "object",
+            properties: {
+              sampleId: { type: ["string", "number"] },
+              productId: { type: "string" },
+              creator: { type: "string" },
+              price: { type: ["number", "string"] },
+              note: { type: "string" },
+            },
+            additionalProperties: false,
+          },
+        },
+        totalPrice: {
+          type: ["number", "string"],
+          description: "Gross total the whole lot sold for.",
+        },
+        marketplace: { type: "string", description: "ebay, offerup, fbmarketplace, etc." },
+        creator: {
+          type: "string",
+          description: "Lot-level default creator for items that don't set their own.",
+        },
+        fees: { type: ["number", "string"], description: "Lot fees (allocated by gross share)." },
+        shipping: { type: ["number", "string"], description: "Lot shipping (allocated)." },
+        costBasis: { type: ["number", "string"], description: "Lot cost basis (allocated)." },
+        buyer: { type: "string", description: "Optional buyer." },
+        orderRef: { type: "string", description: "Optional marketplace order/lot ref." },
+        note: { type: "string", description: "Optional lot-level note." },
+        force: {
+          type: "boolean",
+          description: "Re-attribute already-sold units in the lot (default false).",
+        },
+      },
+      required: ["items", "totalPrice", "marketplace"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -348,6 +402,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             askPrice: args.askPrice,
             listingUrl: args.listingUrl,
             note: args.note,
+          },
+        });
+        break;
+      }
+
+      case "bulk_sample_sold": {
+        result = await api("/api/sample-bulk-sold", {
+          method: "POST",
+          body: {
+            items: args.items,
+            totalPrice: args.totalPrice,
+            marketplace: args.marketplace,
+            creator: args.creator,
+            fees: args.fees,
+            shipping: args.shipping,
+            costBasis: args.costBasis,
+            buyer: args.buyer,
+            orderRef: args.orderRef,
+            note: args.note,
+            force: args.force,
           },
         });
         break;
