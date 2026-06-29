@@ -567,11 +567,27 @@ const TIKTOK_SHORTLINK_HOSTS = new Set([
   "t.tiktok.com",
 ]);
 
+// The in-app share sheet hands out www.tiktok.com/t/<code> links — a short-link
+// path on a regular TikTok host (not one of the dedicated short-link hosts).
+// Like the short-link hosts it carries no product id and 30x-redirects to the
+// real PDP, so it must be followed server-side too.
+const TIKTOK_SHARE_PATH = /^\/t\/[^/]+\/?$/i;
+
 // Accept tiktok.com and any subdomain (shop.tiktok.com, www.tiktok.com, the
 // short-link hosts, regional variants like shop.tiktok.com stay covered).
 function isTiktokHost(host: string): boolean {
   const h = host.toLowerCase();
   return h === "tiktok.com" || h.endsWith(".tiktok.com");
+}
+
+// A TikTok url that carries no id and must be resolved by following its redirect
+// server-side: either a dedicated short-link host (vt/vm/t.tiktok.com) or a
+// /t/<code> share path on any TikTok host (www.tiktok.com/t/ZP96…).
+function isTiktokShortLink(u: URL): boolean {
+  return (
+    TIKTOK_SHORTLINK_HOSTS.has(u.hostname.toLowerCase()) ||
+    TIKTOK_SHARE_PATH.test(u.pathname)
+  );
 }
 
 // Pull the numeric product id out of an already-final TikTok PDP url. Handles
@@ -659,18 +675,15 @@ export async function resolveTiktokProductUrl(
 
   // Short links carry no id; follow the redirect server-side and extract from
   // the resolved PDP url. Only trust a redirect that lands on a NON-short TikTok
-  // host — otherwise (network error, timeout, or a still-short url) the short
+  // url — otherwise (network error, timeout, or a still-short url) the short
   // code itself could be mis-read as a numeric id, so fail cleanly instead.
-  if (TIKTOK_SHORTLINK_HOSTS.has(u.hostname.toLowerCase())) {
+  if (isTiktokShortLink(u)) {
     let resolved = false;
     const finalUrl = await followShortLink(u.href);
     if (finalUrl) {
       try {
         const fu = new URL(finalUrl);
-        if (
-          isTiktokHost(fu.hostname) &&
-          !TIKTOK_SHORTLINK_HOSTS.has(fu.hostname.toLowerCase())
-        ) {
+        if (isTiktokHost(fu.hostname) && !isTiktokShortLink(fu)) {
           u = fu;
           resolved = true;
         }

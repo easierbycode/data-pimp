@@ -105,6 +105,44 @@ Deno.test("follows a short link server-side then extracts the id", async () => {
   }
 });
 
+Deno.test("follows a www.tiktok.com/t/<code> share link then extracts the id", async () => {
+  const realFetch = globalThis.fetch;
+  // The in-app share sheet hands out www.tiktok.com/t/ZP96… links: a short-link
+  // path on a regular TikTok host. It must be followed server-side just like the
+  // vt/vm short-link hosts.
+  globalThis.fetch = (() => {
+    const res = new Response("", { status: 200 });
+    Object.defineProperty(res, "url", {
+      value: `https://www.tiktok.com/shop/pdp/acme/${PRODUCT_ID}`,
+    });
+    return Promise.resolve(res);
+  }) as typeof fetch;
+  try {
+    const result = await resolveTiktokProductUrl(
+      "https://www.tiktok.com/t/ZP96abcdef/",
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.productId).toBe(PRODUCT_ID);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+Deno.test("a share link that doesn't resolve to an id is a clean miss", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (() => {
+    const res = new Response("", { status: 200 });
+    Object.defineProperty(res, "url", { value: "https://www.tiktok.com/foryou" });
+    return Promise.resolve(res);
+  }) as typeof fetch;
+  try {
+    const result = await resolveTiktokProductUrl("https://www.tiktok.com/t/ZPbroken/");
+    expect(result.ok).toBe(false);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 Deno.test("a short link that doesn't resolve to an id is a clean miss", async () => {
   const realFetch = globalThis.fetch;
   globalThis.fetch = (() => {
