@@ -6,6 +6,12 @@ import { Pool } from "npm:pg";
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
   max: 1,
+  // Fail fast instead of hanging forever if the DB is unreachable. Without a
+  // connect timeout a stalled `pool.connect()` blocks whatever awaits it; at
+  // boot that stalls module evaluation and times out Deno Deploy's Warm up /
+  // Register crons steps. statement_timeout bounds runaway queries too.
+  connectionTimeoutMillis: 10_000,
+  statement_timeout: 30_000,
 });
 
 // Cache table columns so we can validate filters + order_by
