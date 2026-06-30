@@ -2,9 +2,18 @@
 // Fixes: created_date missing -> safe fallback, validates order_by + filters.
 
 import { Pool } from "npm:pg";
+import { databaseUrlError, getDatabaseUrl } from "./core/db-url.ts";
+
+// Cleaned once at module load (repairs stray quotes/whitespace/`DATABASE_URL=`
+// prefix). DB_URL_ERR is non-null when the value is unset or still malformed —
+// connect() throws it so a bad config fails with a clear message instead of the
+// cryptic `getaddrinfo ENOTFOUND base`. Computed here (no throw) so boot stays
+// non-blocking; see core/db-url.ts.
+const DB_URL = getDatabaseUrl();
+const DB_URL_ERR = DB_URL ? databaseUrlError(DB_URL) : "DATABASE_URL is not set";
 
 const pool = new Pool({
-  connectionString: Deno.env.get("DATABASE_URL"),
+  connectionString: DB_URL ?? undefined,
   max: 1,
   // Bound a stalled connection so a dead DB eventually rejects a request
   // instead of hanging it forever. With max:1 the pool serializes requests and
@@ -20,11 +29,18 @@ const pool = new Pool({
 // Cache table columns so we can validate filters + order_by
 const columnCache = new Map<string, Set<string>>();
 
+// Single chokepoint for acquiring a client: surface a clear config error before
+// pg ever tries to DNS-resolve a bad host (e.g. the "base" fallback).
+async function connect() {
+  if (DB_URL_ERR) throw new Error(DB_URL_ERR);
+  return await pool.connect();
+}
+
 async function getColumns(table: string): Promise<Set<string>> {
   const cached = columnCache.get(table);
   if (cached) return cached;
 
-  const client = await pool.connect();
+  const client = await connect();
   try {
     const r = await client.query(
       `select column_name
@@ -98,7 +114,7 @@ function safeLimit(limit?: number) {
 }
 
 async function run<T = any>(fn: (client: any) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
+  const client = await connect();
   try {
     return await fn(client);
   } finally {
