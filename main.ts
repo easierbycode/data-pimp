@@ -53,6 +53,11 @@ import { renderBarcodePng } from "./core/barcode.ts";
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
   max: 1,
+  // connectionTimeoutMillis >= statement_timeout so a request queued behind an
+  // in-flight query isn't killed before that query frees the single (max:1)
+  // client (see db.ts).
+  statement_timeout: 30_000,
+  connectionTimeoutMillis: 35_000,
 });
 
 // Thin-client mode: with no local DATABASE_URL (e.g. the compiled desktop
@@ -66,8 +71,13 @@ const REMOTE_API = Deno.env.get("DATABASE_URL")
 if (REMOTE_API) {
   console.log(`[thirsty-os] No DATABASE_URL — proxying /api/* to ${REMOTE_API}`);
 } else {
-  // Initialize database on startup
-  await initializeDatabase().catch((err) => {
+  // Warm the schema cache in the BACKGROUND — never block module evaluation on
+  // the DB. With a top-level `await` here, a slow/unreachable DB stalls the
+  // isolate before Deno.cron and Deno.serve register, so Deno Deploy's Register
+  // crons / Warm up steps time out and the whole deploy fails. Fire-and-forget
+  // (the pool's connectionTimeoutMillis bounds the attempt); the schema cache
+  // lazily re-warms on first query if this initial attempt fails.
+  initializeDatabase().catch((err) => {
     console.error("Failed to initialize database:", err);
     console.log("Will continue without database - may fail on API calls");
   });
