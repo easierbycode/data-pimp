@@ -211,6 +211,12 @@
     .copynote { color: var(--green); font-size: 12px; opacity: 0; transition: opacity .2s; }
     .copynote.show { opacity: 1; }
 
+    /* ---- real product images (overlay the emoji-on-tile fallback) ---- */
+    .thumb, .ebd-ph { position: relative; overflow: hidden; }
+    .ph { position: relative; z-index: 0; }
+    .pimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; background: inherit; }
+    .kcard .img .sbadge, .kcard .img .draftbtn { z-index: 2; }
+
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
 </head>
@@ -300,9 +306,18 @@
     var usd = function (n) { return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var $ = function (id) { return document.getElementById(id); };
+    var round2 = function (n) { return Math.round(Number(n) * 100) / 100; };
+    // Escape dynamic strings (real catalog names/brands/urls) before they go into innerHTML.
+    var esc = function (s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    };
 
-    // Curated demo batch. The hero (Ninja) is the item walked through resale.
-    var ITEMS = [
+    // Curated fallback batch (emoji art) — used only if the live catalog can't
+    // supply enough real products with images. loadItems() replaces ITEMS with
+    // real samples (name/brand/price/image) from /api/products when available.
+    var FALLBACK_ITEMS = [
       { name: "Ninja AF101 Air Fryer 4qt", brand: "Ninja", retail: 89.99, emoji: "🍳", hero: true, salePrice: 72.00, fees: 9.36 },
       { name: "Stanley Quencher H2.0 40oz", brand: "Stanley", retail: 45.00, emoji: "🥤" },
       { name: "CeraVe Moisturizing Bundle", brand: "CeraVe", retail: 38.99, emoji: "🧴" },
@@ -311,10 +326,73 @@
       { name: "Crest 3D White (3-pack)", brand: "Crest", retail: 14.97, emoji: "🪥" }
     ];
     var TILE = ["#3a2a5e", "#264a63", "#5e2a3a", "#2a5e4a", "#5e4a2a", "#2a3a5e"];
-    var hero = ITEMS.find(function (i) { return i.hero; });
-    var SAMPLE_VALUE = ITEMS.reduce(function (s, i) { return s + i.retail; }, 0);          // 243.94
-    var PROFIT = +(hero.salePrice - hero.fees).toFixed(2);                                  // 62.64
-    var TOTAL = +(SAMPLE_VALUE + PROFIT).toFixed(2);                                         // 306.58
+    var ITEMS = FALLBACK_ITEMS, hero, SAMPLE_VALUE, PROFIT, TOTAL;
+
+    // Derive the hero + tallies from whatever ITEMS currently holds.
+    function recompute() {
+      hero = ITEMS.find(function (i) { return i.hero; }) || ITEMS[0];
+      if (!hero.salePrice) hero.salePrice = Math.max(1, Math.round(hero.retail * 0.8));
+      if (hero.fees == null) hero.fees = round2(hero.salePrice * 0.13);
+      SAMPLE_VALUE = round2(ITEMS.reduce(function (s, i) { return s + Number(i.retail || 0); }, 0));
+      PROFIT = round2(hero.salePrice - hero.fees);
+      TOTAL = round2(SAMPLE_VALUE + PROFIT);
+    }
+    recompute();
+
+    // Pull up to 6 real products (with images) from the durable catalog and the
+    // creator's actual recent order_list items. Falls back silently to the
+    // curated emoji batch if the catalog is unavailable or too thin.
+    async function loadItems() {
+      try {
+        var results = await Promise.all([
+          fetch("/api/products").then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+          fetch("/api/e2e-context").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        ]);
+        var catalog = results[0], ctx = results[1];
+        if (ctx && ctx.creator) {
+          demoCreator = String(ctx.creator);
+          $("creator").innerHTML = "creator <b>" + esc(demoCreator) + "</b>";
+        }
+        var imaged = (Array.isArray(catalog) ? catalog : [])
+          .filter(function (p) { return p && p.image && p.name && Number(p.min_sku_original_price) > 0; })
+          .map(function (p) {
+            return {
+              name: String(p.name),
+              brand: String(p.seller && p.seller !== "Unknown seller" ? p.seller : "TikTok Shop"),
+              retail: Number(p.min_sku_original_price),
+              image: String(p.image),
+              productId: String(p.productId || "")
+            };
+          });
+        if (imaged.length < 3) return; // not enough real photos — keep the curated batch
+
+        var byId = {};
+        imaged.forEach(function (p) { if (p.productId) byId[p.productId] = p; });
+        var chosen = [], seen = {};
+        // Lead with the creator's real recent order_list items (when imaged)…
+        ((ctx && Array.isArray(ctx.ids)) ? ctx.ids : []).forEach(function (id) {
+          var p = byId[String(id)];
+          if (p && !seen[p.productId]) { seen[p.productId] = 1; chosen.push(p); }
+        });
+        // …then fill from the priciest remaining catalog products.
+        imaged.slice().sort(function (a, b) { return b.retail - a.retail; }).forEach(function (p) {
+          if (chosen.length >= 6) return;
+          var k = p.productId || p.name;
+          if (seen[k]) return;
+          seen[k] = 1; chosen.push(p);
+        });
+        chosen = chosen.slice(0, 6);
+
+        // Hero = priciest of the batch (the biggest resale story).
+        var h = chosen.reduce(function (m, p) { return p.retail > m.retail ? p : m; }, chosen[0]);
+        h.hero = true;
+        h.salePrice = Math.max(1, Math.round(h.retail * 0.8));
+        h.fees = round2(h.salePrice * 0.13);
+
+        ITEMS = chosen;
+        recompute();
+      } catch (e) { /* keep the curated fallback */ }
+    }
 
     var cursor = $("cursor"), ring = $("ring");
     function moveTo(el, fast) {
@@ -345,14 +423,25 @@
 
     var orderListEl = $("orderlist"), kioskEl = $("kiosk"), tallyEl = $("tally");
 
+    // Tile content: emoji-on-color always present; a real product photo overlays
+    // it when the item has an image, and reveals the emoji again if it fails to load.
+    function media(it) {
+      var ph = '<span class="ph">' + esc(it.emoji || "📦") + "</span>";
+      if (!it.image) return ph;
+      return ph +
+        '<img class="pimg" src="' + esc(it.image) + '" alt="" loading="lazy" ' +
+        'referrerpolicy="no-referrer" onerror="this.remove()">';
+    }
+
     function buildOrderList() {
       orderListEl.innerHTML = "";
       ITEMS.forEach(function (it, i) {
+        var tile = TILE[i % TILE.length];
         var row = document.createElement("div");
         row.className = "order"; row.dataset.i = i;
         row.innerHTML =
-          '<div class="thumb" style="background:' + TILE[i] + '">' + it.emoji + "</div>" +
-          '<div class="meta"><div class="nm">' + it.name + '</div><div class="br">' + it.brand + " · TikTok Shop</div></div>" +
+          '<div class="thumb" style="background:' + tile + '">' + media(it) + "</div>" +
+          '<div class="meta"><div class="nm">' + esc(it.name) + '</div><div class="br">' + esc(it.brand) + " · TikTok Shop</div></div>" +
           '<div class="vals"><div class="paid">paid $0.00</div><div class="retail">' + usd(it.retail) + "</div></div>" +
           '<div class="check">✓</div>';
         orderListEl.appendChild(row);
@@ -363,13 +452,14 @@
       kioskEl.innerHTML = '<div class="grid" id="grid"></div>';
       var grid = $("grid");
       ITEMS.forEach(function (it, i) {
+        var tile = TILE[i % TILE.length];
         var c = document.createElement("div");
         c.className = "kcard" + (it.hero ? " hero" : ""); c.dataset.i = i;
         c.innerHTML =
-          '<div class="img" style="background:' + TILE[i] + '">' + it.emoji +
+          '<div class="img" style="background:' + tile + '">' + media(it) +
             '<span class="sbadge available">● Available</span>' +
             '<button class="draftbtn">eBay draft</button></div>' +
-          '<div class="body"><div class="nm">' + it.name + '</div><div class="br">' + it.brand + '</div>' +
+          '<div class="body"><div class="nm">' + esc(it.name) + '</div><div class="br">' + esc(it.brand) + '</div>' +
             '<div class="pr">' + usd(it.retail) + '</div></div>';
         grid.appendChild(c);
       });
@@ -421,15 +511,15 @@
       $("ebd").innerHTML =
         '<div class="ebd-top"><span class="ebd-logo"><span class="e">e</span><span class="b">b</span><span class="a">a</span><span class="y">y</span></span>' +
           '<span class="ebd-h">Create your listing</span><span class="ebd-x">✕</span></div>' +
-        '<div class="ebd-banner">✎ Draft from sample "' + hero.name + '" — tap a field to autofill, or open it in eBay.</div>' +
+        '<div class="ebd-banner">✎ Draft from sample "' + esc(hero.name) + '" — tap a field to autofill, or open it in eBay.</div>' +
         '<div class="ebd-body">' +
-          '<div class="ebd-fld"><label>Photos</label><div class="ebd-box" id="f0"><span class="ebd-ph" style="background:' + TILE[0] + '">' + hero.emoji + '</span></div><span class="ebd-chip">☝ autofill photo</span></div>' +
-          '<div class="ebd-fld"><label>Listing title</label><div class="ebd-box" id="f1">' + hero.name + '</div><span class="ebd-chip">☝ autofill title</span></div>' +
+          '<div class="ebd-fld"><label>Photos</label><div class="ebd-box" id="f0"><span class="ebd-ph" style="background:' + TILE[0] + '">' + media(hero) + '</span></div><span class="ebd-chip">☝ autofill photo</span></div>' +
+          '<div class="ebd-fld"><label>Listing title</label><div class="ebd-box" id="f1">' + esc(hero.name) + '</div><span class="ebd-chip">☝ autofill title</span></div>' +
           '<div class="ebd-row"><div class="ebd-fld"><label>Condition</label><div class="ebd-box" id="f2"><span class="ebd-pill">New</span></div><span class="ebd-chip">☝ autofill</span></div>' +
           '<div class="ebd-fld"><label>Price · Buy It Now</label><div class="ebd-box" id="f3">' + usd(hero.salePrice) + '</div><span class="ebd-chip">☝ autofill price</span></div></div>' +
           '<div class="ebd-fld"><label>Description</label><div class="ebd-box" id="f4" style="color:#444;line-height:1.55">Brand-new, sealed TikTok Shop sample. Ships same-day from a smoke-free home. See item specifics for details.</div><span class="ebd-chip">☝ autofill description</span></div>' +
         '</div>' +
-        '<div class="ebd-foot"><span class="ebd-meta">1 photo · ' + usd(hero.salePrice) + ' · productId 1731301163454206492</span>' +
+        '<div class="ebd-foot"><span class="ebd-meta">1 photo · ' + usd(hero.salePrice) + ' · productId ' + esc(hero.productId || "1731301163454206492") + '</span>' +
           '<button class="ebd-open" id="ebd-open">Open in eBay &amp; autofill ↗</button></div>';
       $("ebay-ov").classList.add("show");
       await sleep(500);
@@ -499,18 +589,22 @@
     var demoCreator = "@sample_squad";
     function buildPrompt() {
       var c = demoCreator;
+      var h = hero || {};
+      var hName = h.name || "Ninja AF101 Air Fryer 4qt";
+      var hId = h.productId || "1731301163454206492";
+      var hSale = usd(h.salePrice || 72.00);
       return [
         "Walk a TikTok Shop sample through its full resale lifecycle using my Thirsty skills, and show me the money at each step:",
         "",
         "1. Import + assign — use the samples-import flow to add these TikTok Shop product IDs to inventory, assigned to creator " + c + ":",
-        "   1731301163454206492",
+        "   " + hId,
         "   (replace with your own order_list product IDs)",
         "",
-        "2. Cleared to Sell — use the sample-lifecycle skill to set the \"Ninja AF101 Air Fryer 4qt\" sample's status to cleared_to_sell.",
+        "2. Cleared to Sell — use the sample-lifecycle skill to set the \"" + hName + "\" sample's status to cleared_to_sell.",
         "",
-        "3. List on eBay — use list_on_marketplace to draft an eBay listing for it at $72.00, then use the ebay-listing browser skill to open eBay's create-listing page pre-filled (do not publish).",
+        "3. List on eBay — use list_on_marketplace to draft an eBay listing for it at " + hSale + ", then use the ebay-listing browser skill to open eBay's create-listing page pre-filled (do not publish).",
         "",
-        "4. Mark sold — use the sample-lifecycle skill to mark it sold on eBay for $72.00, attributing the resale revenue to " + c + ".",
+        "4. Mark sold — use the sample-lifecycle skill to mark it sold on eBay for " + hSale + ", attributing the resale revenue to " + c + ".",
         "",
         "5. Show the payoff — use graylog-query to report " + c + "'s resale revenue (gmv + net) next to the free-sample retail value, so I can see the total value created."
       ].join("\n");
@@ -536,11 +630,10 @@
       } else { fallbackCopy(text); done(); }
     });
 
-    // Flavor: use the latest real creator handle if available (non-blocking).
-    fetch("/api/e2e-context").then(function (r) { return r.json(); }).then(function (c) {
-      if (c && c.creator) { demoCreator = String(c.creator); $("creator").innerHTML = "creator <b>" + demoCreator.replace(/[<>]/g, "") + "</b>"; }
-    }).catch(function () {});
-    run();
+    // Load real samples (catalog images + creator) then play the demo. loadItems
+    // sets the creator label and swaps in real products; it degrades to the
+    // curated emoji batch on any failure, so the demo always runs.
+    loadItems().then(run);
   </script>
 </body>
 </html>
