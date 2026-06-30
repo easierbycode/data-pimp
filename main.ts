@@ -49,9 +49,15 @@ import {
   recordSampleValuation,
 } from "./core/graylog.ts";
 import { renderBarcodePng } from "./core/barcode.ts";
+import { databaseUrlError, getDatabaseUrl } from "./core/db-url.ts";
+
+// Cleaned once (repairs stray quotes/whitespace/`DATABASE_URL=` prefix that
+// would otherwise make pg resolve host "base"); see core/db-url.ts.
+const DB_URL = getDatabaseUrl();
+const DB_URL_ERR = DB_URL ? databaseUrlError(DB_URL) : "DATABASE_URL is not set";
 
 const pool = new Pool({
-  connectionString: Deno.env.get("DATABASE_URL"),
+  connectionString: DB_URL ?? undefined,
   max: 1,
   // connectionTimeoutMillis >= statement_timeout so a request queued behind an
   // in-flight query isn't killed before that query frees the single (max:1)
@@ -60,11 +66,21 @@ const pool = new Pool({
   connectionTimeoutMillis: 35_000,
 });
 
+// Guarded client acquisition (the debug routes connect directly): throw the
+// config error before pg tries to DNS-resolve a bad host like "base".
+async function poolConnect() {
+  if (DB_URL_ERR) throw new Error(DB_URL_ERR);
+  return await pool.connect();
+}
+
 // Thin-client mode: with no local DATABASE_URL (e.g. the compiled desktop
 // binary on a kiosk), proxy /api/* to the central deployment instead of a local
 // DB — no DB credentials on-device, one shared source of truth. Override the
 // upstream with THIRSTY_API.
-const REMOTE_API = Deno.env.get("DATABASE_URL")
+// A present-but-malformed DATABASE_URL stays in local-DB mode (so we don't
+// proxy thirsty.store → thirsty.store and loop) and surfaces DB_URL_ERR; only a
+// genuinely absent/blank value falls back to the proxy.
+const REMOTE_API = DB_URL
   ? null
   : (Deno.env.get("THIRSTY_API") || "https://thirsty.store").replace(/\/+$/, "");
 
@@ -91,19 +107,22 @@ const MAX_GELF_MESSAGE_SIZE = 8000;
 const TABLES = ["bundles", "inventory_transactions", "samples"] as const;
 
 function redactedDbUrl() {
-  const raw = Deno.env.get("DATABASE_URL");
-  if (!raw) return null;
+  // Report the CLEANED value (what pg actually sees) plus any validation error,
+  // so /__debug agrees with the pool instead of masking a "base"-host config.
+  if (!DB_URL) return null;
+  const error = DB_URL_ERR;
 
   try {
-    const u = new URL(raw);
+    const u = new URL(DB_URL);
     return {
       host: u.hostname,
       database: u.pathname.replace(/^\//, ""),
       user: u.username || null,
       hasPassword: Boolean(u.password),
+      ...(error ? { valid: false, error } : { valid: true }),
     };
   } catch {
-    return { parseError: true };
+    return { parseError: true, ...(error ? { error } : {}) };
   }
 }
 
@@ -828,7 +847,7 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
   // DB debug
   if (pathname === "/__dbdebug") {
-    const client = await pool.connect();
+    const client = await poolConnect();
     try {
       const meta = await client.query(`
         select
@@ -859,7 +878,7 @@ export async function legacyHandler(req: Request): Promise<Response> {
     const expected = Deno.env.get("DEBUG_TOKEN");
     if (!expected || !token || token !== expected) return new Response("forbidden", { status: 403 });
 
-    const client = await pool.connect();
+    const client = await poolConnect();
     try {
       const counts: Record<string, number> = {};
       for (const t of TABLES) {
