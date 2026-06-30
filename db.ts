@@ -6,12 +6,15 @@ import { Pool } from "npm:pg";
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
   max: 1,
-  // Fail fast instead of hanging forever if the DB is unreachable. Without a
-  // connect timeout a stalled `pool.connect()` blocks whatever awaits it; at
-  // boot that stalls module evaluation and times out Deno Deploy's Warm up /
-  // Register crons steps. statement_timeout bounds runaway queries too.
-  connectionTimeoutMillis: 10_000,
+  // Bound a stalled connection so a dead DB eventually rejects a request
+  // instead of hanging it forever. With max:1 the pool serializes requests and
+  // connectionTimeoutMillis ALSO covers time spent waiting for the single
+  // client to free up — so it must be >= statement_timeout, otherwise a request
+  // queued behind a healthy-but-slow query would 500 before that query's own
+  // budget elapses and releases the client. (Boot no longer relies on this:
+  // schema warming is fire-and-forget, so a short fail-fast value isn't needed.)
   statement_timeout: 30_000,
+  connectionTimeoutMillis: 35_000,
 });
 
 // Cache table columns so we can validate filters + order_by

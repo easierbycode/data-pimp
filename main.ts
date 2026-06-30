@@ -53,9 +53,11 @@ import { renderBarcodePng } from "./core/barcode.ts";
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
   max: 1,
-  // Fail fast rather than hang the isolate if the DB is unreachable (see db.ts).
-  connectionTimeoutMillis: 10_000,
+  // connectionTimeoutMillis >= statement_timeout so a request queued behind an
+  // in-flight query isn't killed before that query frees the single (max:1)
+  // client (see db.ts).
   statement_timeout: 30_000,
+  connectionTimeoutMillis: 35_000,
 });
 
 // Thin-client mode: with no local DATABASE_URL (e.g. the compiled desktop
