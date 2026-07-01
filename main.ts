@@ -54,6 +54,7 @@ import {
   type EbayPriceInput,
   markdownLadder,
 } from "./core/ebay-pricing.ts";
+import { fetchEbaySoldComps } from "./core/ebay-comps.ts";
 import { databaseUrlError, getDatabaseUrl } from "./core/db-url.ts";
 import { runCheckoutAlerts } from "./core/checkout-alerts.ts";
 import { rolesClientConfig } from "./core/roles.ts";
@@ -1392,6 +1393,9 @@ export async function legacyHandler(req: Request): Promise<Response> {
       // Pure/stateless: no DB, no Graylog. GET with query params for a quick
       // check, or POST a JSON body (comps as an array) for the full formula.
       // ?ladder=1 (or body.ladder) also returns the velocity walk-down preview.
+      // ?autoComps=1&query=<title> (or &name=) fetches LIVE eBay sold comps and
+      //   feeds them to the formula so it undercuts the real market — best-effort,
+      //   falls back to the retail anchor when eBay is unreachable (ebay-comps.ts).
       // CORS — called cross-origin by the Demos/E2E pricing demo.
       if (pathname === "/api/ebay-price") {
         if (req.method === "OPTIONS") return corsPreflight();
@@ -1433,10 +1437,47 @@ export async function legacyHandler(req: Request): Promise<Response> {
             markdownSchedule: (body.markdownSchedule ?? undefined) as
               EbayPriceInput["markdownSchedule"],
           };
+
+          // Auto-comps: when asked (autoComps truthy) and the caller didn't supply
+          // comps, fetch LIVE eBay sold prices for the product and feed them to the
+          // formula so it undercuts the real market. Best-effort — degrades to the
+          // retail anchor if eBay is unreachable. Opt-in so a normal price call
+          // never pays the fetch latency.
+          // pick() coerces a boolean body value to its string form, so a string
+          // check covers both `?autoComps=1` and `{ "autoComps": true }`.
+          const autoRaw = pick("autoComps");
+          const autoComps = typeof autoRaw === "string" &&
+            ["1", "true", "yes", "on"].includes(autoRaw.toLowerCase());
+          const query = String(pick("query") ?? pick("name") ?? "").trim();
+          let compsSource = comps.length ? "provided" : "none";
+          let compsMeta: Record<string, unknown> | undefined;
+          if (!comps.length && autoComps && query) {
+            const cr = await fetchEbaySoldComps({
+              query,
+              retail: Number(pick("retail")) || undefined,
+            });
+            if (cr.comps.length) input.comps = cr.comps;
+            compsSource = cr.comps.length
+              ? (cr.source === "cache" ? "ebay-sold(cache)" : "ebay-sold")
+              : "none";
+            compsMeta = {
+              source: cr.source,
+              sampleSize: cr.sampleSize,
+              query: cr.query,
+              url: cr.url,
+              reason: cr.reason,
+            };
+          }
+
           const result = computeEbayPrice(input);
           const wantLadder = q.get("ladder") === "1" ||
             (body as Record<string, unknown>).ladder === true;
-          return corsJson(wantLadder ? { ...result, ladder: markdownLadder(input) } : result);
+          return corsJson({
+            ...result,
+            compsSource,
+            ...(compsMeta ? { compsMeta } : {}),
+            ...(wantLadder ? { ladder: markdownLadder(input) } : {}),
+          });
         } catch (error) {
           return corsJson(
             { ok: false, error: error instanceof Error ? error.message : String(error) },

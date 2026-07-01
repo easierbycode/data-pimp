@@ -78,14 +78,20 @@ after eBay's ~13.25% + $0.30). Call it, e.g.:
 ```
 GET https://thirsty.store/api/ebay-price?retail=89.99&costBasis=0&condition=new&comps=58,62,65
 # or POST JSON: { "retail": 89.99, "costBasis": 0, "condition": "new", "comps": [58,62,65] }
+# or let the server fetch live eBay sold comps for you:
+GET https://thirsty.store/api/ebay-price?retail=89.99&condition=new&autoComps=1&query=Ninja+AF101+Air+Fryer+4qt
 ```
 
 It returns `price` (the charm-`.99` Buy-It-Now to fill), plus `floor`, `anchor`,
-`netAtPrice`, `undercutFromAnchor`, `floorHit`, and a one-line `explanation`.
-Guidance:
+`netAtPrice`, `undercutFromAnchor`, `floorHit`, a one-line `explanation`, and a
+`compsSource` (`provided` / `ebay-sold` / `ebay-sold(cache)` / `none`). Guidance:
 
 - **Pass comps when you have them.** Real eBay comps let the formula undercut the
   actual market; with none it falls back to a conservative retail-based anchor.
+- **Or use `autoComps=1&query=<title>`.** The server then pulls live eBay SOLD
+  comps itself (best-effort, cached) and feeds them in — check `compsSource` /
+  `compsMeta` to see whether real comps were found. Comps you read off the page
+  directly still take precedence when you pass them.
 - **Respect the floor.** If `floorHit` is true the market is at/below break-even —
   the returned `price` sits at the floor; don't hand-edit it lower.
 - **Relay the reasoning.** Tell the user what the `explanation` says (e.g.
