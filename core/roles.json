@@ -1,0 +1,41 @@
+{
+  "defaultRole": "dj",
+  "flags": [
+    { "id": "folder.apps", "label": "Apps folder" },
+    { "id": "folder.demos", "label": "Demos folder" },
+    { "id": "folder.member", "label": "Member folder" },
+    { "id": "app.productAnalysis", "label": "Product Analysis app" },
+    { "id": "app.inventory", "label": "Inventory (LP Sample Tracker)" },
+    { "id": "app.kiosk", "label": "Kiosk / checkout" },
+    { "id": "app.installExtension", "label": "Install Extension helper" },
+    { "id": "ops.debugCounts", "label": "Row-count debug endpoint" },
+    {
+      "id": "ops.checkoutAlerts",
+      "label": "Stakeholder for stale-checkout alerts"
+    }
+  ],
+  "roles": [
+    {
+      "id": "dj",
+      "name": "DJ",
+      "boot": "default",
+      "flags": { "*": true }
+    },
+    {
+      "id": "ka",
+      "name": "Karl · Warehouse",
+      "boot": "warehouse",
+      "flags": {
+        "folder.apps": true,
+        "app.inventory": true,
+        "app.kiosk": true,
+        "app.installExtension": true,
+        "app.productAnalysis": false,
+        "folder.demos": false,
+        "folder.member": false,
+        "ops.debugCounts": false,
+        "ops.checkoutAlerts": true
+      }
+    }
+  ]
+}

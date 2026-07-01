@@ -55,6 +55,8 @@ import {
   markdownLadder,
 } from "./core/ebay-pricing.ts";
 import { databaseUrlError, getDatabaseUrl } from "./core/db-url.ts";
+import { runCheckoutAlerts } from "./core/checkout-alerts.ts";
+import { rolesClientConfig } from "./core/roles.ts";
 
 // Cleaned once (repairs stray quotes/whitespace/`DATABASE_URL=` prefix that
 // would otherwise make pg resolve host "base"); see core/db-url.ts.
@@ -458,6 +460,15 @@ function renderSPAShell(): Response {
 // Thirsty OS desktop shell — the front door at thirsty.store. Folders launch
 // each app (the storefront, the sample tracker, etc.) in draggable windows.
 function renderOSShell(): Response {
+  // Roles/flags come from core/roles.json. The <select> options render from it,
+  // and the same object is inlined as `globalThis.THIRSTY_RBAC` so os.js gates
+  // the desktop from one source. Escape `<` in the JSON so a role name can't
+  // break out of the inline <script>.
+  const rbac = rolesClientConfig();
+  const roleOptions = rbac.roles
+    .map((r) => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)}</option>`)
+    .join("\n          ");
+  const rbacJson = JSON.stringify(rbac).replace(/</g, "\\u003c");
   const html = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -480,8 +491,7 @@ function renderOSShell(): Response {
         <span id="active-app" class="active-app" aria-live="polite" aria-atomic="true">Finder</span>
         <span id="menubar-status" class="mb-status"></span>
         <select id="role-switch" class="role-switch" aria-label="Profile" title="Switch profile">
-          <option value="dj">DJ</option>
-          <option value="ka">Karl · Warehouse</option>
+          ${roleOptions}
         </select>
       </div>
       <div id="dock" class="dock" aria-label="Dock"></div>
@@ -489,6 +499,7 @@ function renderOSShell(): Response {
         <span id="clock" class="clock tnum"></span>
       </div>
     </footer>
+    <script>globalThis.THIRSTY_RBAC = ${rbacJson};</script>
     <script type="module" src="/os.js"></script>
   </body>
 </html>`;
@@ -1492,6 +1503,14 @@ export async function legacyHandler(req: Request): Promise<Response> {
         return json(listSampleStatuses());
       }
 
+      // Role-based access config (team members → capability flags). The OS shell
+      // reads the same object from `window.THIRSTY_RBAC`; this endpoint exposes
+      // it to any external consumer. Config only — per-device UX gating, not an
+      // auth boundary (see core/roles.ts).
+      if (pathname === "/api/roles") {
+        return json(rolesClientConfig());
+      }
+
       // Distinct creator handles seen in Graylog — the live attribution list for
       // the sold flow (mirrors graylog-query's `--terms creator`).
       if (pathname === "/api/creators") {
@@ -1837,6 +1856,25 @@ if (denoCron) {
       }
     } catch (e) {
       console.error("[auto-list] cron error:", e);
+    }
+  });
+
+  // Stale-checkout alerts: every 6 hours, ping DISCORD_WEBHOOK_URL about any
+  // sample stuck in `checked_out` past CHECKOUT_ALERT_HOURS (default 72h). Only
+  // the central deploy (owns the DB) runs it; a thin client no-ops. No webhook
+  // configured → the run is a no-op (see core/checkout-alerts.ts).
+  denoCron("thirsty-sample-stale-checkout", "0 */6 * * *", async () => {
+    if (REMOTE_API) return; // thin client: the central deploy owns the cron
+    try {
+      const r = await runCheckoutAlerts();
+      if (r.alerted) {
+        console.log(
+          `[checkout-alerts] alerted ${r.alerted} stale sample(s) ` +
+            `(${r.stale} over threshold, ${r.skipped} throttled)`,
+        );
+      }
+    } catch (e) {
+      console.error("[checkout-alerts] cron error:", e);
     }
   });
 } else {
