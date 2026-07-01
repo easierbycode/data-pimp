@@ -258,6 +258,37 @@ Deno.test("a velocity schedule rung > 1 is capped so the ladder only marks DOWN"
   expect(r.price).toBeLessThan(25); // still undercuts the cheapest credible comp
 });
 
+Deno.test("blank numeric strings are treated as absent, not 0 (defaults hold)", () => {
+  // A serialized form / query string can send empty optional fields. These must
+  // fall back to the defaults (fee 13.25%, margin $3), not coerce to 0 and drop
+  // the floor below its intended fee-aware value.
+  const blank = computeEbayPrice({
+    retail: 40,
+    costBasis: 20,
+    comps: [25, 28, 30],
+    feePct: "" as unknown as number,
+    minMarginAbs: "" as unknown as number,
+    fixedFee: "" as unknown as number,
+  });
+  const defaulted = computeEbayPrice({ retail: 40, costBasis: 20, comps: [25, 28, 30] });
+  expect(blank.floor).toBe(defaulted.floor); // ~ (20+3+0.30)/0.8675 = 26.86
+  expect(blank.floor).toBeGreaterThan(26); // NOT the 20.30 a zeroed fee/margin gives
+  expect(blank.price).toBe(defaulted.price);
+  expect(blank.netAtPrice).toBeGreaterThanOrEqual(3);
+});
+
+Deno.test("a used haircut > 1 is capped so it cannot raise a comp anchor above the market", () => {
+  const r = computeEbayPrice({
+    retail: 40,
+    costBasis: 0,
+    comps: [25, 28, 30],
+    condition: "used",
+    usedMult: 1.5, // supposed haircut, tuned wrong
+  });
+  expect(r.floorHit).toBe(false);
+  expect(r.price).toBeLessThan(25); // still undercuts the cheapest credible comp
+});
+
 Deno.test("custom fire-sale schedule is honored and stays floor-bounded", () => {
   const r30 = computeEbayPrice({
     retail: 50,

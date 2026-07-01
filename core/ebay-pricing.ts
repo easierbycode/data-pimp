@@ -155,11 +155,16 @@ function round2(n: number): number {
 }
 
 // Finite number or undefined — the sanitize primitive. Strips "$"/"," so string
-// prices ("$25.00") coerce cleanly.
+// prices ("$25.00") coerce cleanly. A blank/empty string is treated as ABSENT
+// (undefined), not 0 — otherwise `?feePct=&minMarginAbs=` (empty params from a
+// serialized form) would read as 0 via Number(""), silently zeroing the fee and
+// margin and dropping the floor below its intended fee-aware value.
 function num(x: unknown): number | undefined {
   if (typeof x === "number") return Number.isFinite(x) ? x : undefined;
   if (typeof x === "string") {
-    const n = Number(x.replace(/[$,\s]/g, ""));
+    const t = x.replace(/[$,\s]/g, "");
+    if (t === "") return undefined;
+    const n = Number(t);
     return Number.isFinite(n) ? n : undefined;
   }
   return undefined;
@@ -263,7 +268,10 @@ export function resolveParams(input: EbayPriceInput = {}): EbayPricingParams {
     medianFloorFrac: Math.max(0, numOr(input.medianFloorFrac, DEFAULT_EBAY_PRICING.medianFloorFrac)),
     absurdHighMult: Math.max(1, numOr(input.absurdHighMult, DEFAULT_EBAY_PRICING.absurdHighMult)),
     absurdLowMult: Math.max(0, numOr(input.absurdLowMult, DEFAULT_EBAY_PRICING.absurdLowMult)),
-    usedMult: Math.max(0, numOr(input.usedMult, DEFAULT_EBAY_PRICING.usedMult)),
+    // Capped at 1: a used haircut only ever REDUCES the anchor — a value > 1
+    // would raise a comp anchor and could price us above the cheapest comp
+    // (same reasoning as the markdown-factor cap in normalizeSchedule).
+    usedMult: Math.min(1, Math.max(0, numOr(input.usedMult, DEFAULT_EBAY_PRICING.usedMult))),
     newCeilingRate: Math.max(0, numOr(input.newCeilingRate, DEFAULT_EBAY_PRICING.newCeilingRate)),
     usedCeilingRate: Math.max(0, numOr(input.usedCeilingRate, DEFAULT_EBAY_PRICING.usedCeilingRate)),
     noRetailCeilingMult: Math.max(1, numOr(input.noRetailCeilingMult, DEFAULT_EBAY_PRICING.noRetailCeilingMult)),
