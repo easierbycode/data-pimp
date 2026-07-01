@@ -499,7 +499,12 @@ export async function recordSampleStatus(
   let reason: string | undefined;
   if (row) {
     try {
-      await Samples.update(String(row.id), { status });
+      // Stamp the checkout clock when a plain status flip enters `checked_out`
+      // (assignment/import already do this) so the stale-checkout alert can age
+      // the row. Other statuses leave `checked_out_at` untouched.
+      const patch: Record<string, unknown> = { status };
+      if (status === "checked_out") patch.checked_out_at = now;
+      await Samples.update(String(row.id), patch);
       updated = true;
     } catch (error) {
       reason = error instanceof Error ? error.message : String(error);

@@ -166,11 +166,14 @@ const FOLDERS = [
     id: "apps",
     name: "Apps",
     icon: ICONS.folder,
+    // RBAC: `flag` gates a folder/item per role (see globalThis.THIRSTY_RBAC).
+    flag: "folder.apps",
     items: [
       {
         id: "product-analysis",
         name: "Product Analysis",
         icon: ICONS.inventory,
+        flag: "app.productAnalysis",
         // Migrated from the kiosk — now served same-origin by data-pimp.
         url: "/inventory",
         allow: "fullscreen",
@@ -181,6 +184,7 @@ const FOLDERS = [
         id: "inventory",
         name: "Inventory",
         icon: ICONS.boxes,
+        flag: "app.inventory",
         url: "https://admin.thirsty.store",
         allow: "fullscreen; camera",
         external: true,
@@ -191,6 +195,7 @@ const FOLDERS = [
         id: "kiosk",
         name: "Kiosk",
         icon: ICONS.qr,
+        flag: "app.kiosk",
         // The storefront that used to live at thirsty.store, now an app inside
         // the OS (same-origin, served under /kiosk).
         url: "/kiosk",
@@ -202,6 +207,7 @@ const FOLDERS = [
         id: "install-extension",
         name: "Install Extension",
         icon: ICONS.boxes,
+        flag: "app.installExtension",
         // Same-origin install help: download chrome.zip + load-unpacked steps
         // (served by data-pimp at /install). Internal, so no sandbox — the
         // download link works. Opened by the samples-import skill or from Apps.
@@ -215,6 +221,7 @@ const FOLDERS = [
     id: "demos",
     name: "Demos",
     icon: ICONS.folder,
+    flag: "folder.demos",
     items: [
       {
         id: "sample-valuation",
@@ -291,6 +298,7 @@ const FOLDERS = [
     id: "member",
     name: "Member",
     icon: ICONS.folder,
+    flag: "folder.member",
     items: [
       {
         id: "tokscrape-dashboard",
@@ -322,6 +330,53 @@ const FOLDERS = [
     ],
   },
 ];
+
+/* ----------------------------------------------------------------- RBAC -- */
+
+// Per-device role gating. `globalThis.THIRSTY_RBAC` is injected by renderOSShell
+// in main.ts from core/roles.json (the single source of truth) — it maps each
+// team member (role) to capability flags. Those flags decide which folders/apps
+// this profile shows and which boot layout it gets. NOT a security boundary: the
+// OS has no auth/session, so a hidden app's same-origin URL still works if typed
+// directly. Think "kiosk profile", not server-enforced authz.
+const RBAC =
+  (globalThis.THIRSTY_RBAC && typeof globalThis.THIRSTY_RBAC === "object")
+    ? globalThis.THIRSTY_RBAC
+    : { defaultRole: "dj", roles: [], flags: [] };
+const ROLE_KEY = "thirsty-os-role";
+
+function roleById(id) {
+  return (RBAC.roles || []).find((r) => r.id === id) || null;
+}
+
+// The active role: a known stored choice, else the configured default.
+function currentRoleId() {
+  const stored = localStorage.getItem(ROLE_KEY);
+  return roleById(stored) ? stored : (RBAC.defaultRole || "dj");
+}
+
+// Explicit per-role value wins; `"*"` is the wildcard default; else deny.
+// Mirrors roleHasFlag() in core/roles.ts so browser + server agree.
+function roleAllows(roleId, flag) {
+  if (!flag) return true; // unflagged folders/items are always visible
+  const role = roleById(roleId);
+  if (!role || !role.flags) return false;
+  const explicit = role.flags[flag];
+  if (typeof explicit === "boolean") return explicit;
+  return role.flags["*"] === true;
+}
+
+const ROLE = currentRoleId();
+const allows = (flag) => roleAllows(ROLE, flag);
+
+// Folders this role may see, each trimmed to its allowed items. A folder whose
+// items are all gated away drops out entirely.
+function visibleFolders() {
+  return FOLDERS
+    .filter((f) => allows(f.flag))
+    .map((f) => ({ ...f, items: (f.items || []).filter((i) => allows(i.flag)) }))
+    .filter((f) => f.items.length > 0);
+}
 
 /* ----------------------------------------------------------- WM globals -- */
 
@@ -383,7 +438,8 @@ function makeIcon(label, svg, onOpen) {
 
 function renderDesktop() {
   const root = document.getElementById("desktop-icons");
-  for (const folder of FOLDERS) {
+  // Only the folders/apps this role may open (see RBAC above).
+  for (const folder of visibleFolders()) {
     root.appendChild(makeIcon(folder.name, folder.icon, () => openFolder(folder)));
   }
 }
@@ -1099,23 +1155,23 @@ tickClock();
 setInterval(tickClock, 15000);
 
 // Profile / role switcher. Per-device only (localStorage) — the OS has no
-// auth/session to hang a server-side role on. DJ = default; KA = warehouse Karl,
-// who boots straight into a tiled Inventory + Kiosk workspace.
-const ROLE_KEY = "thirsty-os-role";
-const role = localStorage.getItem(ROLE_KEY) || "dj";
+// auth/session to hang a server-side role on. The <option>s are rendered from
+// core/roles.json (see renderOSShell); ROLE/roleById come from the RBAC block.
 const roleSwitch = document.getElementById("role-switch");
 if (roleSwitch) {
-  roleSwitch.value = role;
+  roleSwitch.value = ROLE;
   roleSwitch.addEventListener("change", () => {
     localStorage.setItem(ROLE_KEY, roleSwitch.value);
     location.reload(); // re-run boot so the layout branch below applies cleanly
   });
 }
 
-// Warehouse boot layout: Inventory (LP Sample Tracker) tiled to the LEFT half,
-// defaulting to the "Cleared to Sell" filter; Kiosk tiled to the RIGHT half.
-// Reuses the real openApp() + snapWindow() primitives (windows keyed "app:"+id).
-if (role === "ka") {
+// Boot layout is a per-role property (roles.json `boot`). "warehouse" tiles
+// Inventory (LP Sample Tracker) to the LEFT half — defaulting to the "Cleared
+// to Sell" filter — and Kiosk to the RIGHT. Reuses the real openApp() +
+// snapWindow() primitives (windows keyed "app:"+id).
+const bootLayout = roleById(ROLE)?.boot;
+if (bootLayout === "warehouse") {
   const appsFolder = FOLDERS.find((f) => f.id === "apps");
   const apps = (appsFolder && appsFolder.items) || [];
   const inventory = apps.find((i) => i.id === "inventory");
@@ -1131,7 +1187,7 @@ if (role === "ka") {
     const w = windows.get("app:kiosk");
     if (w) snapWindow(w, "right");
   }
-  if (statusEl) statusEl.textContent = "Warehouse · Karl";
+  if (statusEl) statusEl.textContent = roleById(ROLE)?.name ?? ROLE;
 }
 
 // E2E / demo workspace: ?workspace=samples-import[&ids=...&creator=@x&autostart=1]
