@@ -9,7 +9,8 @@ content, then we list the physical unit. This formula turns what we know about a
 product into a recommended Buy-It-Now price.
 
 - **Engine (source of truth):** [`core/ebay-pricing.ts`](../../core/ebay-pricing.ts) — pure, deterministic, unit-tested (`core/ebay-pricing_test.ts`).
-- **API:** `GET|POST /api/ebay-price` (add `?ladder=1` for the velocity walk-down).
+- **API:** `GET|POST /api/ebay-price` (add `?ladder=1` for the velocity walk-down, or `?autoComps=1&query=<title>` to auto-fetch live eBay sold comps).
+- **Live comps:** [`core/ebay-comps.ts`](../../core/ebay-comps.ts) — best-effort eBay SOLD-search fetcher that feeds real competitor prices to the formula (cached, graceful fallback to the retail anchor when eBay is unreachable).
 - **CLI demo:** [`ebay-pricing-demo.ts`](./ebay-pricing-demo.ts) — walks the scenario battery and prints a report.
 - **Visual demo:** [`ebay-pricing.html`](./ebay-pricing.html) — interactive, served at `/demos/ebay-pricing`.
 
