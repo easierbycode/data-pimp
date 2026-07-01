@@ -49,6 +49,11 @@ import {
   recordSampleValuation,
 } from "./core/graylog.ts";
 import { renderBarcodePng } from "./core/barcode.ts";
+import {
+  computeEbayPrice,
+  type EbayPriceInput,
+  markdownLadder,
+} from "./core/ebay-pricing.ts";
 import { databaseUrlError, getDatabaseUrl } from "./core/db-url.ts";
 
 // Cleaned once (repairs stray quotes/whitespace/`DATABASE_URL=` prefix that
@@ -827,6 +832,13 @@ export async function legacyHandler(req: Request): Promise<Response> {
   if (pathname === "/e2e" || pathname === "/e2e.html") {
     return await serveLocalFile("./static/e2e.html", "text/html; charset=utf-8");
   }
+  // Demos/E2E — interactive eBay pricing-formula demo (undercut + move fast).
+  // Calls /api/ebay-price so the page and the server share one implementation.
+  if (
+    pathname === "/demos/ebay-pricing" || pathname === "/demos/ebay-pricing.html"
+  ) {
+    return await serveLocalFile("./Demos/E2E/ebay-pricing.html", "text/html; charset=utf-8");
+  }
   if (pathname === "/ui.js") {
     return await serveLocalFile("./static/ui.js", "text/javascript; charset=utf-8");
   }
@@ -1362,6 +1374,64 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       if (pathname === "/api/sample-valuation") {
         return json(await fetchSampleValuationWithEdits());
+      }
+
+      // eBay resale price recommendation — undercut the competition + move fast,
+      // fee-aware floor so we never list at a loss (see core/ebay-pricing.ts).
+      // Pure/stateless: no DB, no Graylog. GET with query params for a quick
+      // check, or POST a JSON body (comps as an array) for the full formula.
+      // ?ladder=1 (or body.ladder) also returns the velocity walk-down preview.
+      // CORS — called cross-origin by the Demos/E2E pricing demo.
+      if (pathname === "/api/ebay-price") {
+        if (req.method === "OPTIONS") return corsPreflight();
+        try {
+          const q = url.searchParams;
+          const body = (req.method === "POST" ? await readJsonBody(req) : {}) as Record<
+            string,
+            unknown
+          >;
+          // Coerce any picked value (body value or query string) to string | number
+          // | undefined — the formula parses "$25.00"-style strings itself.
+          const pick = (k: string): string | number | undefined => {
+            const v = body[k];
+            if (typeof v === "number" || typeof v === "string") return v;
+            if (v !== undefined && v !== null) return String(v);
+            const qv = q.get(k);
+            return qv === null ? undefined : qv;
+          };
+          // Comps: JSON body array, a comma-separated string body, or a
+          // comma-separated ?comps=25,28,30 query.
+          const comps: Array<string | number> = Array.isArray(body.comps)
+            ? (body.comps as unknown[]).map((x) => typeof x === "number" ? x : String(x))
+            : (typeof body.comps === "string" ? body.comps : (q.get("comps") || ""))
+              .split(",").map((s) => s.trim()).filter(Boolean);
+          const input: EbayPriceInput = {
+            retail: pick("retail"),
+            costBasis: pick("costBasis"),
+            comps,
+            condition: typeof pick("condition") === "string"
+              ? pick("condition") as string
+              : undefined,
+            daysListed: pick("daysListed"),
+            feePct: pick("feePct"),
+            fixedFee: pick("fixedFee"),
+            shipping: pick("shipping"),
+            minMarginAbs: pick("minMarginAbs"),
+            minMarginPct: pick("minMarginPct"),
+            undercutPct: pick("undercutPct"),
+            markdownSchedule: (body.markdownSchedule ?? undefined) as
+              EbayPriceInput["markdownSchedule"],
+          };
+          const result = computeEbayPrice(input);
+          const wantLadder = q.get("ladder") === "1" ||
+            (body as Record<string, unknown>).ladder === true;
+          return corsJson(wantLadder ? { ...result, ladder: markdownLadder(input) } : result);
+        } catch (error) {
+          return corsJson(
+            { ok: false, error: error instanceof Error ? error.message : String(error) },
+            400,
+          );
+        }
       }
 
       // Persist a valuation INSTANCE (all raw inputs) so it can be recomputed
