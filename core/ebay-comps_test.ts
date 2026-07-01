@@ -22,7 +22,13 @@ const FIXTURE = `
 
 Deno.test("parseEbaySoldPrices extracts sold prices (ranges take the low end, commas parsed)", () => {
   const prices = parseEbaySoldPrices(FIXTURE);
-  expect(prices).toEqual([20, 54.99, 62, 1024.5, 10, 48.25]);
+  // The generic "Shop on eBay" promo card's $20.00 placeholder is excluded.
+  expect(prices).toEqual([54.99, 62, 1024.5, 10, 48.25]);
+});
+
+Deno.test("the 'Shop on eBay' promo placeholder is not treated as a real comp", () => {
+  const prices = parseEbaySoldPrices(FIXTURE);
+  expect(prices).not.toContain(20);
 });
 
 Deno.test("parseEbaySoldPrices drops values wildly off a known retail", () => {
@@ -63,6 +69,27 @@ Deno.test("fetchEbaySoldComps returns parsed comps on a 200, then serves from ca
   expect(second.source).toBe("cache");
   expect(second.comps).toEqual(first.comps);
   expect(calls).toBe(1); // served from cache, no second fetch
+});
+
+Deno.test("cache is retail-independent: a later call with a higher retail sees the full comps", async () => {
+  const query = "retail-key-widget-" + Math.floor(performance.now());
+  let calls = 0;
+  const fetchImpl = (() => {
+    calls++;
+    return Promise.resolve(new Response(FIXTURE, { status: 200 }));
+  }) as unknown as typeof fetch;
+
+  // First call with a LOW retail filters out the high $1024.50 sold price.
+  const low = await fetchEbaySoldComps({ query, retail: 60, fetchImpl });
+  expect(low.source).toBe("ebay-sold");
+  expect(low.comps).not.toContain(1024.5);
+
+  // Second call, same title but a HIGH retail, must still see $1024.50 — the
+  // cache stores raw prices, so the earlier low-retail filter isn't baked in.
+  const high = await fetchEbaySoldComps({ query, retail: 900, fetchImpl });
+  expect(high.source).toBe("cache");
+  expect(high.comps).toContain(1024.5);
+  expect(calls).toBe(1); // still one network fetch
 });
 
 Deno.test("fetchEbaySoldComps degrades gracefully on a 403 (never throws)", async () => {

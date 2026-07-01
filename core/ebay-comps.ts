@@ -67,31 +67,52 @@ export function ebaySoldSearchUrl(query: string, opts: { ipg?: number } = {}): s
   return `${base}?${params.toString()}`;
 }
 
-// Pure: extract sold prices from an eBay sold-search HTML page. Anchored on the
-// `s-item__price` class so we only pick listing prices (not shipping/other $),
-// grabbing the first dollar amount after each — which also takes the LOW end of a
-// "$X to $Y" range. Optionally drops values wildly off a known retail (typos /
-// wrong-item / bundles); the formula cleans the rest.
-export function parseEbaySoldPrices(
-  html: string,
-  opts: { retail?: number; max?: number } = {},
-): number[] {
+// Extract ALL sold prices from an eBay sold-search HTML page — unfiltered and
+// uncapped (the raw prices we cache). Anchored on the `s-item__price` class so we
+// only pick listing prices (not shipping/other $), grabbing the first dollar
+// amount after each — which also takes the LOW end of a "$X to $Y" range.
+//
+// eBay seeds the results with a generic "Shop on eBay" promo card whose
+// placeholder price is NOT for the queried product; left in, a low placeholder
+// becomes a bogus cheapest comp. We strip each promo card's price first (all of
+// them — eBay sometimes injects promo rows mid-results), leaving real listings.
+export function extractSoldPrices(html: string): number[] {
   if (typeof html !== "string" || !html) return [];
+  const cleaned = html.replace(
+    /Shop on eBay[\s\S]{0,400}?s-item__price[^$]*?\$\s*[0-9][0-9,]*\.[0-9]{2}/gi,
+    "Shop on eBay",
+  );
   const out: number[] = [];
   // `s-item__price` … first `$1,234.56`. [^$]*? stays within one element's markup.
   const re = /s-item__price[^$]*?\$\s*([0-9][0-9,]*\.[0-9]{2})/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
+  while ((m = re.exec(cleaned)) !== null) {
     const n = Number(m[1].replace(/,/g, ""));
     if (Number.isFinite(n) && n > 0) out.push(n);
   }
-  const retail = Number(opts.retail);
-  const hasRetail = Number.isFinite(retail) && retail > 0;
-  const filtered = out.filter((n) =>
-    !hasRetail || (n <= retail * 3 && n >= retail * 0.02)
-  );
-  const max = opts.max ?? DEFAULT_LIMIT;
-  return filtered.slice(0, max);
+  return out;
+}
+
+// Drop prices wildly off a known retail (typos / wrong-item / bundles) and cap
+// the count. Retail-DEPENDENT, so it's applied at read time, never baked into the
+// cache. The formula cleans whatever noise survives.
+export function filterComps(prices: number[], retail?: number, max = DEFAULT_LIMIT): number[] {
+  const r = Number(retail);
+  const hasRetail = Number.isFinite(r) && r > 0;
+  return prices
+    .filter((n) =>
+      Number.isFinite(n) && n > 0 && (!hasRetail || (n <= r * 3 && n >= r * 0.02))
+    )
+    .slice(0, max);
+}
+
+// Pure convenience: extract + retail-filter + cap in one call (used by callers
+// that have the HTML in hand, and by the tests).
+export function parseEbaySoldPrices(
+  html: string,
+  opts: { retail?: number; max?: number } = {},
+): number[] {
+  return filterComps(extractSoldPrices(html), opts.retail, opts.max ?? DEFAULT_LIMIT);
 }
 
 export type FetchEbayCompsInput = {
@@ -118,11 +139,22 @@ export async function fetchEbaySoldComps(
     return { comps: [], source: "none", sampleSize: 0, query, url, reason: "disabled (EBAY_COMPS_ENABLED)" };
   }
 
-  const cacheKey = `${query.toLowerCase()}::${limit}`;
+  // Cache the RAW (unfiltered) sold prices keyed by query only — the retail
+  // filter + cap are applied per request below, so different retails/limits for
+  // the same title reuse one correct cache entry instead of a stale filtered one.
+  const cacheKey = `${query.toLowerCase()}::raw`;
   try {
-    const cached = await cacheGet<number[]>("ebay-comps", cacheKey);
-    if (cached && Array.isArray(cached)) {
-      return { comps: cached, source: "cache", sampleSize: cached.length, query, url };
+    const cachedRaw = await cacheGet<number[]>("ebay-comps", cacheKey);
+    if (cachedRaw && Array.isArray(cachedRaw)) {
+      const comps = filterComps(cachedRaw, input.retail, limit);
+      return {
+        comps,
+        source: "cache",
+        sampleSize: cachedRaw.length,
+        query,
+        url,
+        reason: comps.length ? undefined : "no comps after retail filter",
+      };
     }
   } catch { /* cache miss/fault → live fetch */ }
 
@@ -145,20 +177,22 @@ export async function fetchEbaySoldComps(
       return { comps: [], source: "none", sampleSize: 0, query, url, reason: `http ${res.status}` };
     }
     const html = await res.text();
-    const all = parseEbaySoldPrices(html, { retail: input.retail, max: 1000 });
-    const comps = all.slice(0, limit);
-    if (comps.length) {
+    const raw = extractSoldPrices(html); // unfiltered — what we cache
+    if (raw.length) {
       try {
-        await cacheSet("ebay-comps", cacheKey, comps, ttlMs);
+        await cacheSet("ebay-comps", cacheKey, raw, ttlMs);
       } catch { /* caching is optional */ }
     }
+    const comps = filterComps(raw, input.retail, limit);
     return {
       comps,
       source: comps.length ? "ebay-sold" : "none",
-      sampleSize: all.length,
+      sampleSize: raw.length,
       query,
       url,
-      reason: comps.length ? undefined : "no prices parsed",
+      reason: comps.length
+        ? undefined
+        : (raw.length ? "no comps after retail filter" : "no prices parsed"),
     };
   } catch (error) {
     return {
