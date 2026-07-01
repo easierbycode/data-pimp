@@ -1524,7 +1524,7 @@ export async function legacyHandler(req: Request): Promise<Response> {
       // page fetches it client-side. ?id=<productId> overrides the default.
       if (pathname === "/api/e2e-context") {
         if (req.method === "OPTIONS") return corsPreflight();
-        const def = (url.searchParams.get("id") || "1731301163454206492").trim();
+        const def = (url.searchParams.get("id") || "1729527400425427463").trim();
         return corsJson(await fetchE2EContext(def));
       }
 
