@@ -14,7 +14,7 @@
 //
 // Usage:
 //   deno run -A scripts/sample-e2e.ts [flags] <productId> [<productId> ...]
-//   deno task e2e:samples 1729587769570529799 9001234567890
+//   deno task e2e:samples 1729527400425427463 1729587769570529799
 //
 // Flags:
 //   --creator @handle     creator to assign to (default @e2e-test)
@@ -24,9 +24,9 @@
 //   --gelf-url URL        GELF input (or env GRAYLOG_GELF_URL) for --order-scrape
 //   --gelf-token TOKEN    GELF key   (or env GRAYLOG_TOKEN)    for --order-scrape
 //
-// If no product ids are passed, a default pair is used: one likely-priced real
-// TikTok product + one synthetic name-hash id (an "unpriced" sample), so the run
-// exercises both the priced and unpriced paths out of the box.
+// If no product ids are passed, a default pair is used from the real sample
+// catalog: one priced TikTok product + one currently-unpriced TikTok product, so
+// the run exercises both paths out of the box.
 
 type Json = Record<string, unknown>;
 
@@ -63,7 +63,7 @@ function stableProductId(name: string): string {
 
 const ids = argIds.length
   ? argIds
-  : ["1729587769570529799", stableProductId("E2E Unpriced Sample")];
+  : ["1729527400425427463", "1729587769570529799"];
 
 async function getJson(path: string): Promise<Json | Json[] | null> {
   try {
