@@ -128,6 +128,7 @@
     .ebd-ph { width: 60px; height: 60px; border-radius: 8px; display: inline-grid; place-items: center; font-size: 30px; background: #f1f3f5; }
     .ebd-chip { position: absolute; top: -9px; right: 8px; background: #fff3e6; color: #b3560a; border: 1px solid #f3c08a;
       font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 99px; animation: ebpulse 1.8s ease-in-out infinite; }
+    .ebd-rec { margin-top: 5px; color: #1b7a2e; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
     @keyframes ebpulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
     .ebd-foot { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 12px 16px;
       display: flex; align-items: center; justify-content: space-between; }
@@ -394,6 +395,54 @@
       } catch (e) { /* keep the curated fallback */ }
     }
 
+    // Illustrative competitor comps for the showcase, derived from retail, so the
+    // real pricing formula can demonstrate its headline move: UNDERCUTTING the
+    // market. These comp INPUTS are demo data; the price the draft shows is the
+    // genuine formula output from /api/ebay-price.
+    function synthComps(retail) {
+      var r = Number(retail) || 0;
+      if (r <= 0) return [];
+      return [round2(r * 0.78), round2(r * 0.86), round2(r * 0.92)];
+    }
+
+    // Price the hero with the real eBay pricing formula (core/ebay-pricing.ts via
+    // /api/ebay-price): undercut the competition, move fast, never below the
+    // fee-aware floor. Replaces the old naive retail*0.8 guess. Falls back silently
+    // to whatever salePrice is already set if the endpoint is unreachable.
+    async function priceHero(h) {
+      if (!h || h.__priced) return;
+      h.__priced = true;
+      try {
+        var res = await fetch("/api/ebay-price", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ retail: h.retail, costBasis: 0, condition: "new", comps: synthComps(h.retail) })
+        });
+        if (!res.ok) return;
+        var d = await res.json();
+        if (!d || !(Number(d.price) > 0)) return;
+        h.salePrice = round2(Number(d.price));
+        h.fees = Math.max(0, round2(h.salePrice - Number(d.netAtPrice)));
+        h.priceInfo = {
+          net: round2(Number(d.netAtPrice)),
+          cheapestComp: d.anchor,
+          undercut: Number(d.undercutFromAnchor),
+          anchorSource: d.anchorSource,
+          floorHit: !!d.floorHit
+        };
+        recompute();
+      } catch (e) { /* keep the fallback price */ }
+    }
+
+    // One-line reason for the recommended eBay price, shown under the draft's price.
+    function priceNote(h) {
+      var pi = h && h.priceInfo; if (!pi) return "";
+      if (pi.anchorSource === "comp" && pi.cheapestComp != null && !pi.floorHit && pi.undercut > 0) {
+        return "undercuts market (~" + usd(pi.cheapestComp) + ") · nets " + usd(pi.net) + " after eBay fees";
+      }
+      return "priced to move · nets " + usd(pi.net) + " after eBay fees";
+    }
+
     var cursor = $("cursor"), ring = $("ring");
     function moveTo(el, fast) {
       var r = el.getBoundingClientRect();
@@ -516,7 +565,9 @@
           '<div class="ebd-fld"><label>Photos</label><div class="ebd-box" id="f0"><span class="ebd-ph" style="background:' + TILE[0] + '">' + media(hero) + '</span></div><span class="ebd-chip">☝ autofill photo</span></div>' +
           '<div class="ebd-fld"><label>Listing title</label><div class="ebd-box" id="f1">' + esc(hero.name) + '</div><span class="ebd-chip">☝ autofill title</span></div>' +
           '<div class="ebd-row"><div class="ebd-fld"><label>Condition</label><div class="ebd-box" id="f2"><span class="ebd-pill">New</span></div><span class="ebd-chip">☝ autofill</span></div>' +
-          '<div class="ebd-fld"><label>Price · Buy It Now</label><div class="ebd-box" id="f3">' + usd(hero.salePrice) + '</div><span class="ebd-chip">☝ autofill price</span></div></div>' +
+          '<div class="ebd-fld"><label>Price · Buy It Now</label><div class="ebd-box" id="f3">' + usd(hero.salePrice) + '</div>' +
+            (hero.priceInfo ? '<div class="ebd-rec">🏷 ' + esc(priceNote(hero)) + '</div>' : '') +
+            '<span class="ebd-chip">☝ autofill price</span></div></div>' +
           '<div class="ebd-fld"><label>Description</label><div class="ebd-box" id="f4" style="color:#444;line-height:1.55">Brand-new, sealed TikTok Shop sample. Ships same-day from a smoke-free home. See item specifics for details.</div><span class="ebd-chip">☝ autofill description</span></div>' +
         '</div>' +
         '<div class="ebd-foot"><span class="ebd-meta">1 photo · ' + usd(hero.salePrice) + ' · productId ' + esc(hero.productId || "1731301163454206492") + '</span>' +
@@ -573,6 +624,9 @@
       tallyEl.textContent = "$0.00";
       kioskEl.innerHTML = '<div class="kiosk-loading"><div class="spinner"></div><div>Loading Inventory Manager…</div></div>';
       $("kiosk-sub").textContent = "loading…";
+      // Recommend the eBay Buy-It-Now price with the real formula before the draft
+      // shows it (invisible under the loading spinner; falls back if offline).
+      await priceHero(hero);
       moveTo($("creator"));
       await sleep(400);
       await phaseOrderList();
@@ -602,7 +656,7 @@
         "",
         "2. Cleared to Sell — use the sample-lifecycle skill to set the \"" + hName + "\" sample's status to cleared_to_sell.",
         "",
-        "3. List on eBay — use list_on_marketplace to draft an eBay listing for it at " + hSale + ", then use the ebay-listing browser skill to open eBay's create-listing page pre-filled (do not publish).",
+        "3. List on eBay — use list_on_marketplace to draft an eBay listing for it at the recommended price " + hSale + " (from the eBay pricing formula — undercuts the market, protected by a fee-aware floor), then use the ebay-listing browser skill to open eBay's create-listing page pre-filled (do not publish).",
         "",
         "4. Mark sold — use the sample-lifecycle skill to mark it sold on eBay for " + hSale + ", attributing the resale revenue to " + c + ".",
         "",

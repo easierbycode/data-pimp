@@ -11,7 +11,7 @@ description: >-
   description (and the photo when possible) from the product. It does NOT submit
   or publish — it leaves a ready-to-review draft. Pairs with the visual eBay-draft
   snapshot rendered by the Samples-Import app / EbayDraft component.
-allowed-tools: mcp__Claude_in_Chrome__navigate, mcp__Claude_in_Chrome__read_page, mcp__Claude_in_Chrome__get_page_text, mcp__Claude_in_Chrome__find, mcp__Claude_in_Chrome__form_input, mcp__Claude_in_Chrome__computer, mcp__Claude_in_Chrome__file_upload, mcp__Claude_in_Chrome__read_console_messages, mcp__f520785f-7c81-4ad1-a212-026d9c945eb7__v1_tiktok_product
+allowed-tools: mcp__Claude_in_Chrome__navigate, mcp__Claude_in_Chrome__read_page, mcp__Claude_in_Chrome__get_page_text, mcp__Claude_in_Chrome__find, mcp__Claude_in_Chrome__form_input, mcp__Claude_in_Chrome__computer, mcp__Claude_in_Chrome__file_upload, mcp__Claude_in_Chrome__read_console_messages, mcp__f520785f-7c81-4ad1-a212-026d9c945eb7__v1_tiktok_product, WebFetch
 ---
 
 # ebay-listing
@@ -27,10 +27,12 @@ If the Chrome extension isn't connected, ask the user to install/connect it
 ## Inputs
 
 The product to list, ideally already on hand from the import/lifecycle context:
-`name` (→ title), `price` (→ Buy It Now), condition (default **New** — these are
-fresh samples), `description`, an `image` URL, and the `productId`. If you only
-have a `productId` / PDP url, hydrate first via `…__v1_tiktok_product` (or
-data-pimp `/api/product-lookup/:id`) for the title/price/image.
+`name` (→ title), a `retail`/MSRP price (the TikTok price — the pricing input,
+NOT the Buy-It-Now directly), condition (default **New** — these are fresh
+samples), `description`, an `image` URL, and the `productId`. If you only have a
+`productId` / PDP url, hydrate first via `…__v1_tiktok_product` (or data-pimp
+`/api/product-lookup/:id`) for the title/price/image. The **Buy-It-Now price is
+computed by the pricing formula** (see Pricing below), not taken raw.
 
 ## Workflow
 
@@ -44,18 +46,52 @@ data-pimp `/api/product-lookup/:id`) for the title/price/image.
    the title input, condition selector, format/price (Buy It Now) input, and the
    description editor. eBay's DOM changes often, so locate by visible label, not
    a hardcoded selector.
-4. **Autofill** with `form_input` (or `computer` for rich controls):
+4. **Compute the Buy-It-Now price** with the eBay pricing formula — undercut the
+   competition, move fast, never below a fee-aware floor (see **Pricing** below).
+   You're already on eBay, so grab real comps first: eBay's search results for the
+   title (or the "Similar sold items" panel) are competitor prices. Then call
+   data-pimp `/api/ebay-price` with the product's `retail`/MSRP, `costBasis` (0
+   for a free sample), `condition`, and those `comps`, and use the returned
+   `price`. Surface its `explanation` to the user.
+5. **Autofill** with `form_input` (or `computer` for rich controls):
    - **Title** ← `name` (trim to eBay's 80-char limit).
    - **Condition** ← `New`.
-   - **Price / Buy It Now** ← `price` (the resale ask; default to the product's
-     price if no explicit ask).
+   - **Price / Buy It Now** ← the **recommended price from step 4** — a
+     floor-protected, charm-`.99` ask that undercuts the cheapest credible comp.
+     Never fill a price below the formula's returned `floor`.
    - **Description** ← `description` (or a sensible default: "Brand-new, sealed
      TikTok Shop sample. Ships fast from a smoke-free home.").
    - **Photo** ← the `image`: if eBay accepts an image URL or `file_upload` works,
      add it; otherwise leave photos and tell the user to drop the image in.
-5. **Stop at a reviewable draft. Do NOT submit/publish.** Leave the form filled
+6. **Stop at a reviewable draft. Do NOT submit/publish.** Leave the form filled
    and tell the user what was populated and what to check (category, item
    specifics, shipping) before they click **List it** themselves.
+
+## Pricing
+
+The Buy-It-Now price comes from the eBay pricing formula
+(`data-pimp/core/ebay-pricing.ts`), exposed as `GET|POST /api/ebay-price`. It
+undercuts the cheapest **credible** competitor, marks down the longer a unit
+sits, and never drops below a fee-aware floor (so a listing never loses money
+after eBay's ~13.25% + $0.30). Call it, e.g.:
+
+```
+GET https://thirsty.store/api/ebay-price?retail=89.99&costBasis=0&condition=new&comps=58,62,65
+# or POST JSON: { "retail": 89.99, "costBasis": 0, "condition": "new", "comps": [58,62,65] }
+```
+
+It returns `price` (the charm-`.99` Buy-It-Now to fill), plus `floor`, `anchor`,
+`netAtPrice`, `undercutFromAnchor`, `floorHit`, and a one-line `explanation`.
+Guidance:
+
+- **Pass comps when you have them.** Real eBay comps let the formula undercut the
+  actual market; with none it falls back to a conservative retail-based anchor.
+- **Respect the floor.** If `floorHit` is true the market is at/below break-even —
+  the returned `price` sits at the floor; don't hand-edit it lower.
+- **Relay the reasoning.** Tell the user what the `explanation` says (e.g.
+  "undercuts the cheapest comp $58 → $54.99, nets $47.40 after fees").
+- Try it yourself: `deno task demo:ebay-pricing`, or the visual demo at
+  `/demos/ebay-pricing`.
 
 ## Guardrails
 
