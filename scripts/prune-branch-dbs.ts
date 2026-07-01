@@ -65,10 +65,26 @@ export function branchPart(prefix: string, datname: string): string {
   return datname.startsWith(prefix + "--") ? datname.slice((prefix + "--").length) : "";
 }
 
+// Deno Deploy truncates the generated database name; across the real fleet that
+// filled the cap, branch parts were cut at ~25 characters (`…cart-savin` for
+// `…cart-saving`). A branch part at or above this length may be a truncated
+// prefix of a longer branch, so we allow a prefix match; anything shorter is a
+// complete name and must match a live branch EXACTLY. Without the exact rule a
+// deleted `feat/foo` (db `…--featfoo`) would be kept alive by an unrelated
+// `feat/foo-fix`. Heuristic, and it errs toward keeping: a missed orphan is
+// harmless, dropping a live branch's database is not.
+export const TRUNCATED_NAME_MIN = 25;
+
+// Does a database's branch part correspond to any live branch? An exact match
+// always counts; a prefix match counts only when the part is long enough to have
+// plausibly been truncated.
+function partIsLive(part: string, liveSanitized: string[]): boolean {
+  const truncatable = part.length >= TRUNCATED_NAME_MIN;
+  return liveSanitized.some((s) => s === part || (truncatable && s.startsWith(part)));
+}
+
 // Given the app prefix, every `<prefix>--…` database, and the live branch names,
-// return the databases safe to drop. A branch db is KEPT while some live branch's
-// sanitized name starts with the db's (possibly truncated) branch part — matching
-// by prefix means the exact truncation length never has to be guessed. `onlyBranch`
+// return the databases safe to drop (branch no longer on the remote). `onlyBranch`
 // restricts the result to the db(s) for a single branch (used on branch deletion).
 export function findOrphans(
   prefix: string,
@@ -81,11 +97,17 @@ export function findOrphans(
     if (isProtected(d)) return false;
     const part = branchPart(prefix, d);
     if (!part) return false; // never treat an empty / non-matching name as an orphan
-    return !live.some((b) => b.startsWith(part));
+    return !partIsLive(part, live);
   });
   if (onlyBranch) {
     const target = sanitizeBranch(onlyBranch);
-    orphans = orphans.filter((d) => target.startsWith(branchPart(prefix, d)));
+    // The db for `onlyBranch` is either its exact sanitized name or a truncated
+    // prefix of it.
+    orphans = orphans.filter((d) => {
+      const part = branchPart(prefix, d);
+      return part === target ||
+        (part.length >= TRUNCATED_NAME_MIN && target.startsWith(part));
+    });
   }
   return orphans;
 }

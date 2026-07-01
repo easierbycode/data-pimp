@@ -59,6 +59,24 @@ Deno.test("findOrphans keeps live branches (incl. truncated names) and main", ()
   assertEquals(findOrphans(prefix, branchDbs, live), ["d7223c--claudeold-dead-branch"]);
 });
 
+Deno.test("findOrphans: a complete short name is an orphan even when a sibling extends it", () => {
+  // Regression for the prefix-match false negative: deleting feat/foo must drop
+  // `d7223c--featfoo` even though `feat/foo-fix` is still alive (its sanitized
+  // name, `featfoo-fix`, starts with `featfoo`). The name is short (< truncation
+  // length) so it requires an exact match, which no live branch provides.
+  assertEquals(
+    findOrphans("d7223c", ["d7223c--featfoo"], ["feat/foo-fix", "main"]),
+    ["d7223c--featfoo"],
+  );
+  // But a genuinely truncated db of a live branch is still kept.
+  assertEquals(
+    findOrphans("d7223c", ["d7223c--claudecheckout-cart-savin"], [
+      "claude/checkout-cart-saving-flow",
+    ]),
+    [],
+  );
+});
+
 Deno.test("findOrphans with --branch scopes to one branch's db", () => {
   const prefix = "d7223c";
   const branchDbs = [
