@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "thirsty-samples": {
+      "command": "deno",
+      "args": [
+        "run",
+        "-A",
+        "--config",
+        "mcp/thirsty-samples/deno.json",
+        "mcp/thirsty-samples/server.ts"
+      ],
+      "env": {
+        "THIRSTY_API_URL": "https://thirsty.store"
+      }
+    }
+  }
+}

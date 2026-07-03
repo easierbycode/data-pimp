@@ -56,6 +56,54 @@ export type SampleValuation = {
   lastUpdated: string | null;
 };
 
+// A persisted sample-valuation INSTANCE keeps every raw input needed to recompute
+// the valuation later under changed variables (add/remove a product, change a
+// product's resale or affiliate rate). Stored to Graylog as sample_valuation_json
+// keyed by valuation_id (+revision) so a scenario can be re-queried and re-run.
+export type ValuationItem = {
+  productId: string;
+  name?: string;
+  category?: string;
+  sampleCount: number; // units of this product sampled
+  unitRetail: number; // per-unit retail $
+  retailValue: number; // total retail $ for the line (sampleCount * unitRetail unless overridden)
+  cost?: number; // total cost paid for the line (free samples = 0)
+  resaleRate?: number; // product-specific resale fraction (else params.defaultResaleRate)
+  affiliateRate?: number; // commission fraction if resold via an affiliate link
+  affiliateLink?: string;
+};
+export type ValuationParams = {
+  defaultResaleRate: number;
+  resaleRates: number[]; // the [10%, 20%, 30%] outputs, configurable
+  maintainableCap: number;
+  currency: string;
+};
+export type ValuationTotals = {
+  totalSamples: number;
+  productsTracked: number;
+  totalRetailValue: number;
+  totalCost: number;
+  averageSampleValue: number;
+  maintainableMonthlyValue: number;
+  resale10Value: number;
+  resale20Value: number;
+  resale30Value: number;
+  resaleValue: number; // at the (per-item or default) resale rate
+  affiliateValue: number;
+  netValue: number; // resaleValue - totalCost
+};
+export type ValuationInstance = {
+  valuationId: string;
+  revision: number;
+  recordedAt: string;
+  recomputedFrom?: string;
+  note?: string;
+  source?: string;
+  params: ValuationParams;
+  items: ValuationItem[];
+  totals: ValuationTotals;
+};
+
 type GraylogTabularResponse = {
   schema?: Array<{ field?: string }>;
   datarows?: unknown[][];
@@ -227,6 +275,348 @@ export async function fetchSampleEditRecords(
       .filter(isRecord);
   } catch {
     return [];
+  }
+}
+
+// Distinct creator handles seen anywhere in Graylog. Every scraper source and
+// our own resale events (sample_sold_json) carry a `creator` field, so a single
+// `creator:*` sweep enumerates them. Backs the sample-lifecycle skill's live
+// attribution list (the user opted to derive creators from Graylog rather than
+// maintain a static allow-list) and mirrors graylog-query's `--terms creator`.
+// Widened to ~5y because creator activity is bursty and a 30d window routinely
+// misses real handles. Real @-handles sort first; bare agency labels (which
+// affiliate-export mirrors into `creator`) follow.
+export async function fetchKnownCreators(limit = 1000): Promise<string[]> {
+  const config = graylogConfigFromEnv();
+  if (!config) return [];
+
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 5,
+    };
+    const messages = await searchGraylog(
+      wide,
+      "creator:*",
+      Math.max(200, Math.min(safeLimit, 1000)),
+      ["timestamp", "creator"],
+    );
+    const seen = new Set<string>();
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (creator) seen.add(creator);
+    }
+    return [...seen].sort((a, b) => {
+      const aRank = a.startsWith("@") ? 0 : 1;
+      const bRank = b.startsWith("@") ? 0 : 1;
+      return aRank - bRank || a.localeCompare(b);
+    });
+  } catch {
+    return [];
+  }
+}
+
+// Distinct creators who *ordered* a given product, for the assigned-creator
+// dropdown. The only Graylog source carrying both a top-level `product_id` and a
+// `creator` on one message is tiktok-affiliate-export, so that's the basis.
+// (Caveat: affiliate-export's `creator` is mirrored from the AGENCY label, not a
+// real @handle — callers should treat these as agency-derived. The order-list
+// scrape carries neither creator nor product_id, so it can't contribute — the
+// known order-received gap.) Mirrors fetchKnownCreators; product_id matched on
+// both analyzed + .keyword like the creator convention.
+export async function fetchCreatorsForProduct(
+  productId: string,
+  limit = 1000,
+): Promise<string[]> {
+  const config = graylogConfigFromEnv();
+  const pid = String(productId || "").trim();
+  if (!config || !pid) return [];
+
+  const escaped = pid.replace(/"/g, '\\"');
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 5,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `source:tiktok-affiliate-export AND (product_id:"${escaped}" OR product_id.keyword:"${escaped}")`,
+      Math.max(200, Math.min(safeLimit, 1000)),
+      ["timestamp", "creator", "product_id"],
+    );
+    const seen = new Set<string>();
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (creator) seen.add(creator);
+    }
+    return [...seen].sort((a, b) => {
+      const aRank = a.startsWith("@") ? 0 : 1;
+      const bRank = b.startsWith("@") ? 0 : 1;
+      return aRank - bRank || a.localeCompare(b);
+    });
+  } catch {
+    return [];
+  }
+}
+
+// Buyer/creator display-names who have an ORDER for a product, matched by product
+// NAME. Order-detail scrapes (source:tiktok-bookmarklet-orders) now stamp
+// `_creator` (a display name — see extension-seller/scrape-order.js) and carry
+// `_default_product` (the product name) but NO numeric product_id, so this is a
+// fuzzy name match — distinct from fetchCreatorsForProduct's affiliate-export id
+// match. Values are display-name form (not @handles); label them as such.
+export async function fetchOrderCreatorsByName(
+  productName: string,
+  limit = 1000,
+): Promise<string[]> {
+  const config = graylogConfigFromEnv();
+  const name = String(productName || "").trim();
+  if (!config || !name) return [];
+
+  const escaped = name.replace(/"/g, '\\"');
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 2,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `source:tiktok-bookmarklet-orders AND creator:* AND default_product:"${escaped}"`,
+      Math.max(200, Math.min(safeLimit, 1000)),
+      ["timestamp", "creator", "default_product"],
+    );
+    const seen = new Set<string>();
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (creator) seen.add(creator);
+    }
+    return [...seen].sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
+// Resolve which creator a physical sample was assigned to, from its assignment
+// history (sample_assignment_json events emitted by recordSampleImport /
+// recordSampleAssignment, keyed by sample_id + product_id + creator). Used to
+// attribute resale revenue when the caller (the tracker dashboard) can't supply
+// a creator — checked_out_to is cleared on check-in, but the assignment event
+// is append-only. Prefers an exact sample_id match, then the most recent.
+export async function fetchAssignedCreatorForSample(
+  sampleId?: string | number,
+  productId?: string,
+): Promise<string | null> {
+  const config = graylogConfigFromEnv();
+  const sid = String(sampleId ?? "").trim();
+  const pid = String(productId ?? "").trim();
+  if (!config || (!sid && !pid)) return null;
+
+  const idClauses: string[] = [];
+  if (sid) idClauses.push(`sample_id:"${sid.replace(/"/g, '\\"')}"`);
+  if (pid) idClauses.push(`product_id:"${pid.replace(/"/g, '\\"')}"`);
+  const idClause = idClauses.length > 1
+    ? `(${idClauses.join(" OR ")})`
+    : idClauses[0];
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 2,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `creator:* AND sample_assignment_json:* AND ${idClause}`,
+      200,
+      ["timestamp", "creator", "sample_id", "product_id"],
+    );
+    let best: { creator: string; ts: string; sidMatch: boolean } | null = null;
+    for (const message of messages) {
+      const creator = typeof message.creator === "string"
+        ? message.creator.trim()
+        : "";
+      if (!creator) continue;
+      const ts = typeof message.timestamp === "string" ? message.timestamp : "";
+      const sidMatch = !!sid && String(message.sample_id ?? "") === sid;
+      // Prefer an exact sample_id match; among equals, the most recent timestamp.
+      if (
+        !best ||
+        (sidMatch && !best.sidMatch) ||
+        (sidMatch === best.sidMatch && ts > best.ts)
+      ) {
+        best = { creator, ts, sidMatch };
+      }
+    }
+    return best ? best.creator : null;
+  } catch {
+    return null;
+  }
+}
+
+// Has this sample already had a tracker-resale revenue event written? Used as an
+// idempotency backstop in recordSampleSold's graylogOnly mode, which skips the
+// double-sell guard (the caller owns Postgres state). GELF is append-only and
+// gmv_num is summed client-side, so a re-emit would double-count a creator's
+// resale GMV. On any error we return false (don't block — best-effort; the
+// caller's UI already gates re-fire).
+export async function hasResaleEventForSample(
+  sampleId?: string | number,
+): Promise<boolean> {
+  const config = graylogConfigFromEnv();
+  const sid = String(sampleId ?? "").trim();
+  if (!config || !sid) return false;
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365 * 2,
+    };
+    const messages = await searchGraylog(
+      wide,
+      `sample_sold_json:* AND sample_source:"tracker-resale" AND sample_id:"${
+        sid.replace(/"/g, '\\"')
+      }"`,
+      1,
+      ["timestamp", "sample_id"],
+    );
+    return messages.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Context for the one-click E2E demo (Demos/E2E): the latest creator to post and
+// a few of their recent products, so the demo runs the lifecycle on real data.
+// Priority: latest order_list creator + their last 3 ordered product_ids →
+// latest resale (sold) creator + their sold product_ids → any known creator +
+// the default id → a static default. searchGraylog sorts timestamp Descending,
+// so index 0 is the most recent. Always returns something usable.
+export async function fetchE2EContext(
+  defaultId: string,
+): Promise<{ creator: string; ids: string[]; source: string }> {
+  const fallback = { creator: "@e2e-demo", ids: [defaultId], source: "default" };
+  const config = graylogConfigFromEnv();
+  if (!config) {
+    return { ...fallback, source: "default (graylog unconfigured)" };
+  }
+  const wide: GraylogConfig = {
+    ...config,
+    rangeSeconds: 60 * 60 * 24 * 365 * 2,
+  };
+
+  // The most recent up-to-3 distinct product_ids belonging to `creator`.
+  const recentIdsFor = (
+    messages: Record<string, unknown>[],
+    creator: string,
+  ): string[] => {
+    const ids: string[] = [];
+    for (const m of messages) {
+      if (String(m.creator ?? "").trim() !== creator) continue;
+      const pid = String(m.product_id ?? "").trim();
+      if (pid && !ids.includes(pid)) ids.push(pid);
+      if (ids.length >= 3) break;
+    }
+    return ids;
+  };
+
+  try {
+    // "Latest creator to post" = most recent order_list scrape.
+    const orders = await searchGraylog(
+      wide,
+      `source:tiktok-bookmarklet-orders AND creator:*`,
+      100,
+      ["timestamp", "creator", "product_id"],
+    );
+    if (orders.length) {
+      const creator = String(orders[0].creator ?? "").trim();
+      if (creator) {
+        const ids = recentIdsFor(orders, creator);
+        if (ids.length) {
+          return { creator, ids, source: "graylog: latest creator order_list items" };
+        }
+      }
+    }
+    // Fallback: latest resale (sold) creator + their sold items.
+    const sold = await searchGraylog(
+      wide,
+      `sample_sold_json:* AND creator:*`,
+      100,
+      ["timestamp", "creator", "product_id"],
+    );
+    if (sold.length) {
+      const creator = String(sold[0].creator ?? "").trim();
+      if (creator) {
+        const ids = recentIdsFor(sold, creator);
+        if (ids.length) {
+          return { creator, ids, source: "graylog: latest creator sold items" };
+        }
+        return {
+          creator,
+          ids: [defaultId],
+          source: "graylog: latest sold creator + default id",
+        };
+      }
+    }
+    // Fallback: any known creator + the default product.
+    const known = await fetchKnownCreators(1);
+    if (known.length) {
+      return {
+        creator: known[0],
+        ids: [defaultId],
+        source: "graylog: known creator + default id",
+      };
+    }
+  } catch {
+    return { ...fallback, source: "default (graylog error)" };
+  }
+  return fallback;
+}
+
+// Scheduled-listing intents (sample_schedule_json) paired with their fired
+// markers (sample_schedule_done_json), for the auto-list cron. 1-year window —
+// schedules are short-lived. Errors degrade to empty so the cron just no-ops.
+export async function fetchScheduleRecords(): Promise<
+  { scheduled: Record<string, unknown>[]; done: Set<string> }
+> {
+  const config = graylogConfigFromEnv();
+  if (!config) return { scheduled: [], done: new Set() };
+
+  try {
+    const wide: GraylogConfig = {
+      ...config,
+      rangeSeconds: 60 * 60 * 24 * 365,
+    };
+    const sched = await searchGraylog(wide, "sample_schedule_json:*", 500, [
+      "timestamp",
+      "sample_schedule_json",
+    ]);
+    const doneMsgs = await searchGraylog(
+      wide,
+      "sample_schedule_done_json:*",
+      500,
+      ["timestamp", "sample_schedule_done_json"],
+    );
+    const scheduled = sched
+      .map((m) => parseJsonValue(m.sample_schedule_json))
+      .filter(isRecord);
+    const done = new Set<string>();
+    for (const m of doneMsgs) {
+      const rec = parseJsonValue(m.sample_schedule_done_json);
+      if (isRecord(rec) && rec.scheduleId) done.add(String(rec.scheduleId));
+    }
+    return { scheduled, done };
+  } catch {
+    return { scheduled: [], done: new Set() };
   }
 }
 
@@ -408,6 +798,279 @@ export async function fetchSampleValuation(): Promise<SampleValuation> {
     resale20Value: totalRetailValue * 0.2,
     resale30Value: totalRetailValue * 0.3,
     lastUpdated,
+  };
+}
+
+const DEFAULT_VALUATION_PARAMS: ValuationParams = {
+  defaultResaleRate: 0.10,
+  resaleRates: [0.10, 0.20, 0.30],
+  maintainableCap: 5000,
+  currency: "USD",
+};
+function vnum(v: unknown, d = 0): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+}
+function normalizeValuationItem(it: ValuationItem): ValuationItem {
+  const sampleCount = vnum(it.sampleCount, 1) || 1;
+  const unitRetail = vnum(it.unitRetail, 0);
+  const retailValue = it.retailValue != null ? vnum(it.retailValue) : sampleCount * unitRetail;
+  return {
+    productId: String(it.productId || "").trim(),
+    name: it.name,
+    category: it.category,
+    sampleCount,
+    unitRetail: unitRetail || (sampleCount ? retailValue / sampleCount : 0),
+    retailValue,
+    cost: it.cost != null ? vnum(it.cost) : 0,
+    resaleRate: it.resaleRate != null ? vnum(it.resaleRate) : undefined,
+    affiliateRate: it.affiliateRate != null ? vnum(it.affiliateRate) : undefined,
+    affiliateLink: it.affiliateLink,
+  };
+}
+
+// Pure: derive every valuation total from the raw line items + params. This is
+// the recompute engine — change a per-item resale/affiliate rate, add or remove a
+// product, or tweak params, and the totals follow with NO re-scrape. The headline
+// fields (totalSamples/totalRetailValue/resale10|20|30) match fetchSampleValuation
+// so a recorded instance reproduces the current output; the rest are additive.
+export function computeValuationTotals(
+  items: ValuationItem[],
+  params: ValuationParams,
+): ValuationTotals {
+  const rates = params.resaleRates && params.resaleRates.length >= 3
+    ? params.resaleRates
+    : [0.10, 0.20, 0.30];
+  let totalSamples = 0, totalRetailValue = 0, totalCost = 0, resaleValue = 0, affiliateValue = 0;
+  for (const raw of items) {
+    const it = normalizeValuationItem(raw);
+    const retail = it.retailValue;
+    const rRate = it.resaleRate != null ? it.resaleRate : params.defaultResaleRate;
+    totalSamples += it.sampleCount;
+    totalRetailValue += retail;
+    totalCost += vnum(it.cost);
+    resaleValue += retail * rRate;
+    affiliateValue += retail * vnum(it.affiliateRate);
+  }
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return {
+    totalSamples,
+    productsTracked: items.length,
+    totalRetailValue: r2(totalRetailValue),
+    totalCost: r2(totalCost),
+    averageSampleValue: totalSamples ? r2(totalRetailValue / totalSamples) : 0,
+    maintainableMonthlyValue: r2(Math.min(totalRetailValue, params.maintainableCap)),
+    resale10Value: r2(totalRetailValue * rates[0]),
+    resale20Value: r2(totalRetailValue * rates[1]),
+    resale30Value: r2(totalRetailValue * rates[2]),
+    resaleValue: r2(resaleValue),
+    affiliateValue: r2(affiliateValue),
+    netValue: r2(resaleValue - totalCost),
+  };
+}
+
+async function emitValuation(inst: ValuationInstance): Promise<boolean> {
+  return await sendGelfMessage(
+    `thirsty sample valuation ${inst.valuationId} rev${inst.revision}: $${
+      inst.totals.totalRetailValue.toFixed(2)
+    } retail`,
+    {
+      sample_valuation_json: JSON.stringify(inst),
+      valuation_id: inst.valuationId,
+      valuation_revision_num: inst.revision,
+      recomputed_from: inst.recomputedFrom || undefined,
+      sample_count_num: inst.totals.totalSamples,
+      products_tracked_num: inst.totals.productsTracked,
+      retail_value_num: inst.totals.totalRetailValue,
+      resale_value_num: inst.totals.resaleValue,
+      resale10_num: inst.totals.resale10Value,
+      affiliate_value_num: inst.totals.affiliateValue,
+      cost_num: inst.totals.totalCost,
+      net_num: inst.totals.netValue,
+      currency: inst.params.currency,
+      sample_source: "valuation",
+    },
+  );
+}
+
+export type RecordValuationInput = {
+  valuationId?: string;
+  items?: ValuationItem[];
+  params?: Partial<ValuationParams>;
+  note?: string;
+  source?: string;
+};
+
+// Snapshot a sample valuation to Graylog with ALL raw inputs (per-product line
+// items + params + computed totals) under a valuation_id, revision 0. Without
+// `items` it snapshots the live product-derived valuation (same numbers as
+// fetchSampleValuation). The point is recomputability later — see recompute.
+export async function recordSampleValuation(
+  input: RecordValuationInput = {},
+): Promise<
+  {
+    ok: boolean;
+    valuationId: string;
+    revision: number;
+    itemCount: number;
+    totals: ValuationTotals;
+    graylog: boolean;
+    message: string;
+  }
+> {
+  const params: ValuationParams = { ...DEFAULT_VALUATION_PARAMS, ...(input.params || {}) };
+  let items: ValuationItem[];
+  if (Array.isArray(input.items)) {
+    items = input.items.map(normalizeValuationItem);
+  } else {
+    const products = await fetchRecentProducts(500);
+    items = products.map((p) =>
+      normalizeValuationItem({
+        productId: String(p.productId),
+        name: p.name,
+        category: p.category,
+        sampleCount: vnum(p.sampleCount, 0),
+        unitRetail: vnum(p.min_sku_original_price, 0),
+        retailValue: vnum(
+          p.estimatedRetailValue,
+          vnum(p.sampleCount) * vnum(p.min_sku_original_price),
+        ),
+        cost: 0,
+      })
+    );
+  }
+  const totals = computeValuationTotals(items, params);
+  const valuationId = String(input.valuationId || "").trim() || `val-${crypto.randomUUID()}`;
+  const graylog = await emitValuation({
+    valuationId,
+    revision: 0,
+    recordedAt: new Date().toISOString(),
+    note: input.note,
+    source: input.source || "snapshot",
+    params,
+    items,
+    totals,
+  });
+  return {
+    ok: graylog,
+    valuationId,
+    revision: 0,
+    itemCount: items.length,
+    totals,
+    graylog,
+    message: `Recorded valuation ${valuationId}: ${items.length} products, $${
+      totals.totalRetailValue.toFixed(2)
+    } retail across ${totals.totalSamples} samples${graylog ? "" : " (Graylog write FAILED)"}.`,
+  };
+}
+
+// Latest stored revision of a valuation instance (its raw items + params + totals).
+export async function fetchSampleValuationInstance(
+  valuationId: string,
+): Promise<ValuationInstance | null> {
+  const config = graylogConfigFromEnv();
+  const id = String(valuationId || "").trim();
+  if (!config || !id) return null;
+  try {
+    const wide: GraylogConfig = { ...config, rangeSeconds: 60 * 60 * 24 * 365 * 5 };
+    const msgs = await searchGraylog(
+      wide,
+      `sample_valuation_json:* AND valuation_id:"${id.replace(/"/g, '\\"')}"`,
+      200,
+      ["timestamp", "valuation_id", "valuation_revision_num", "sample_valuation_json"],
+    );
+    let best: ValuationInstance | null = null;
+    for (const m of msgs) {
+      const rec = parseJsonValue(m.sample_valuation_json);
+      if (!isRecord(rec)) continue;
+      const inst = rec as unknown as ValuationInstance;
+      if (!best || vnum(inst.revision) > vnum(best.revision)) best = inst;
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
+export type RecomputeOverrides = {
+  addItems?: ValuationItem[];
+  updateItems?: Array<Partial<ValuationItem> & { productId: string }>;
+  removeProductIds?: string[];
+  params?: Partial<ValuationParams>;
+  persist?: boolean; // default true → save the new scenario as a queryable revision
+  note?: string;
+};
+
+// Re-run a stored valuation with changed variables — add/update/remove products,
+// change a product's resale or affiliate rate, or tweak params — and get base vs
+// recomputed totals. By default persists the result as a new revision under the
+// same valuation_id (recomputedFrom links it), so every scenario is itself stored
+// and queryable. Pass persist:false for a non-destructive preview.
+export async function recomputeSampleValuation(
+  valuationId: string,
+  overrides: RecomputeOverrides = {},
+): Promise<
+  | {
+    ok: true;
+    valuationId: string;
+    revision: number;
+    base: ValuationTotals;
+    totals: ValuationTotals;
+    itemCount: number;
+    graylog: boolean;
+    message: string;
+  }
+  | { ok: false; error: string }
+> {
+  const base = await fetchSampleValuationInstance(valuationId);
+  if (!base) {
+    return { ok: false, error: `No stored valuation instance for valuation_id "${valuationId}"` };
+  }
+  const remove = new Set((overrides.removeProductIds || []).map((s) => String(s)));
+  let items = base.items.filter((it) => !remove.has(String(it.productId)));
+  if (overrides.updateItems && overrides.updateItems.length) {
+    const byId = new Map(items.map((it) => [String(it.productId), { ...it }]));
+    for (const u of overrides.updateItems) {
+      const cur = byId.get(String(u.productId));
+      if (cur) byId.set(String(u.productId), normalizeValuationItem({ ...cur, ...u }));
+    }
+    items = [...byId.values()];
+  }
+  if (overrides.addItems && overrides.addItems.length) {
+    items = items.concat(overrides.addItems.map(normalizeValuationItem));
+  }
+  const params: ValuationParams = { ...base.params, ...(overrides.params || {}) };
+  const totals = computeValuationTotals(items, params);
+  const revision = vnum(base.revision) + 1;
+  let graylog = false;
+  if (overrides.persist !== false) {
+    graylog = await emitValuation({
+      valuationId: base.valuationId,
+      revision,
+      recordedAt: new Date().toISOString(),
+      recomputedFrom: `${base.valuationId}@rev${base.revision}`,
+      note: overrides.note,
+      source: "recompute",
+      params,
+      items,
+      totals,
+    });
+  }
+  return {
+    ok: true,
+    valuationId: base.valuationId,
+    revision,
+    base: base.totals,
+    totals,
+    itemCount: items.length,
+    graylog,
+    message: `Recomputed valuation ${base.valuationId} → rev${revision}: retail $${
+      base.totals.totalRetailValue.toFixed(2)
+    } → $${totals.totalRetailValue.toFixed(2)}, resale $${
+      base.totals.resaleValue.toFixed(2)
+    } → $${totals.resaleValue.toFixed(2)}${
+      overrides.persist === false ? " (preview — not saved)" : ""
+    }.`,
   };
 }
 

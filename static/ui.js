@@ -9,6 +9,22 @@ const defaultProductId = new URLSearchParams(location.search).get("product") ||
 
 let currentProductId = "";
 
+// The price-queue summary is a two-pill toggle between the unpriced backlog
+// (default) and the rows whose prices have been recovered. loadUnpricedSamples()
+// fetches the full set once (see SAMPLE_LIMIT) and caches it, so flipping views
+// just re-filters the cached list -- no refetch.
+let sampleView = "unpriced";
+let lastSampleData = null;
+
+// Fetch the whole set in one shot so both views are complete. The backend keeps
+// every priced (edited) row in the page and fills the rest with the unpriced
+// backlog up to this limit; with priced rows able to outnumber a small limit,
+// anything lower would starve the unpriced slice. The product universe is capped
+// server-side (~1000), so this returns everything matched. Declared up here (not
+// beside loadUnpricedSamples) because that function runs during module init,
+// before a const lower in the file would leave its temporal dead zone.
+const SAMPLE_LIMIT = "1000";
+
 // Launch clean: never replay a remembered/browser-restored search, and put the
 // cursor in the search box so the user can search or scan immediately. The
 // product details stay hidden until a search/scan actually loads a product.
@@ -36,6 +52,20 @@ function setMode(mode) {
 modeSearchBtn.addEventListener("click", () => setMode("search"));
 modeIntakeBtn.addEventListener("click", () => setMode("intake"));
 
+// Collapsible panels: clicking a section header (or its chevron) slides the
+// body open/closed. The chevron points down when open, right when collapsed.
+for (const head of document.querySelectorAll("section.panel > .section-head")) {
+  const panel = head.closest("section.panel");
+  const toggle = head.querySelector(".panel-toggle");
+  if (!panel || !toggle) continue;
+  head.addEventListener("click", (event) => {
+    // Don't hijack clicks on real controls that might live in a header.
+    if (event.target.closest("a, input, select, textarea")) return;
+    const collapsed = panel.classList.toggle("collapsed");
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+  });
+}
+
 document.getElementById("global-search").addEventListener(
   "submit",
   (event) => {
@@ -61,6 +91,20 @@ document.getElementById("sample-intake").addEventListener("submit", (event) => {
 document.getElementById("unpriced-refresh").addEventListener("click", () => {
   loadUnpricedSamples();
 });
+
+// Flip between the unpriced backlog and the recovered (priced) list. Only the
+// inactive pill is clickable (the active one has pointer-events: none), so a
+// click always names the view to switch to; re-render from cached data.
+document.getElementById("sample-view-toggle").addEventListener(
+  "click",
+  (event) => {
+    const pill = event.target.closest("button[data-view]");
+    if (!pill || !lastSampleData) return;
+    if (pill.dataset.view === sampleView) return;
+    sampleView = pill.dataset.view;
+    renderSamples();
+  },
+);
 
 document.getElementById("unpriced-rows").addEventListener(
   "click",
@@ -134,43 +178,57 @@ async function loadProduct(productId) {
 }
 
 async function loadUnpricedSamples() {
-  const body = document.getElementById("unpriced-rows");
-  const status = document.getElementById("unpriced-status");
-  const summary = document.getElementById("unpriced-summary");
   const query = document.getElementById("global-query").value.trim();
-  const params = new URLSearchParams({ limit: "150" });
+  const params = new URLSearchParams({ limit: SAMPLE_LIMIT });
 
   if (query) params.set("query", query);
 
-  status.textContent = "Loading unpriced samples.";
-  summary.textContent = "Loading";
-
   try {
-    const data = await json(`/api/unpriced-samples?${params}`);
-    summary.textContent = `${count(data.unpricedCount)} unpriced | ${
-      count(data.pricedCount)
-    } priced`;
-    status.textContent = data.total
-      ? `${count(data.items.length)} of ${count(data.total)} sample rows shown.`
-      : "No unpriced samples matched this query.";
-    body.innerHTML = data.items.length
-      ? data.items.map(unpricedRowHtml).join("")
-      : `<div class="empty-row">No unpriced samples found.</div>`;
+    lastSampleData = await json(`/api/unpriced-samples?${params}`);
+    renderSamples();
   } catch (error) {
-    status.textContent = error.message;
-    summary.textContent = "Unavailable";
-    body.innerHTML = `<div class="empty-row">${
-      escapeHtml(error.message)
-    }</div>`;
+    lastSampleData = null;
+    document.getElementById("unpriced-rows").innerHTML =
+      `<div class="empty-row">${escapeHtml(error.message)}</div>`;
   }
+}
+
+// Render the cached sample list for the active view. The response carries every
+// matched row, so each view is a filter on it; both pills always show their
+// count, the active one is highlighted, and the heading names the active view.
+function renderSamples() {
+  const data = lastSampleData;
+  if (!data) return;
+
+  const body = document.getElementById("unpriced-rows");
+  const unpricedPill = document.getElementById("view-unpriced");
+  const pricedPill = document.getElementById("view-priced");
+  const title = document.getElementById("queue-title");
+
+  const priced = sampleView === "priced";
+  const label = priced ? "priced" : "unpriced";
+
+  // Both pills always show their live count; only the inactive one is clickable.
+  unpricedPill.textContent = `${count(data.unpricedCount)} unpriced`;
+  pricedPill.textContent = `${count(data.pricedCount)} priced`;
+  unpricedPill.classList.toggle("is-active", !priced);
+  pricedPill.classList.toggle("is-active", priced);
+  unpricedPill.setAttribute("aria-pressed", String(!priced));
+  pricedPill.setAttribute("aria-pressed", String(priced));
+
+  title.textContent = priced ? "Priced Samples" : "Unpriced Samples";
+
+  const rows = data.items.filter((sample) => sample.priced === priced);
+
+  body.innerHTML = rows.length
+    ? rows.map(unpricedRowHtml).join("")
+    : `<div class="empty-row">No ${label} samples found.</div>`;
 }
 
 async function saveUnpricedSample(row) {
   const productId = row.dataset.productId;
-  const status = document.getElementById("unpriced-status");
 
   setRowBusy(row, true);
-  status.textContent = `Saving ${productId}.`;
 
   try {
     await json(`/api/unpriced-samples/${encodeURIComponent(productId)}`, {
@@ -181,10 +239,8 @@ async function saveUnpricedSample(row) {
         notes: row.querySelector(".notes-input").value,
       }),
     });
-    status.textContent = `Saved ${productId}.`;
     await refreshAfterPriceChange(productId);
   } catch (error) {
-    status.textContent = error.message;
     showNotice(error.message);
   } finally {
     setRowBusy(row, false);
@@ -193,10 +249,8 @@ async function saveUnpricedSample(row) {
 
 async function fetchUnpricedPrice(row) {
   const productId = row.dataset.productId;
-  const status = document.getElementById("unpriced-status");
 
   setRowBusy(row, true);
-  status.textContent = `Looking up the live price for ${productId}.`;
 
   let fetched;
   try {
@@ -205,7 +259,6 @@ async function fetchUnpricedPrice(row) {
       { method: "POST" },
     );
   } catch (error) {
-    status.textContent = error.message;
     showNotice(error.message);
     setRowBusy(row, false);
     return;
@@ -214,14 +267,12 @@ async function fetchUnpricedPrice(row) {
   // The lookup only proposes a price -- preview it in the row, then offer to save.
   const priceInput = row.querySelector(".price-input");
   if (priceInput) priceInput.value = priceInputValue(fetched.price);
-  status.textContent = `Found ${money(fetched.price)} for ${fetched.name}.`;
 
   if (
     !confirm(
       `Found ${money(fetched.price)} for ${fetched.name}. Save this price?`,
     )
   ) {
-    status.textContent = `Discarded looked-up price for ${productId}.`;
     await loadUnpricedSamples();
     setRowBusy(row, false);
     return;
@@ -239,10 +290,8 @@ async function fetchUnpricedPrice(row) {
         fetchedAt: fetched.fetchedAt,
       }),
     });
-    status.textContent = `Saved ${money(fetched.price)} for ${productId}.`;
     await refreshAfterPriceChange(productId);
   } catch (error) {
-    status.textContent = error.message;
     showNotice(error.message);
   } finally {
     setRowBusy(row, false);
@@ -358,22 +407,30 @@ async function loadKiosks() {
   const kiosks = await json("/api/kiosks");
   const root = document.getElementById("kiosks");
 
+  // No inline onclick here: kiosk/scanner ids are client-supplied (the scan
+  // relay hello), and JS-string escaping inside an HTML attribute is exactly
+  // the double-encoding trap that invites XSS. The id rides a data attribute
+  // (escapeAttr is sufficient there) and the handler binds via DOM API.
   root.innerHTML = kiosks.length
     ? kiosks.map((kiosk) => `
     <article class="kiosk">
-      <strong>${escapeHtml(kiosk.id)}</strong>
+      <strong>${escapeHtml(kiosk.label || kiosk.id)}</strong>
+      <p class="kiosk-kind ${kiosk.kind === "scanner" ? "scanner" : ""}">${
+      kiosk.kind === "scanner" ? "Scanner" : "Kiosk"
+    }</p>
       <p class="status ${kiosk.online ? "" : "off"}">${
       kiosk.disabled ? "DISABLED" : kiosk.online ? "ONLINE" : "OFFLINE"
     }</p>
       <p class="muted">Last seen ${
       kiosk.lastSeen ? new Date(kiosk.lastSeen).toLocaleString() : "never"
     }</p>
-      <button class="small ghost" onclick="disableKiosk('${
-      escapeAttr(kiosk.id)
-    }')">Disable</button>
+      <button class="small ghost" data-kiosk-id="${escapeAttr(kiosk.id)}">Disable</button>
     </article>
   `).join("")
     : `<p class="muted">No kiosk heartbeats yet.</p>`;
+  for (const btn of root.querySelectorAll("button[data-kiosk-id]")) {
+    btn.addEventListener("click", () => disableKiosk(btn.dataset.kioskId));
+  }
 }
 
 window.disableKiosk = async (id) => {

@@ -1,0 +1,57 @@
+name: Prune orphaned branch databases
+
+# Deno Deploy provisions an isolated `<app>--<branch>` Postgres database for
+# every git branch it builds and never deletes them, which quietly fills Neon's
+# storage cap (https://docs.deno.com/deploy/reference/databases/). This drops the
+# databases whose branch no longer exists on the remote; it never touches the
+# `-production` / `-preview` / `-local` / `--main` timelines or neondb/postgres.
+# Logic + safety rails live in scripts/prune-branch-dbs.ts.
+#
+# Requires repo secret PRUNE_DATABASE_URL: a DIRECT (non-pooler) connection
+# string to a keeper database of this app (e.g. <app>-production).
+
+on:
+  delete: {} # a branch was deleted -> drop just that branch's database
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC -> sweep any stragglers
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Actually drop orphans (false = dry-run report only)"
+        type: boolean
+        default: false
+
+concurrency: prune-branch-dbs # never let two prunes race
+
+jobs:
+  prune:
+    # On a delete event only act for branch deletions, not tags.
+    if: ${{ github.event_name != 'delete' || github.event.ref_type == 'branch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Prune
+        # Values are passed through env (not interpolated into the shell) so a
+        # crafted branch name can't inject commands.
+        env:
+          PRUNE_DATABASE_URL: ${{ secrets.PRUNE_DATABASE_URL }}
+          EVENT_NAME: ${{ github.event_name }}
+          DELETED_REF: ${{ github.event.ref }}
+          APPLY_INPUT: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            delete)
+              deno run -A scripts/prune-branch-dbs.ts --apply --branch "$DELETED_REF" ;;
+            schedule)
+              deno run -A scripts/prune-branch-dbs.ts --apply ;;
+            *)
+              if [ "$APPLY_INPUT" = "true" ]; then
+                deno run -A scripts/prune-branch-dbs.ts --apply
+              else
+                deno run -A scripts/prune-branch-dbs.ts
+              fi ;;
+          esac

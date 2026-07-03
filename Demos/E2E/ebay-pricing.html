@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>eBay Pricing Formula · Demos/E2E</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070a12; --card: #11151f; --border: #1d2433; --fg: #eef1f6; --muted: #9aa6bd;
+      --orange: #fb923c; --green: #22c55e; --sky: #38bdf8; --gold: #ffe27a; --red: #f87171;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(120% 120% at 80% -10%, #131a2b, var(--bg) 60%); color: var(--fg);
+      padding: 22px 20px 40px;
+    }
+    a { color: var(--sky); }
+    .head { max-width: 1080px; margin: 0 auto 18px; }
+    .head h1 { margin: 0 0 4px; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+    .head .logo { font-weight: 800; letter-spacing: -.5px; }
+    .head .logo .e{color:#e53238}.head .logo .b{color:#0064d2}.head .logo .a{color:#f5af02}.head .logo .y{color:#86b817}
+    .head p { margin: 0; color: var(--muted); font-size: 13px; }
+    .status { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .status b { color: var(--gold); }
+
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+    @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+    .card h2 { margin: 0 0 14px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+
+    .fld { margin-bottom: 15px; }
+    .fld label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .fld label b { color: var(--fg); font-variant-numeric: tabular-nums; }
+    .fld input[type=range] { width: 100%; accent-color: var(--orange); }
+    .fld input[type=text], .fld input[type=number], .fld select {
+      width: 100%; background: #0c111b; border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px; color: var(--fg); font-size: 13px;
+    }
+    .seg { display: flex; gap: 6px; }
+    .seg button { flex: 1; background: #0c111b; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; padding: 8px; font-size: 13px; cursor: pointer; }
+    .seg button.on { border-color: var(--orange); color: var(--fg); background: #17110b; }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .presets button { background: #0c111b; border: 1px solid var(--border); color: var(--sky);
+      border-radius: 999px; padding: 5px 11px; font-size: 12px; cursor: pointer; }
+    .presets button:hover { border-color: var(--sky); }
+
+    /* headline result */
+    .price { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+    .price .big { font-size: 46px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 24px rgba(255,210,80,.25); }
+    .price .pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid; }
+    .pill.floor { color: var(--red); border-color: #7d2f2f; }
+    .pill.warn { color: var(--orange); border-color: #7d5a2f; }
+    .pill.low { color: var(--sky); border-color: #24566c; }
+    .pill.ok { color: var(--green); border-color: #2f7d4f; }
+    .explain { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+    .explain b { color: var(--fg); }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 4px; }
+    @media (max-width: 560px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+    .metric { background: #0c111b; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+    .metric .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+    .metric .v { font-weight: 700; font-size: 16px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+    /* price map */
+    .map { margin: 20px 0 6px; }
+    .map .track { position: relative; height: 54px; margin: 26px 6px 30px; border-radius: 8px;
+      background: linear-gradient(90deg, #1a1f2c, #10141d); border: 1px solid var(--border); }
+    .mk { position: absolute; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); }
+    .mk .cap { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; }
+    .mk .cap.top { top: -22px; } .mk .cap.bot { bottom: -24px; }
+    .mk.floor { background: var(--red); } .mk.floor .cap { color: var(--red); }
+    .mk.ceiling { background: var(--green); } .mk.ceiling .cap { color: var(--green); }
+    .mk.comp { background: var(--sky); } .mk.comp .cap { color: var(--sky); }
+    .mk.retail { background: #6b7280; } .mk.retail .cap { color: #9aa3af; }
+    .mk.price { background: var(--gold); width: 4px; box-shadow: 0 0 12px rgba(255,210,80,.6); }
+    .mk.price .cap { color: var(--gold); font-weight: 800; font-size: 13px; }
+    .mk.dot .cap.bot { display: none; }
+    .band { position: absolute; top: 0; bottom: 0; background: rgba(56,189,248,.10); border-left: 1px dashed rgba(56,189,248,.4);
+      border-right: 1px dashed rgba(56,189,248,.4); }
+    .band .lab { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 11px; color: var(--sky); white-space: nowrap; }
+
+    /* ladder */
+    .ladder { display: flex; align-items: flex-end; gap: 10px; height: 150px; margin: 14px 4px 6px; }
+    .rung { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+    .rung .bar { width: 100%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, var(--orange), #b45309); min-height: 3px;
+      transition: height .3s ease; position: relative; }
+    .rung.floorhit .bar { background: linear-gradient(180deg, var(--red), #7f1d1d); }
+    .rung .bar .p { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--fg);
+      font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .rung .d { font-size: 11px; color: var(--muted); }
+    .foot { max-width: 1080px; margin: 18px auto 0; color: var(--muted); font-size: 12px; }
+    .foot code { color: var(--sky); background: #0c1320; border: 1px solid #1d2c40; border-radius: 5px; padding: 1px 6px; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h1><span class="logo"><span class="e">e</span><span class="b">B</span><span class="a">a</span><span class="y">y</span></span> Pricing Formula <span style="color:var(--muted);font-size:14px;font-weight:400">· Demos/E2E</span></h1>
+    <p>Undercut the competition · move product fast · a fee-aware floor so we never list at a loss.</p>
+    <div class="status" id="status">computing…</div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h2>Inputs</h2>
+
+      <div class="presets" id="presets"></div>
+
+      <div class="fld" style="margin-top:14px">
+        <label>Retail / MSRP <b id="retail-v">$89.99</b></label>
+        <input type="range" id="retail" min="0" max="300" step="1" value="90" />
+      </div>
+      <div class="fld">
+        <label>Cost basis <b id="cost-v">$0</b></label>
+        <input type="range" id="cost" min="0" max="60" step="1" value="0" />
+      </div>
+      <div class="fld">
+        <label>Competitor prices (comps, comma-separated)</label>
+        <input type="text" id="comps" value="58, 62, 65" placeholder="e.g. 58, 62, 65 (blank = none)" />
+      </div>
+      <div class="fld">
+        <label>Condition</label>
+        <div class="seg" id="cond">
+          <button data-v="new" class="on">New / sealed</button>
+          <button data-v="used">Used</button>
+        </div>
+      </div>
+      <div class="fld">
+        <label>Days listed (age) <b id="days-v">0d</b></label>
+        <input type="range" id="days" min="0" max="45" step="1" value="0" />
+      </div>
+      <div class="fld">
+        <label>Min net margin <b id="margin-v">$3</b></label>
+        <input type="range" id="margin" min="0" max="20" step="0.5" value="3" />
+      </div>
+      <div class="fld">
+        <label>eBay fee <b id="fee-v">13.25%</b></label>
+        <input type="range" id="fee" min="0" max="25" step="0.25" value="13.25" />
+      </div>
+      <div class="fld">
+        <label>Undercut <b id="under-v">5%</b></label>
+        <input type="range" id="under" min="0" max="25" step="1" value="5" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recommended eBay Buy-It-Now</h2>
+      <div class="price">
+        <div class="big" id="big">$—</div>
+        <span id="pills"></span>
+      </div>
+      <p class="explain" id="explain">—</p>
+
+      <div class="metrics">
+        <div class="metric"><div class="k">Floor (break-even)</div><div class="v" id="m-floor">$—</div></div>
+        <div class="metric"><div class="k">Anchor</div><div class="v" id="m-anchor">$—</div></div>
+        <div class="metric"><div class="k">Ceiling</div><div class="v" id="m-ceiling">$—</div></div>
+        <div class="metric"><div class="k">Net profit</div><div class="v" id="m-net">$—</div></div>
+      </div>
+
+      <div class="map">
+        <h2 style="margin-top:14px">Price map</h2>
+        <div class="track" id="track"></div>
+      </div>
+
+      <h2>Velocity walk-down (price as the unit ages)</h2>
+      <div class="ladder" id="ladder"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    One implementation, two surfaces: this page calls <code>GET /api/ebay-price?…&amp;ladder=1</code>, which runs the same
+    <code>core/ebay-pricing.ts</code> engine as the CLI demo (<code>deno task demo:ebay-pricing</code>). See
+    <code>Demos/E2E/README.md</code>.
+  </div>
+
+  <script>
+    "use strict";
+    var $ = function (id) { return document.getElementById(id); };
+    var usd = function (n) { return n == null ? "$—" : "$" + Number(n).toFixed(2); };
+    var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+
+    // Resolve an API base that works whether the page is served by data-pimp
+    // (same-origin) or opened standalone (fall back to production).
+    var BASES = (location.protocol === "http:" || location.protocol === "https:")
+      ? [location.origin, "https://thirsty.store"]
+      : ["https://thirsty.store"];
+    var apiBase = BASES[0];
+
+    var condition = "new";
+    $("cond").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      condition = b.dataset.v;
+      [].forEach.call($("cond").children, function (c) { c.classList.toggle("on", c === b); });
+      schedule();
+    });
+
+    var PRESETS = [
+      { label: "🔥 Hot item + comps", retail: 90, cost: 0, comps: "58, 62, 65", cond: "new", days: 0, margin: 3, fee: 13.25, under: 5 },
+      { label: "🕗 Aged 21 days", retail: 90, cost: 0, comps: "58, 62, 65", cond: "new", days: 21, margin: 3, fee: 13.25, under: 5 },
+      { label: "❓ No comps", retail: 45, cost: 0, comps: "", cond: "new", days: 0, margin: 3, fee: 13.25, under: 5 },
+      { label: "📉 Market below floor", retail: 12, cost: 0, comps: "4, 4.5", cond: "new", days: 25, margin: 3, fee: 13.25, under: 5 },
+      { label: "🎯 Lowball outlier", retail: 30, cost: 0, comps: "5, 22, 23, 24", cond: "used", days: 40, margin: 3, fee: 13.25, under: 5 },
+      { label: "📦 Agency lot", retail: 0, cost: 8, comps: "", cond: "used", days: 40, margin: 3, fee: 13.25, under: 5 },
+    ];
+    var pbox = $("presets");
+    PRESETS.forEach(function (p) {
+      var b = document.createElement("button"); b.textContent = p.label;
+      b.onclick = function () { applyPreset(p); };
+      pbox.appendChild(b);
+    });
+    function applyPreset(p) {
+      $("retail").value = p.retail; $("cost").value = p.cost; $("comps").value = p.comps;
+      $("days").value = p.days; $("margin").value = p.margin; $("fee").value = p.fee; $("under").value = p.under;
+      condition = p.cond;
+      [].forEach.call($("cond").children, function (c) { c.classList.toggle("on", c.dataset.v === p.cond); });
+      sync(); schedule();
+    }
+
+    function sync() {
+      $("retail-v").textContent = Number($("retail").value) > 0 ? usd($("retail").value) : "none";
+      $("cost-v").textContent = "$" + $("cost").value;
+      $("days-v").textContent = $("days").value + "d";
+      $("margin-v").textContent = "$" + $("margin").value;
+      $("fee-v").textContent = Number($("fee").value).toFixed(2) + "%";
+      $("under-v").textContent = $("under").value + "%";
+    }
+    ["retail", "cost", "comps", "days", "margin", "fee", "under"].forEach(function (id) {
+      $(id).addEventListener("input", function () { sync(); schedule(); });
+    });
+
+    function buildInput() {
+      var retail = Number($("retail").value);
+      var comps = $("comps").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+      return {
+        retail: retail > 0 ? retail : undefined,
+        costBasis: Number($("cost").value),
+        comps: comps,
+        condition: condition,
+        daysListed: Number($("days").value),
+        minMarginAbs: Number($("margin").value),
+        feePct: Number($("fee").value) / 100,
+        undercutPct: Number($("under").value) / 100,
+        ladder: true,
+      };
+    }
+
+    var timer = null;
+    function schedule() { clearTimeout(timer); timer = setTimeout(run, 120); }
+
+    async function fetchPrice(input) {
+      var lastErr;
+      for (var i = 0; i < BASES.length; i++) {
+        try {
+          var r = await fetch(BASES[i] + "/api/ebay-price", {
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
+          });
+          if (r.ok) { apiBase = BASES[i]; return await r.json(); }
+          lastErr = "HTTP " + r.status;
+        } catch (e) { lastErr = e && e.message || String(e); }
+      }
+      throw new Error(lastErr || "unreachable");
+    }
+
+    async function run() {
+      var input = buildInput();
+      try {
+        var res = await fetchPrice(input);
+        render(input, res);
+        $("status").innerHTML = "live · <b>" + esc(apiBase) + "/api/ebay-price</b>";
+      } catch (e) {
+        $("status").innerHTML = "⚠ API unreachable (" + esc(e.message) +
+          ") — start data-pimp (<b>deno task start</b>) or open via <b>/demos/ebay-pricing</b>.";
+      }
+    }
+
+    function render(input, r) {
+      $("big").textContent = usd(r.price);
+      $("explain").innerHTML = esc(r.explanation);
+      $("m-floor").textContent = usd(r.floor);
+      $("m-anchor").textContent = r.anchor == null ? "—" : usd(r.anchor) + " (" + esc(r.anchorSource) + ")";
+      $("m-ceiling").textContent = usd(r.ceiling);
+      $("m-net").textContent = usd(r.netAtPrice);
+
+      var pills = [];
+      if (r.floorHit) pills.push('<span class="pill floor">floor holds</span>');
+      if (r.unprofitableBelowRetail) pills.push('<span class="pill warn">⚠ below-retail loss risk</span>');
+      if (r.lowConfidence) pills.push('<span class="pill low">single comp</span>');
+      if (!r.floorHit && r.anchorSource === "comp") {
+        pills.push('<span class="pill ok">undercuts market by ' + usd(r.undercutFromAnchor) + '</span>');
+      }
+      if (r.ageFactor < 1) pills.push('<span class="pill low">−' + Math.round((1 - r.ageFactor) * 100) + '% aged</span>');
+      $("pills").innerHTML = pills.join(" ");
+
+      renderMap(input, r);
+      renderLadder(r.ladder || []);
+    }
+
+    function renderMap(input, r) {
+      var comps = (input.comps || []).map(Number).filter(function (n) { return n > 0; });
+      var cheapest = comps.length ? Math.min.apply(null, comps) : null;
+      var pts = [r.price, r.floor, r.ceiling, cheapest, input.retail].filter(function (n) { return n != null && isFinite(n); });
+      var max = Math.max.apply(null, pts) * 1.12 || 10;
+      var track = $("track"); track.innerHTML = "";
+      var pos = function (v) { return Math.max(0, Math.min(100, (v / max) * 100)); };
+
+      // undercut band between recommended price and cheapest comp
+      if (cheapest != null && r.price < cheapest) {
+        var band = document.createElement("div"); band.className = "band";
+        var a = pos(r.price), b = pos(cheapest);
+        band.style.left = a + "%"; band.style.width = (b - a) + "%";
+        band.innerHTML = '<span class="lab">undercut</span>';
+        track.appendChild(band);
+      }
+      function mark(v, cls, capTop, capBot, dot) {
+        if (v == null || !isFinite(v)) return;
+        var el = document.createElement("div"); el.className = "mk " + cls + (dot ? " dot" : "");
+        el.style.left = pos(v) + "%";
+        el.innerHTML = (capTop ? '<span class="cap top">' + capTop + "</span>" : "") +
+          (capBot ? '<span class="cap bot">' + capBot + "</span>" : "");
+        track.appendChild(el);
+      }
+      mark(input.retail, "retail", null, input.retail ? "retail " + usd(input.retail) : null, true);
+      mark(r.ceiling, "ceiling", "ceiling " + usd(r.ceiling), null);
+      mark(cheapest, "comp", "cheapest comp " + usd(cheapest), null);
+      mark(r.floor, "floor", null, "floor " + usd(r.floor));
+      mark(r.price, "price", "YOU " + usd(r.price), null);
+    }
+
+    function renderLadder(rows) {
+      var box = $("ladder"); box.innerHTML = "";
+      if (!rows.length) return;
+      var max = Math.max.apply(null, rows.map(function (r) { return r.price; })) || 1;
+      rows.forEach(function (row) {
+        var d = document.createElement("div"); d.className = "rung" + (row.floorHit ? " floorhit" : "");
+        var h = Math.max(4, Math.round((row.price / max) * 100));
+        d.innerHTML = '<div class="bar" style="height:' + h + '%"><span class="p">' + usd(row.price) + '</span></div>' +
+          '<div class="d">' + row.day + "d</div>";
+        box.appendChild(d);
+      });
+    }
+
+    sync(); run();
+  </script>
+</body>
+</html>

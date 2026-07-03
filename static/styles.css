@@ -375,6 +375,75 @@ section.panel {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  position: relative;
+  /* leave room for the absolutely-positioned collapse chevron */
+  padding-right: 38px;
+  cursor: pointer;
+  user-select: none;
+  transition: margin-bottom 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapse toggle: chevron points down when open, right when collapsed. It sits
+   out of flow at the top-right so it never disturbs the title / pill layout. */
+.panel-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.panel-toggle:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.panel-toggle svg {
+  display: block;
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+section.panel.collapsed .panel-toggle svg {
+  transform: rotate(-90deg);
+}
+
+section.panel.collapsed .section-head {
+  margin-bottom: 0;
+}
+
+/* Buttery collapse: animate the body's single grid row from 1fr -> 0fr so it
+   works with any content height, no magic max-height numbers. */
+.panel-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.42s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
+}
+
+.panel-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+section.panel.collapsed .panel-body {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-head,
+  .panel-toggle svg,
+  .panel-body {
+    transition: none;
+  }
 }
 
 .pill {
@@ -391,6 +460,57 @@ section.panel {
   background: var(--accent-soft);
   border-color: var(--accent-line);
   color: var(--accent);
+}
+
+/* The price-queue summary is a two-segment toggle: one pill per view (unpriced
+   backlog vs. recovered/priced rows), each showing its live count. The active
+   view is highlighted (matching the app's other active toggles) and made
+   non-interactive, so only the other pill is clickable. Each pill keeps the
+   .pill border/shape but resets the default button gradient, and carries a
+   status dot colored by its view. Scoped to .pill-toggle so other .pill badges
+   keep the default treatment. */
+.view-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.pill-toggle::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.pill-toggle[data-view="priced"]::before {
+  background: var(--gold);
+}
+
+.pill-toggle:not(.is-active):hover {
+  filter: none;
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+/* Active view: highlighted and not clickable -- only the other pill toggles. */
+.pill-toggle.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  cursor: default;
+  pointer-events: none;
 }
 
 .valuation-grid {
@@ -446,11 +566,6 @@ section.panel {
   gap: 10px;
   justify-content: space-between;
   margin-bottom: 12px;
-}
-
-.table-status {
-  font-size: 13px;
-  margin: 0;
 }
 
 /* ---------- grid "tables" (no horizontal scroll) ---------- */
@@ -671,6 +786,26 @@ section.panel {
 
 .kiosk button {
   margin-top: 8px;
+}
+
+/* Device-kind tag on fleet cards: checkout kiosks vs handheld scanners
+   (live /api/scan-socket devices registered by the Scanner companion app). */
+.kiosk-kind {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #8a93a6);
+}
+
+.kiosk-kind.scanner {
+  color: var(--accent);
+  border-color: currentColor;
 }
 
 /* ---------- responsive ---------- */

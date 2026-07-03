@@ -43,6 +43,15 @@ const ICON_GRADIENTS = `
       <linearGradient id="g-kiosk" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#54c4f5"/><stop offset="1" stop-color="#1f8fd1"/>
       </linearGradient>
+      <linearGradient id="g-content" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fb7185"/><stop offset="1" stop-color="#e11d6b"/>
+      </linearGradient>
+      <linearGradient id="g-scan" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#4ade80"/><stop offset="1" stop-color="#16a34a"/>
+      </linearGradient>
+      <linearGradient id="g-gray" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#94a3b8"/><stop offset="1" stop-color="#475569"/>
+      </linearGradient>
     </defs>
   </svg>`;
 
@@ -138,7 +147,91 @@ const ICONS = {
         <path d="M12 21v-1"/>
       </g>
     </svg>`,
+
+  // Barcode bars + scan line on a green tile — the remote Scanner companion.
+  scanner: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-scan)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <g fill="#fff">
+        <rect x="16" y="20" width="3" height="24" rx="1.2"/>
+        <rect x="22" y="20" width="2" height="24" rx="1"/>
+        <rect x="27" y="20" width="4.5" height="24" rx="1.4"/>
+        <rect x="34.5" y="20" width="2" height="24" rx="1"/>
+        <rect x="39.5" y="20" width="3" height="24" rx="1.2"/>
+        <rect x="45.5" y="20" width="2.5" height="24" rx="1.1"/>
+      </g>
+      <rect x="12" y="30.6" width="40" height="2.8" rx="1.4" fill="#052e16" opacity=".65"/>
+    </svg>`,
+
+  // Log-lines + magnifier on a slate tile — the Graylog search window.
+  graylog: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-gray)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <g fill="#fff" opacity=".92">
+        <rect x="15" y="18" width="26" height="3" rx="1.5"/>
+        <rect x="15" y="25" width="20" height="3" rx="1.5"/>
+        <rect x="15" y="32" width="24" height="3" rx="1.5"/>
+        <rect x="15" y="39" width="14" height="3" rx="1.5"/>
+      </g>
+      <g fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round">
+        <circle cx="41" cy="39" r="7.5" fill="#fff"/>
+        <line x1="46.5" y1="44.5" x2="52" y2="50"/>
+      </g>
+    </svg>`,
+
+  // Document-with-lines glyph on a rose tile — the orders→content library page.
+  content: `
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g-content)"/>
+      <rect x="6" y="6" width="52" height="26" rx="14" fill="#fff" opacity=".12"/>
+      <rect x="19" y="14" width="26" height="36" rx="4" fill="#fff"/>
+      <rect x="24" y="21" width="16" height="3" rx="1.5" fill="#e11d6b"/>
+      <rect x="24" y="28" width="16" height="3" rx="1.5" fill="#fb7185" opacity=".55"/>
+      <rect x="24" y="35" width="16" height="3" rx="1.5" fill="#fb7185" opacity=".55"/>
+      <rect x="24" y="42" width="10" height="3" rx="1.5" fill="#fb7185" opacity=".55"/>
+    </svg>`,
 };
+
+const OS_CONFIG =
+  (globalThis.THIRSTY_OS_CONFIG && typeof globalThis.THIRSTY_OS_CONFIG === "object")
+    ? globalThis.THIRSTY_OS_CONFIG
+    : {};
+
+function safeHttpUrl(value) {
+  try {
+    const url = new URL(String(value || ""), location.href);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    url.hash = "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
+function configuredScanRelayUrl() {
+  return globalThis.THIRSTY_SCAN_RELAY ||
+    OS_CONFIG.scanRelay ||
+    `${location.protocol === "http:" ? "ws" : "wss"}://${location.host}/api/scan-socket`;
+}
+
+function urlWithParams(base, params) {
+  const safe = safeHttpUrl(base);
+  if (!safe) return "";
+  const url = new URL(safe);
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null && value !== "") url.searchParams.set(key, String(value));
+  }
+  return url.href;
+}
+
+const SCANNER_APP_URL = urlWithParams(
+  OS_CONFIG.scannerUrl || "https://admin.thirsty.store/scanner",
+  { os: "1", relay: configuredScanRelayUrl() },
+);
+const SCANNER_APP_ORIGIN = SCANNER_APP_URL ? new URL(SCANNER_APP_URL).origin : "";
+const GRAYLOG_BASE = safeHttpUrl(OS_CONFIG.graylogUrl || "");
 
 /* ------------------------------------------------------------ app model -- */
 
@@ -151,11 +244,14 @@ const FOLDERS = [
     id: "apps",
     name: "Apps",
     icon: ICONS.folder,
+    // RBAC: `flag` gates a folder/item per role (see globalThis.THIRSTY_RBAC).
+    flag: "folder.apps",
     items: [
       {
         id: "product-analysis",
         name: "Product Analysis",
         icon: ICONS.inventory,
+        flag: "app.productAnalysis",
         // Migrated from the kiosk — now served same-origin by data-pimp.
         url: "/inventory",
         allow: "fullscreen",
@@ -166,6 +262,7 @@ const FOLDERS = [
         id: "inventory",
         name: "Inventory",
         icon: ICONS.boxes,
+        flag: "app.inventory",
         url: "https://admin.thirsty.store",
         allow: "fullscreen; camera",
         external: true,
@@ -176,6 +273,7 @@ const FOLDERS = [
         id: "kiosk",
         name: "Kiosk",
         icon: ICONS.qr,
+        flag: "app.kiosk",
         // The storefront that used to live at thirsty.store, now an app inside
         // the OS (same-origin, served under /kiosk).
         url: "/kiosk",
@@ -183,12 +281,54 @@ const FOLDERS = [
         width: 1180,
         height: 780,
       },
+      {
+        id: "scanner",
+        name: "Scanner",
+        icon: ICONS.scanner,
+        flag: "app.scanner",
+        // The Scanner companion app (served by admin.thirsty.store by default).
+        // The server/client append ?os=1 and the active relay URL so local,
+        // thin-client, and production shells all land on the same scan bus.
+        url: SCANNER_APP_URL,
+        allow: "fullscreen; camera; bluetooth",
+        external: true,
+        width: 560,
+        height: 800,
+      },
+      {
+        id: "graylog",
+        name: "Graylog",
+        icon: ICONS.graylog,
+        flag: "app.graylog",
+        requiresConfig: "graylog",
+        // Configured by GRAYLOG_UI_URL/GRAYLOG_SEARCH_URL (or GRAYLOG_API_URL as
+        // a fallback). Scan events auto-drive this window by navigating it to a
+        // matching search URL; no tunnel host is baked into the client.
+        url: GRAYLOG_BASE,
+        allow: "fullscreen",
+        external: true,
+        width: 1180,
+        height: 780,
+      },
+      {
+        id: "install-extension",
+        name: "Install Extension",
+        icon: ICONS.boxes,
+        flag: "app.installExtension",
+        // Same-origin install help: download chrome.zip + load-unpacked steps
+        // (served by data-pimp at /install). Internal, so no sandbox — the
+        // download link works. Opened by the samples-import skill or from Apps.
+        url: "/install",
+        width: 600,
+        height: 720,
+      },
     ],
   },
   {
     id: "demos",
     name: "Demos",
     icon: ICONS.folder,
+    flag: "folder.demos",
     items: [
       {
         id: "sample-valuation",
@@ -214,12 +354,58 @@ const FOLDERS = [
         width: 430,
         height: 780,
       },
+      {
+        id: "samples-import",
+        name: "Samples-Import",
+        icon: ICONS.mobile,
+        // Admin import tool: paste/upload a list of TikTok productIds, hydrate
+        // each, and add to inventory assigned to a creator. Reuses the Samples
+        // demo's order-modal preview; calls the live thirsty.store import API.
+        url: "https://easierbycode.com/tok-scrape/samples-import/www/",
+        allow: "fullscreen",
+        external: true,
+        // Wider than the phone Samples demo (paste box + creator picker +
+        // auto-list panel) and resizable — not mobile-locked.
+        width: 520,
+        height: 840,
+      },
+      {
+        id: "e2e",
+        name: "E2E",
+        icon: ICONS.content,
+        // One-click sample-lifecycle demo: /e2e resolves the latest creator's
+        // recent items (or a default product) from analytics, then runs the
+        // Samples-Import import live. Same-origin page (no sandbox), opened
+        // full-screen so the demo has room to breathe — still draggable/restorable.
+        url: "/e2e",
+        allow: "fullscreen",
+        maximized: true,
+        width: 1100,
+        height: 760,
+      },
+      {
+        id: "content-by-sample",
+        name: "Content by Sample",
+        icon: ICONS.content,
+        // The Sample Orders → Content workflow fixture from tok-scrape. A
+        // third-party origin, so it gets the top-navigation-blocking sandbox
+        // like the other external demos.
+        url:
+          "https://easierbycode.com/tok-scrape/fixtures/orders-wizard-content.html",
+        allow: "fullscreen",
+        external: true,
+        // Wide desktop page — its content maxes out at 1180px and includes a
+        // content-library table, so it gets a full desktop-sized window.
+        width: 1180,
+        height: 780,
+      },
     ],
   },
   {
     id: "member",
     name: "Member",
     icon: ICONS.folder,
+    flag: "folder.member",
     items: [
       {
         id: "tokscrape-dashboard",
@@ -251,6 +437,59 @@ const FOLDERS = [
     ],
   },
 ];
+
+/* ----------------------------------------------------------------- RBAC -- */
+
+// Per-device role gating. `globalThis.THIRSTY_RBAC` is injected by renderOSShell
+// in main.ts from core/roles.json (the single source of truth) — it maps each
+// team member (role) to capability flags. Those flags decide which folders/apps
+// this profile shows and which boot layout it gets. NOT a security boundary: the
+// OS has no auth/session, so a hidden app's same-origin URL still works if typed
+// directly. Think "kiosk profile", not server-enforced authz.
+const RBAC =
+  (globalThis.THIRSTY_RBAC && typeof globalThis.THIRSTY_RBAC === "object")
+    ? globalThis.THIRSTY_RBAC
+    : { defaultRole: "dj", roles: [], flags: [] };
+const ROLE_KEY = "thirsty-os-role";
+
+function roleById(id) {
+  return (RBAC.roles || []).find((r) => r.id === id) || null;
+}
+
+// The active role: a known stored choice, else the configured default.
+function currentRoleId() {
+  const stored = localStorage.getItem(ROLE_KEY);
+  return roleById(stored) ? stored : (RBAC.defaultRole || "dj");
+}
+
+// Explicit per-role value wins; `"*"` is the wildcard default; else deny.
+// Mirrors roleHasFlag() in core/roles.ts so browser + server agree.
+function roleAllows(roleId, flag) {
+  if (!flag) return true; // unflagged folders/items are always visible
+  const role = roleById(roleId);
+  if (!role || !role.flags) return false;
+  const explicit = role.flags[flag];
+  if (typeof explicit === "boolean") return explicit;
+  return role.flags["*"] === true;
+}
+
+const ROLE = currentRoleId();
+const allows = (flag) => roleAllows(ROLE, flag);
+
+function itemConfigured(item) {
+  if (item.requiresConfig === "graylog") return Boolean(GRAYLOG_BASE);
+  if (item.id === "scanner") return Boolean(SCANNER_APP_URL);
+  return true;
+}
+
+// Folders this role may see, each trimmed to its allowed items. A folder whose
+// items are all gated away drops out entirely.
+function visibleFolders() {
+  return FOLDERS
+    .filter((f) => allows(f.flag))
+    .map((f) => ({ ...f, items: (f.items || []).filter((i) => allows(i.flag) && itemConfigured(i)) }))
+    .filter((f) => f.items.length > 0);
+}
 
 /* ----------------------------------------------------------- WM globals -- */
 
@@ -312,7 +551,8 @@ function makeIcon(label, svg, onOpen) {
 
 function renderDesktop() {
   const root = document.getElementById("desktop-icons");
-  for (const folder of FOLDERS) {
+  // Only the folders/apps this role may open (see RBAC above).
+  for (const folder of visibleFolders()) {
     root.appendChild(makeIcon(folder.name, folder.icon, () => openFolder(folder)));
   }
 }
@@ -448,8 +688,13 @@ function closeWindow(win) {
   if (win._endGesture) win._endGesture(); // self-heal an in-flight drag/resize
   if (win.loaderTimer) clearTimeout(win.loaderTimer);
   win.el.classList.remove("open");
-  if (win.dockEl) win.dockEl.remove();
+  // Deleted from the map BEFORE the dock release: updateScannerDock must see
+  // the scanner window as already gone, or the idle status tile never leaves.
   windows.delete(win.id);
+  // The scanner's dock element is shared status UI — release it (it stays put
+  // while any scanner is still connected) instead of removing it outright.
+  if (win.dockEl && win.dockEl.id === "dock-scanner") releaseScannerDock(win);
+  else if (win.dockEl) win.dockEl.remove();
   setTimeout(() => win.el.remove(), 170);
 
   // Hand focus to the next window, or back to the icon that launched this one.
@@ -757,6 +1002,12 @@ function enableResize(win, handle) {
 /* --------------------------------------------------------------- dock -- */
 
 function addDockItem(win) {
+  // The Scanner app forgoes the standard dock tile for the shared scanner
+  // status indicator (LED + connected count) — see bindScannerDock().
+  if (win.id === "app:scanner") {
+    bindScannerDock(win);
+    return;
+  }
   const item = document.createElement("button");
   item.type = "button";
   item.className = "dock-item running";
@@ -780,6 +1031,10 @@ function addDockItem(win) {
 /* ------------------------------------------------------- open windows -- */
 
 function openApp(item) {
+  if (!itemConfigured(item) || !item.url) {
+    flashStatus(`${item.name} is not configured`);
+    return;
+  }
   const id = "app:" + item.id;
   const existing = windows.get(id);
   if (existing) {
@@ -803,8 +1058,9 @@ function openApp(item) {
   });
   win.el.querySelector(".window-loader span").textContent = `Opening ${item.name}…`;
 
-  // Build the iframe with the DOM API (setAttribute never parses HTML) and an
-  // https/same-origin URL allowlist, so a stray javascript:/data: url can't slip in.
+  // Build the iframe with the DOM API (setAttribute never parses HTML) and a
+  // same-origin/HTTPS URL allowlist (plus loopback HTTP for dev), so a stray
+  // javascript:/data: url can't slip in.
   const iframe = document.createElement("iframe");
   iframe.setAttribute("title", item.name);
   iframe.setAttribute("allow", item.allow || "fullscreen");
@@ -814,7 +1070,7 @@ function openApp(item) {
     // navigating the top-level kiosk away from the OS shell.
     iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
   }
-  if (/^https:\/\//i.test(item.url) || item.url.startsWith("/")) {
+  if (allowedFrameUrl(item.url)) {
     iframe.setAttribute("src", item.url);
   }
 
@@ -824,7 +1080,36 @@ function openApp(item) {
   win.loaderTimer = setTimeout(hide, 8000); // safety net for cross-origin loads
   win.el.querySelector(".window-body").appendChild(iframe);
 
+  // Apps can request a full-screen window (e.g. the E2E demo). Still draggable:
+  // the title-bar zoom button / Ctrl+Alt+Down restores it to the floating rect.
+  if (item.maximized) toggleMax(win);
+
+  // Launching the Scanner builds the scan workspace: Scanner tiled LEFT,
+  // Inventory summoned (if not already running) and tiled RIGHT.
+  if (item.id === "scanner") layoutScannerWorkspace(win);
+
   flashStatus(`Opening ${item.name}`);
+}
+
+// Scanner workspace tiling: the Scanner fills the LEFT half; Apps/Inventory is
+// launched if it isn't running and parked on the RIGHT half. Reuses the same
+// openApp/snapWindow primitives as the warehouse boot layout.
+function layoutScannerWorkspace(scannerWin) {
+  if (scannerWin.snapped !== "left") snapWindow(scannerWin, "left");
+  let inv = windows.get("app:inventory");
+  if (!inv) {
+    const inventory = appItemById("inventory");
+    if (inventory && allows(inventory.flag)) {
+      openApp(inventory);
+      inv = windows.get("app:inventory");
+    }
+  }
+  if (inv) {
+    if (inv.minimized) setMinimized(inv, false);
+    if (inv.snapped !== "right") snapWindow(inv, "right");
+  }
+  // The operator's next tap is the scanner camera — keep it frontmost.
+  focusWindow(scannerWin.id);
 }
 
 function openFolder(folder) {
@@ -988,7 +1273,539 @@ globalThis.addEventListener("message", (e) => {
   openBrowser(data.url);
 });
 
+// Cross-origin relay: when the LEFT pane (Samples-Import, easierbycode.com)
+// finishes an import batch it posts {source:"samples-import",type:"imported"}
+// up to this shell; relay a refresh into the RIGHT pane (Inventory,
+// admin.thirsty.store) so its table re-fetches and the new rows appear. The
+// shell is the only window that can reach both panes (they can't see each
+// other). Origins are validated explicitly at both hops — never "*".
+const SAMPLES_IMPORT_ORIGIN = "https://easierbycode.com"; // demos item "samples-import"
+const INVENTORY_ORIGIN = "https://admin.thirsty.store"; // apps item "inventory"
+globalThis.addEventListener("message", (e) => {
+  if (e.origin !== SAMPLES_IMPORT_ORIGIN) return;
+  const data = e.data;
+  if (!data || data.source !== "samples-import" || data.type !== "imported") return;
+  // The window-state object only holds `el`; reach the iframe via the DOM.
+  const postRefresh = () => {
+    const inv = windows.get("app:inventory");
+    const frame = inv && inv.el.querySelector("iframe");
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage(
+        { source: "thirsty-os", type: "refresh-inventory" },
+        INVENTORY_ORIGIN,
+      );
+    }
+  };
+  postRefresh();
+  // The Inventory pane is a separate-origin SPA; if its listener isn't wired
+  // yet (still booting in the workspace launch), re-post once shortly after.
+  setTimeout(postRefresh, 2500);
+  flashStatus("Refreshing Inventory");
+});
+
+/* ------------------------------------------------------------ scan link -- */
+
+// Companion-scanner plumbing. Handheld Scanner devices (the
+// admin.thirsty.store/scanner app, or BLE scanner hardware) stream scan events
+// into the OS over the scan-relay WebSocket — plus a same-window postMessage
+// fast path when the Scanner runs embedded in this shell (dedup'd by scanId).
+//
+// Routing:
+//   TikTok productID (18–19 digits)    → Apps/Kiosk, straight into Checkout
+//   retail barcode (UPC/EAN, 8/12–14)  → Apps/Inventory, straight into Scan
+//   anything else                      → every open, non-minimized window, as
+//                                        close to plain HID input as an iframe
+//                                        allows (type + submit / postMessage)
+// Graylog windows follow EVERY scan with a product_id search — it's a log
+// tail, so it always chases what was just scanned.
+
+const SCAN_PRODUCT_ID_RE = /^\d{18,19}$/;
+const SCAN_BARCODE_RE = /^(\d{8}|\d{12,14})$/;
+
+// BLE GATT identity shared with the Scanner app (scan-link.ts in
+// tiktok-sample-tracker). A Cordova scanner advertises this service; the OS
+// subscribes as a Web Bluetooth central and notifications carry the scans.
+const SCAN_BLE_SERVICE = "c0de5ca0-ba7c-4de1-9a0d-2b5a3f1c9e01";
+const SCAN_BLE_CHARACTERISTIC = "c0de5ca1-ba7c-4de1-9a0d-2b5a3f1c9e01";
+
+// A scan can arrive twice (embedded postMessage + relay echo) — first one wins.
+const seenScanIds = new Set();
+function rememberScan(scanId) {
+  if (!scanId) return true; // no id → cannot dedupe, accept
+  if (seenScanIds.has(scanId)) return false;
+  seenScanIds.add(scanId);
+  if (seenScanIds.size > 500) {
+    for (const id of seenScanIds) {
+      seenScanIds.delete(id);
+      if (seenScanIds.size <= 250) break;
+    }
+  }
+  return true;
+}
+
+function appItemById(id) {
+  for (const folder of FOLDERS) {
+    const hit = (folder.items || []).find((i) => i.id === id);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function windowFrame(win) {
+  return win ? win.el.querySelector("iframe") : null;
+}
+
+function frameOrigin(frame) {
+  try {
+    return new URL(frame.getAttribute("src") || frame.src, location.href).origin;
+  } catch {
+    return "";
+  }
+}
+
+function allowedFrameUrl(url) {
+  return /^https:\/\//i.test(url) ||
+    /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//i.test(url) ||
+    url.startsWith("/");
+}
+
+// Post into a window's iframe now and again on a spaced schedule — an app
+// still cold-booting can take many seconds to attach its listener, and
+// receivers dedupe by scanId so the repeats are harmless.
+const SCAN_POST_RETRIES_MS = [500, 2000, 5000, 10000];
+function postScanToWindow(win, message, targetOrigin) {
+  const send = () => {
+    const frame = windowFrame(win);
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage(message, targetOrigin);
+    }
+  };
+  send();
+  for (const delay of SCAN_POST_RETRIES_MS) setTimeout(send, delay);
+}
+
+// productID → Kiosk Checkout. A fresh window boots straight into
+// /kiosk/checkout?code=…; a live one gets a postMessage that scan-client.js
+// turns into a client-side route change.
+function routeScanToKiosk(value, scanId) {
+  const win = windows.get("app:kiosk");
+  if (!win) {
+    const kiosk = appItemById("kiosk");
+    if (!kiosk || !allows(kiosk.flag)) return;
+    openApp({ ...kiosk, url: `/kiosk/checkout?code=${encodeURIComponent(value)}` });
+    return;
+  }
+  if (win.minimized) setMinimized(win, false);
+  focusWindow(win.id);
+  postScanToWindow(
+    win,
+    { source: "thirsty-os", type: "scan", kind: "productId", value, scanId },
+    location.origin,
+  );
+}
+
+// barcode → Inventory Scan. Same pattern; Inventory is cross-origin, so the
+// deep link / postMessage target its real origin.
+function routeScanToInventory(value, scanId) {
+  const win = windows.get("app:inventory");
+  if (!win) {
+    const inventory = appItemById("inventory");
+    if (!inventory || !allows(inventory.flag)) return;
+    openApp({ ...inventory, url: `${INVENTORY_ORIGIN}/scan?code=${encodeURIComponent(value)}` });
+    return;
+  }
+  if (win.minimized) setMinimized(win, false);
+  focusWindow(win.id);
+  postScanToWindow(
+    win,
+    { source: "thirsty-os", type: "scan", kind: "barcode", value, scanId },
+    INVENTORY_ORIGIN,
+  );
+}
+
+// Graylog chases every scan: navigate the window to the matching search. The
+// iframe is cross-origin, so navigation IS our "focus the input and submit".
+function graylogFollow(value) {
+  if (!GRAYLOG_BASE) return;
+  const win = windows.get("app:graylog");
+  if (!win || win.minimized) return;
+  const frame = windowFrame(win);
+  if (!frame) return;
+  const q = SCAN_PRODUCT_ID_RE.test(value)
+    ? `product_id:"${value}"`
+    : `"${value.replace(/(["\\])/g, "\\$1")}"`;
+  const url = new URL(GRAYLOG_BASE);
+  if (!url.pathname.endsWith("/search")) {
+    url.pathname = url.pathname.replace(/\/+$/, "") + "/search";
+  }
+  url.searchParams.set("q", q);
+  url.searchParams.set("rangetype", "relative");
+  url.searchParams.set("relative", "0");
+  frame.src = url.href;
+}
+
+// React-controlled inputs ignore direct .value writes; go through the native
+// setter so the framework sees the change like real typing.
+function setNativeValue(input, value) {
+  const proto = input.tagName === "TEXTAREA"
+    ? HTMLTextAreaElement.prototype
+    : HTMLInputElement.prototype;
+  const desc = Object.getOwnPropertyDescriptor(proto, "value");
+  if (desc && desc.set) desc.set.call(input, value);
+  else input.value = value;
+}
+
+// Deliver a scan to one window the way a USB wedge scanner would: type into
+// the focused (or first) text field and hit Enter. Same-origin frames get real
+// synthetic typing; cross-origin frames get a cooperative postMessage instead
+// (the browser gives us nothing better there).
+function deliverHidToWindow(win, value) {
+  const frame = windowFrame(win);
+  if (!frame) return;
+  let doc = null;
+  try {
+    doc = frame.contentDocument;
+  } catch { /* cross-origin */ }
+  if (!doc) {
+    const targetOrigin = frameOrigin(frame);
+    if (frame.contentWindow && targetOrigin) {
+      frame.contentWindow.postMessage({ source: "thirsty-os", type: "hid-scan", value }, targetOrigin);
+    }
+    return;
+  }
+  const isField = (el) =>
+    !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA") &&
+    !el.disabled && !el.readOnly;
+  const active = doc.activeElement;
+  const input = isField(active) ? active : doc.querySelector(
+    'input:not([type]):not([disabled]), input[type="text"]:not([disabled]), input[type="search"]:not([disabled]), textarea:not([disabled])',
+  );
+  if (!input) return;
+  input.focus();
+  setNativeValue(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  // A wedge scanner ends every code with Enter.
+  if (input.form) {
+    if (input.form.requestSubmit) input.form.requestSubmit();
+    else input.form.submit();
+  } else {
+    for (const type of ["keydown", "keyup"]) {
+      input.dispatchEvent(
+        new KeyboardEvent(type, { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }),
+      );
+    }
+  }
+}
+
+function scanShort(value) {
+  return value.length > 28 ? value.slice(0, 25) + "…" : value;
+}
+
+// The router: classify the scanned value and fan it out.
+function routeScan(evt) {
+  const value = String((evt && evt.value) || "").trim();
+  if (!value) return;
+  if (!rememberScan(evt.scanId)) return;
+  flashStatus(`Scan · ${scanShort(value)}`);
+  if (SCAN_PRODUCT_ID_RE.test(value)) {
+    routeScanToKiosk(value, evt.scanId);
+  } else if (SCAN_BARCODE_RE.test(value)) {
+    routeScanToInventory(value, evt.scanId);
+  } else {
+    // Plain HID: whatever is open and visible receives the keystrokes. The
+    // Scanner itself produced the value and Graylog is driven below.
+    for (const win of windows.values()) {
+      if (win.minimized) continue;
+      if (win.id === "app:scanner" || win.id === "app:graylog") continue;
+      deliverHidToWindow(win, value);
+    }
+  }
+  graylogFollow(value);
+}
+
+/* -------------------------------------------------- scanner dock status -- */
+
+// Instead of a plain taskbar tile, the Scanner shows a live status indicator:
+// an LED that lights when at least one scanner is connected, with a count
+// badge when there are several (relay scanners + locally paired BLE units).
+const scannerState = { count: 0, devices: [], ble: 0 };
+
+function totalScanners() {
+  return scannerState.count + scannerState.ble;
+}
+
+function scannerDockEl() {
+  return document.getElementById("dock-scanner");
+}
+
+function ensureScannerDock() {
+  let el = scannerDockEl();
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "dock-scanner";
+  el.className = "dock-item dock-scanner";
+  el.innerHTML = `
+    <button class="scan-main" type="button" aria-label="Scanner">
+      <span class="scan-led"></span>
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="currentColor">
+        <rect x="3" y="6" width="1.7" height="12" rx="0.6"/>
+        <rect x="6.2" y="6" width="1.1" height="12" rx="0.5"/>
+        <rect x="9" y="6" width="2.4" height="12" rx="0.7"/>
+        <rect x="13" y="6" width="1.1" height="12" rx="0.5"/>
+        <rect x="15.8" y="6" width="1.7" height="12" rx="0.6"/>
+        <rect x="19.2" y="6" width="1.3" height="12" rx="0.5"/>
+      </svg>
+      <span class="scan-count" hidden></span>
+    </button>
+    <button class="scan-ble" type="button" title="Pair a BLE scanner" aria-label="Pair a BLE scanner">⌁</button>
+    <span class="dock-tip"></span>`;
+  el.querySelector(".scan-main").addEventListener("click", () => {
+    const win = windows.get("app:scanner");
+    if (win) {
+      if (win.minimized) setMinimized(win, false);
+      else if (zidx(win) === zTop) setMinimized(win, true);
+      else {
+        focusWindow(win.id);
+        focusChrome(win);
+      }
+      return;
+    }
+    const item = appItemById("scanner");
+    if (item && allows(item.flag)) openApp(item);
+  });
+  const bleBtn = el.querySelector(".scan-ble");
+  if (navigator.bluetooth) bleBtn.addEventListener("click", pairBleScanner);
+  else bleBtn.hidden = true;
+  dock.prepend(el);
+  return el;
+}
+
+function updateScannerDock() {
+  const win = windows.get("app:scanner");
+  const total = totalScanners();
+  if (!win && total === 0) {
+    const idle = scannerDockEl();
+    if (idle) idle.remove();
+    return;
+  }
+  const el = ensureScannerDock();
+  el.classList.toggle("connected", total > 0);
+  el.classList.toggle("running", !!win);
+  const count = el.querySelector(".scan-count");
+  count.hidden = total < 2;
+  count.textContent = String(total);
+  const names = scannerState.devices.map((d) => d.name || d.id).filter(Boolean);
+  const label = total === 0
+    ? "Scanner — none connected"
+    : `${total} scanner${total === 1 ? "" : "s"} connected${
+      names.length ? " · " + names.join(", ") : ""
+    }`;
+  el.querySelector(".dock-tip").textContent = label;
+  el.querySelector(".scan-main").setAttribute("aria-label", label);
+}
+
+// The Scanner window adopts the shared status element as its dock presence…
+function bindScannerDock(win) {
+  win.dockEl = ensureScannerDock();
+  updateScannerDock();
+}
+
+// …and hands it back on close (the status stays while scanners are connected).
+function releaseScannerDock(win) {
+  const el = scannerDockEl();
+  if (el) el.classList.remove("focused", "minimized", "running");
+  win.dockEl = null;
+  updateScannerDock();
+}
+
+/* --------------------------------------------------- relay + BLE intake -- */
+
+function connectScanRelay() {
+  const relayUrl = configuredScanRelayUrl();
+  let retryMs = 1000;
+
+  const open = () => {
+    let socket;
+    let pingTimer = 0;
+    const schedule = () => {
+      clearInterval(pingTimer);
+      // A dead relay means no live presence: clear the count so the dock LED
+      // can't claim a scanner is connected while we're blind. (Guard on the
+      // prior count so repeated failed reconnects don't spam the status line.)
+      if (scannerState.count > 0) {
+        scannerState.count = 0;
+        scannerState.devices = [];
+        updateScannerDock();
+        if (totalScanners() === 0) flashStatus("Scanner disconnected");
+      }
+      setTimeout(open, retryMs);
+      retryMs = Math.min(retryMs * 2, 30000);
+    };
+    try {
+      socket = new WebSocket(relayUrl);
+    } catch {
+      schedule();
+      return;
+    }
+    socket.addEventListener("open", () => {
+      retryMs = 1000;
+      socket.send(JSON.stringify({ type: "hello", role: "listener", name: "Thirsty OS shell" }));
+      pingTimer = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 10000);
+    });
+    socket.addEventListener("message", (e) => {
+      let msg;
+      try {
+        msg = JSON.parse(String(e.data));
+      } catch {
+        return;
+      }
+      if (!msg) return;
+      if (msg.type === "scan") {
+        routeScan(msg);
+      } else if (msg.type === "scanners") {
+        const before = totalScanners();
+        scannerState.count = Number(msg.count) || 0;
+        scannerState.devices = Array.isArray(msg.devices) ? msg.devices : [];
+        updateScannerDock();
+        const after = totalScanners();
+        if (before === 0 && after > 0) flashStatus("Scanner connected");
+        else if (before > 0 && after === 0) flashStatus("Scanner disconnected");
+      }
+    });
+    socket.addEventListener("close", schedule, { once: true });
+  };
+  open();
+}
+
+// Pair a BLE scanner directly (Cordova Scanner app advertising, or scanner
+// hardware speaking our GATT service). Chrome-only; the button hides itself
+// where Web Bluetooth is missing.
+const pairedBle = new Set(); // device.id — re-selecting a live device must not double-subscribe
+async function pairBleScanner() {
+  if (!navigator.bluetooth) return;
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SCAN_BLE_SERVICE] }],
+    });
+    if (pairedBle.has(device.id) && device.gatt.connected) {
+      flashStatus("BLE scanner already paired");
+      return;
+    }
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SCAN_BLE_SERVICE);
+    const characteristic = await service.getCharacteristic(SCAN_BLE_CHARACTERISTIC);
+    await characteristic.startNotifications();
+    const decoder = new TextDecoder();
+    characteristic.addEventListener("characteristicvaluechanged", (e) => {
+      const raw = decoder.decode(e.target.value).trim();
+      if (!raw) return;
+      let evt = null;
+      try {
+        evt = JSON.parse(raw);
+      } catch { /* bare-text scan */ }
+      routeScan({
+        value: evt && typeof evt.value === "string" ? evt.value : raw,
+        format: (evt && evt.format) || "ble",
+        scanId: (evt && evt.scanId) || crypto.randomUUID(),
+        deviceName: device.name || "BLE scanner",
+      });
+    });
+    pairedBle.add(device.id);
+    scannerState.ble++;
+    updateScannerDock();
+    flashStatus(`BLE scanner paired${device.name ? " · " + device.name : ""}`);
+    device.addEventListener("gattserverdisconnected", () => {
+      pairedBle.delete(device.id);
+      scannerState.ble = Math.max(0, scannerState.ble - 1);
+      updateScannerDock();
+      flashStatus("BLE scanner disconnected");
+    }, { once: true });
+  } catch {
+    flashStatus("BLE pairing cancelled"); // chooser dismissed / no device
+  }
+}
+
+// Fast path from an embedded Scanner window (cross-origin: admin.thirsty.store)
+// — the same scans also echo back via the relay; scanId dedupes.
+globalThis.addEventListener("message", (e) => {
+  if (!SCANNER_APP_ORIGIN || e.origin !== SCANNER_APP_ORIGIN) return;
+  const data = e.data;
+  if (!data || data.source !== "thirsty-scanner" || data.type !== "scan") return;
+  routeScan(data);
+});
+
 document.body.insertAdjacentHTML("afterbegin", ICON_GRADIENTS);
 renderDesktop();
 tickClock();
 setInterval(tickClock, 15000);
+connectScanRelay();
+
+// Profile / role switcher. Per-device only (localStorage) — the OS has no
+// auth/session to hang a server-side role on. The <option>s are rendered from
+// core/roles.json (see renderOSShell); ROLE/roleById come from the RBAC block.
+const roleSwitch = document.getElementById("role-switch");
+if (roleSwitch) {
+  roleSwitch.value = ROLE;
+  roleSwitch.addEventListener("change", () => {
+    localStorage.setItem(ROLE_KEY, roleSwitch.value);
+    location.reload(); // re-run boot so the layout branch below applies cleanly
+  });
+}
+
+// Boot layout is a per-role property (roles.json `boot`). "warehouse" tiles
+// Inventory (LP Sample Tracker) to the LEFT half — defaulting to the "Cleared
+// to Sell" filter — and Kiosk to the RIGHT. Reuses the real openApp() +
+// snapWindow() primitives (windows keyed "app:"+id).
+const bootLayout = roleById(ROLE)?.boot;
+if (bootLayout === "warehouse") {
+  const appsFolder = FOLDERS.find((f) => f.id === "apps");
+  const apps = (appsFolder && appsFolder.items) || [];
+  const inventory = apps.find((i) => i.id === "inventory");
+  const kiosk = apps.find((i) => i.id === "kiosk");
+  if (inventory) {
+    // ?status=cleared_to_sell pre-selects the warehouse filter (the tracker reads it).
+    openApp({ ...inventory, url: inventory.url + "?status=cleared_to_sell" });
+    const w = windows.get("app:inventory");
+    if (w) snapWindow(w, "left");
+  }
+  if (kiosk) {
+    openApp(kiosk);
+    const w = windows.get("app:kiosk");
+    if (w) snapWindow(w, "right");
+  }
+  if (statusEl) statusEl.textContent = roleById(ROLE)?.name ?? ROLE;
+}
+
+// E2E / demo workspace: ?workspace=samples-import[&ids=...&creator=@x&autostart=1]
+// tiles the Samples-Import app (LEFT, auto-replaying the run's product ids) and
+// Apps/Inventory (RIGHT, the imported rows in a table, editable/enhanceable via
+// "Fetch from API"). The visual half of the sample-e2e skill. Reuses openApp +
+// snapWindow; the ids/creator pass straight through to the import app's demo mode.
+const wsParams = new URLSearchParams(location.search);
+if (wsParams.get("workspace") === "samples-import") {
+  const apps = (FOLDERS.find((f) => f.id === "apps") || {}).items || [];
+  const demos = (FOLDERS.find((f) => f.id === "demos") || {}).items || [];
+  const importApp = demos.find((i) => i.id === "samples-import");
+  const inventory = apps.find((i) => i.id === "inventory");
+  if (importApp) {
+    const q = new URLSearchParams();
+    ["ids", "creator", "autostart", "api"].forEach((k) => {
+      if (wsParams.get(k)) q.set(k, wsParams.get(k));
+    });
+    const qs = q.toString();
+    openApp({ ...importApp, url: importApp.url + (qs ? "?" + qs : "") });
+    const w = windows.get("app:samples-import");
+    if (w) snapWindow(w, "left");
+  }
+  if (inventory) {
+    openApp(inventory);
+    const w = windows.get("app:inventory");
+    if (w) snapWindow(w, "right");
+  }
+  if (statusEl) statusEl.textContent = "Samples-Import · e2e";
+}

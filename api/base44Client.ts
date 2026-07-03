@@ -120,7 +120,10 @@ export interface Sample extends EntityRecord {
   picture_url?: string;
   tiktok_affiliate_link?: string;
   fire_sale?: boolean;
-  status: "available" | "checked_out" | "reserved" | "discontinued";
+  // Mirrors the exclusive statuses in core/sample-statuses.json (the shared
+  // source of truth) and Entities/Sample.json's `status` enum. Keep in sync via
+  // `deno task sync:statuses --check`.
+  status: "available" | "checked_out" | "reserved" | "cleared_to_sell" | "discontinued";
   current_price?: number;
   best_price?: number;
   best_price_source?: string;

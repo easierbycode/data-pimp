@@ -106,29 +106,58 @@
       <section class="panel" data-screen-label="Price recovery queue">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Unpriced Samples</p>
-            <h2>Price Recovery Queue</h2>
+            <h2 id="queue-title">Unpriced Samples</h2>
           </div>
-          <span id="unpriced-summary" class="pill">Loading</span>
-        </div>
-        <div class="sample-toolbar">
-          <p id="unpriced-status" class="muted table-status">
-            Checking Graylog-backed sample rows.
-          </p>
-          <button id="unpriced-refresh" class="ghost" type="button">
-            Refresh
+          <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Toggle section">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </button>
         </div>
-        <div class="rowgrid scroll">
-          <div class="sample-row head">
-            <span>Product</span>
-            <span>Price</span>
-            <span>Samples</span>
-            <span>Value</span>
-            <span>Notes</span>
-            <span class="row-actions">Actions</span>
+        <div class="panel-body">
+          <div class="panel-body-inner">
+            <div class="sample-toolbar">
+              <div
+                id="sample-view-toggle"
+                class="view-toggle"
+                role="group"
+                aria-label="Show unpriced or priced samples"
+              >
+                <button
+                  id="view-unpriced"
+                  class="pill pill-toggle is-active"
+                  type="button"
+                  data-view="unpriced"
+                  aria-pressed="true"
+                  title="Show unpriced samples"
+                >
+                  Unpriced
+                </button>
+                <button
+                  id="view-priced"
+                  class="pill pill-toggle"
+                  type="button"
+                  data-view="priced"
+                  aria-pressed="false"
+                  title="Show priced samples"
+                >
+                  Priced
+                </button>
+              </div>
+              <button id="unpriced-refresh" class="ghost" type="button">
+                Refresh
+              </button>
+            </div>
+            <div class="rowgrid scroll">
+              <div class="sample-row head">
+                <span>Product</span>
+                <span>Price</span>
+                <span>Samples</span>
+                <span>Value</span>
+                <span>Notes</span>
+                <span class="row-actions">Actions</span>
+              </div>
+              <div id="unpriced-rows" class="rowgrid"></div>
+            </div>
           </div>
-          <div id="unpriced-rows" class="rowgrid"></div>
         </div>
       </section>
 
@@ -138,18 +167,25 @@
             <p class="eyebrow">Brian's Comparison Engine</p>
             <h2>What Should We Film Next?</h2>
           </div>
+          <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Toggle section">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
         </div>
-        <div class="rowgrid scroll">
-          <div class="cmp-row head">
-            <span>Product</span>
-            <span class="num">Rank</span>
-            <span class="num">Creator videos</span>
-            <span class="num">Platform videos</span>
-            <span class="num">Sales</span>
-            <span class="num">Sample value</span>
-            <span>Signal</span>
+        <div class="panel-body">
+          <div class="panel-body-inner">
+            <div class="rowgrid scroll">
+              <div class="cmp-row head">
+                <span>Product</span>
+                <span class="num">Rank</span>
+                <span class="num">Creator videos</span>
+                <span class="num">Platform videos</span>
+                <span class="num">Sales</span>
+                <span class="num">Sample value</span>
+                <span>Signal</span>
+              </div>
+              <div id="comparison-rows" class="rowgrid"></div>
+            </div>
           </div>
-          <div id="comparison-rows" class="rowgrid"></div>
         </div>
       </section>
 
@@ -159,8 +195,15 @@
             <p class="eyebrow">Kiosk Fleet</p>
             <h2>Heartbeat Monitor</h2>
           </div>
+          <button class="panel-toggle" type="button" aria-expanded="true" aria-label="Toggle section">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
         </div>
-        <div id="kiosks" class="kiosk-grid"></div>
+        <div class="panel-body">
+          <div class="panel-body-inner">
+            <div id="kiosks" class="kiosk-grid"></div>
+          </div>
+        </div>
       </section>
     </main>
 
