@@ -788,6 +788,26 @@ section.panel.collapsed .panel-body {
   margin-top: 8px;
 }
 
+/* Device-kind tag on fleet cards: checkout kiosks vs handheld scanners
+   (live /api/scan-socket devices registered by the Scanner companion app). */
+.kiosk-kind {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #8a93a6);
+}
+
+.kiosk-kind.scanner {
+  color: var(--accent);
+  border-color: currentColor;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 920px) {

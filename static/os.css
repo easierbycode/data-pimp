@@ -698,6 +698,107 @@ body.wm-busy {
   filter: saturate(0.7) brightness(0.85);
 }
 
+/* ---------- scanner dock status ---------- */
+
+/* The Scanner app's dock presence is live status UI, not a plain tile: an LED
+   that lights while ≥1 scanner is connected (relay or BLE), a count badge when
+   there are several, and a hover-revealed BLE pair button. */
+.dock-scanner {
+  color: var(--text);
+}
+
+.dock-scanner .scan-main {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dock-scanner .scan-main svg {
+  width: 22px;
+  height: 22px;
+  opacity: 0.85;
+}
+
+.dock-scanner .scan-led {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6b7280;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.dock-scanner.connected .scan-led {
+  background: #34d399;
+  box-shadow: 0 0 7px #34d399;
+  animation: scan-led-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes scan-led-pulse {
+  50% { opacity: 0.45; }
+}
+
+.dock-scanner .scan-count {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #34d399;
+  color: #06281a;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dock-scanner .scan-ble {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  /* Not hit-testable while hidden — a stray touch on the tile must not open
+     the BLE chooser. pointer-events (not visibility) so keyboard focus can
+     still reveal it. */
+  pointer-events: none;
+  transition: opacity 0.12s;
+  padding: 0;
+}
+
+.dock-scanner:hover .scan-ble,
+.dock-scanner .scan-ble:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-scanner.connected .scan-led {
+    animation: none;
+  }
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 720px) {
