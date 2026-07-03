@@ -224,10 +224,14 @@ interface KioskProduct {
   estimatedRetailValue: number;
   lastSeen: string | null;
   image: string | null;
+  creator: string | null;
+  creatorHandle: string | null;
+  creator_handle: string | null;
 }
 
 function sampleRowToKioskProduct(row: Record<string, unknown>): KioskProduct {
   const price = Number(row.current_price) || 0;
+  const creator = creatorFromSampleRow(row);
   return {
     productId: String(row.qr_code ?? "").trim(),
     name: String(row.name ?? "").trim(),
@@ -239,7 +243,101 @@ function sampleRowToKioskProduct(row: Record<string, unknown>): KioskProduct {
     estimatedRetailValue: 0,
     lastSeen: row.created_at ? new Date(String(row.created_at)).toISOString() : null,
     image: row.picture_url ? String(row.picture_url) : null,
+    creator,
+    creatorHandle: creator,
+    creator_handle: creator,
   };
+}
+
+const CREATOR_ROW_FIELDS = [
+  "creator",
+  "creator_handle",
+  "creatorHandle",
+  "creator_username",
+  "creatorUsername",
+  "sample_creator",
+  "sample_creator_handle",
+  "affiliate_creator",
+  "affiliate_creator_handle",
+  "influencer",
+  "influencer_handle",
+];
+
+function creatorFromSampleRow(row: Record<string, unknown>): string | null {
+  for (const field of CREATOR_ROW_FIELDS) {
+    const creator = normalizeCreator(row[field]);
+    if (creator) return creator;
+  }
+
+  const productJson = parseMaybeJson(row.product_json);
+  if (productJson) {
+    const creator = normalizeCreatorFromObject(productJson);
+    if (creator) return creator;
+  }
+
+  return creatorFromNotes(row.notes);
+}
+
+function normalizeCreatorFromObject(value: Record<string, unknown>): string | null {
+  for (const field of CREATOR_ROW_FIELDS) {
+    const creator = normalizeCreator(value[field]);
+    if (creator) return creator;
+  }
+
+  for (const path of [
+    ["creator", "handle"],
+    ["creator", "username"],
+    ["sample_import", "creator"],
+    ["sample_import", "creator_handle"],
+    ["sampleImport", "creator"],
+    ["sampleImport", "creatorHandle"],
+  ]) {
+    const creator = normalizeCreator(valueAt(value, path));
+    if (creator) return creator;
+  }
+
+  return null;
+}
+
+function creatorFromNotes(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = value.match(/\bcreator\s*[:=-]?\s*@?([A-Za-z0-9._-]+)/i);
+  return match ? normalizeCreator(match[1]) : null;
+}
+
+function normalizeCreator(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const urlHandle = trimmed.match(/(?:tiktok\.com\/@|\/@)([A-Za-z0-9._-]+)/i)?.[1];
+  const candidate = urlHandle ?? trimmed.match(/@([A-Za-z0-9._-]+)/)?.[1] ?? trimmed;
+  const cleaned = candidate.trim().replace(/^@+/, "");
+  if (!cleaned || /^unknown$/i.test(cleaned)) return null;
+  return `@${cleaned}`;
+}
+
+function parseMaybeJson(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function valueAt(source: Record<string, unknown>, path: string[]): unknown {
+  let value: unknown = source;
+  for (const key of path) {
+    if (!value || typeof value !== "object") return undefined;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return value;
 }
 
 // Map a Product Analysis sample (Graylog-backed) into the same kiosk catalog
@@ -258,6 +356,9 @@ function sampleProductToKioskProduct(sample: UnpricedSample): KioskProduct {
     estimatedRetailValue: sample.sampleValue,
     lastSeen: sample.lastSeen,
     image: sample.image,
+    creator: null,
+    creatorHandle: null,
+    creator_handle: null,
   };
 }
 
