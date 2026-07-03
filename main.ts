@@ -262,7 +262,403 @@ function sampleProductToKioskProduct(sample: UnpricedSample): KioskProduct {
 }
 
 // Kiosk-fleet heartbeat state (in-memory; powers the dashboard's Fleet panel).
-const kiosks = new Map<string, { lastSeen: number; disabled: boolean }>();
+// `kind` distinguishes checkout kiosks (HTTP heartbeat) from handheld barcode
+// scanners (live /api/scan-socket connections); `label` is a human name.
+const kiosks = new Map<
+  string,
+  { lastSeen: number; disabled: boolean; kind?: "kiosk" | "scanner"; label?: string }
+>();
+
+/* ------------------------------------------------------- scan relay (WS) -- */
+
+// Realtime barcode-scan relay: handheld Scanner devices (role "scanner", the
+// admin.thirsty.store/scanner companion app) push scan events; every other
+// connected client (role "listener": the Thirsty OS shell, standalone
+// Inventory/Kiosk tabs) receives them instantly. Presence updates keep the OS
+// dock indicator and the Product Analysis Kiosk Fleet panel in sync. State is
+// in-memory per isolate (same trade-off as the kiosk heartbeat above); a
+// BroadcastChannel bridge forwards scans/presence across isolates when the
+// runtime provides one (Deno Deploy).
+type ScanClient = {
+  socket: WebSocket;
+  role: "scanner" | "listener";
+  deviceId: string;
+  name: string;
+  since: number;
+  hello: boolean;
+  scanTimes: number[];
+};
+const scanClients = new Set<ScanClient>();
+const scanRelayInstanceId = crypto.randomUUID();
+const remoteScanners = new Map<
+  string,
+  { id: string; name: string; since: number; relayId: string; expiresAt: number }
+>();
+
+const SCAN_RELAY_DEFAULT_ORIGINS = [
+  "https://thirsty.store",
+  "https://admin.thirsty.store",
+];
+const SCAN_RELAY_TOKEN = envValue("SCAN_RELAY_TOKEN") ||
+  envValue("THIRSTY_SCAN_RELAY_TOKEN");
+const SCAN_RELAY_MAX_CLIENTS = numberEnv("SCAN_RELAY_MAX_CLIENTS", 200);
+const SCAN_RELAY_MAX_MESSAGE_CHARS = numberEnv("SCAN_RELAY_MAX_MESSAGE_CHARS", 8192);
+const SCAN_RELAY_MAX_VALUE_CHARS = numberEnv("SCAN_RELAY_MAX_VALUE_CHARS", 4096);
+const SCAN_RELAY_RATE_WINDOW_MS = numberEnv("SCAN_RELAY_RATE_WINDOW_MS", 10_000);
+const SCAN_RELAY_MAX_SCANS_PER_WINDOW = numberEnv("SCAN_RELAY_MAX_SCANS_PER_WINDOW", 40);
+const SCAN_RELAY_REMOTE_TTL_MS = numberEnv("SCAN_RELAY_REMOTE_TTL_MS", 30_000);
+
+function numberEnv(name: string, fallback: number): number {
+  const raw = envValue(name);
+  if (!raw) return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+// Cross-isolate bridge (no-op locally where BroadcastChannel may not exist).
+const scanChannel = (() => {
+  try {
+    return new BroadcastChannel("thirsty-scan-relay");
+  } catch {
+    return null;
+  }
+})();
+scanChannel?.addEventListener("message", (e: MessageEvent) => {
+  const data = e.data;
+  if (!data || typeof data !== "object") return;
+  if (data.relayId === scanRelayInstanceId) return;
+  // Scans from other isolates fan out to local sockets only (no re-publish).
+  if (data.type === "scan-event" && data.event && typeof data.event === "object") {
+    sendScanToLocal(data.event as Record<string, unknown>, null);
+  } else if (data.type === "scanner-presence" && Array.isArray(data.devices)) {
+    receiveRemoteScannerPresence(
+      String(data.relayId || ""),
+      data.devices as Array<Record<string, unknown>>,
+    );
+  }
+});
+
+function localScanners(): ScanClient[] {
+  return [...scanClients].filter((c) => c.role === "scanner");
+}
+
+function scannerDevice(client: ScanClient) {
+  return {
+    id: client.deviceId,
+    name: client.name,
+    since: client.since,
+  };
+}
+
+function pruneRemoteScanners(now = Date.now()) {
+  for (const [key, device] of remoteScanners) {
+    if (device.expiresAt <= now) remoteScanners.delete(key);
+  }
+}
+
+setInterval(() => {
+  const before = remoteScanners.size;
+  pruneRemoteScanners();
+  if (remoteScanners.size !== before) broadcastScannerPresence(false);
+}, Math.max(5000, Math.floor(SCAN_RELAY_REMOTE_TTL_MS / 2)));
+
+function allScannerDevices() {
+  pruneRemoteScanners();
+  const devices = new Map<string, { id: string; name: string; since: number }>();
+  for (const device of remoteScanners.values()) {
+    devices.set(device.id, { id: device.id, name: device.name, since: device.since });
+  }
+  for (const scanner of localScanners()) devices.set(scanner.deviceId, scannerDevice(scanner));
+  return [...devices.values()];
+}
+
+function sendScanToLocal(event: Record<string, unknown>, from: ScanClient | null) {
+  const payload = JSON.stringify(event);
+  for (const client of scanClients) {
+    if (client === from) continue;
+    try {
+      if (client.socket.readyState === WebSocket.OPEN) client.socket.send(payload);
+    } catch {
+      // A dying socket must not break the fan-out to everyone else.
+    }
+  }
+}
+
+function publishLocalScannerPresence() {
+  try {
+    scanChannel?.postMessage({
+      type: "scanner-presence",
+      relayId: scanRelayInstanceId,
+      devices: localScanners().map(scannerDevice),
+      at: Date.now(),
+    });
+  } catch {
+    // Cross-isolate presence is best-effort; local sockets remain accurate.
+  }
+}
+
+function receiveRemoteScannerPresence(relayId: string, devices: Array<Record<string, unknown>>) {
+  if (!relayId) return;
+  for (const [key, device] of remoteScanners) {
+    if (device.relayId === relayId) remoteScanners.delete(key);
+  }
+  const now = Date.now();
+  for (const device of devices) {
+    const id = cleanDeviceId(device.id);
+    const name = cleanText(device.name, 80);
+    const since = typeof device.since === "number" && Number.isFinite(device.since)
+      ? device.since
+      : now;
+    remoteScanners.set(`${relayId}:${id}`, {
+      id,
+      name,
+      since,
+      relayId,
+      expiresAt: now + SCAN_RELAY_REMOTE_TTL_MS,
+    });
+    touchScannerFleetDevice(id, name);
+  }
+  broadcastScannerPresence(false);
+}
+
+// Presence snapshot for local + bridged scanners, broadcast on every join/leave
+// and scanner heartbeat so the OS dock badge ("N scanners connected") updates live.
+function broadcastScannerPresence(publish = true) {
+  const devices = allScannerDevices();
+  sendScanToLocal({ type: "scanners", count: devices.length, devices }, null);
+  if (publish) publishLocalScannerPresence();
+}
+
+// A connected scanner is fleet-visible: keep its heartbeat fresh while the
+// socket lives so /api/kiosks (Product Analysis → Kiosk Fleet) shows it online.
+function touchScannerFleetDevice(deviceId: string, name: string) {
+  const existing = kiosks.get(deviceId);
+  kiosks.set(deviceId, {
+    lastSeen: Date.now(),
+    disabled: existing?.disabled || false,
+    kind: "scanner",
+    label: name,
+  });
+}
+
+function touchScannerFleet(client: ScanClient) {
+  if (client.role !== "scanner") return;
+  touchScannerFleetDevice(client.deviceId, client.name);
+}
+
+function cleanText(value: unknown, max: number): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
+}
+
+function cleanDeviceId(value: unknown): string {
+  const cleaned = cleanText(value, 120)
+    .replace(/[^A-Za-z0-9_.:-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return cleaned || `scanner-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+function allowedScanOrigins(req: Request): Set<string> {
+  const current = new URL(req.url).origin;
+  const origins = new Set([...SCAN_RELAY_DEFAULT_ORIGINS, current]);
+  if (REMOTE_API) {
+    try {
+      origins.add(new URL(REMOTE_API).origin);
+    } catch {
+      // REMOTE_API is already normalized defensively; ignore if overridden badly.
+    }
+  }
+  for (const raw of (envValue("SCAN_RELAY_ORIGINS") || "").split(",")) {
+    const origin = raw.trim().replace(/\/+$/, "");
+    if (origin) origins.add(origin);
+  }
+  return origins;
+}
+
+function localOrigin(origin: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin);
+}
+
+function scanRelayOriginAllowed(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) {
+    const url = new URL(req.url);
+    return localOrigin(url.origin) ||
+      envValue("SCAN_RELAY_ALLOW_NO_ORIGIN") === "true" ||
+      Boolean(SCAN_RELAY_TOKEN && scanRelayTokenValid(req));
+  }
+  return allowedScanOrigins(req).has(origin) || localOrigin(origin);
+}
+
+function scanRelayTokenValid(req: Request): boolean {
+  if (!SCAN_RELAY_TOKEN) return true;
+  const url = new URL(req.url);
+  const token = url.searchParams.get("scanToken") || url.searchParams.get("token") || "";
+  return token === SCAN_RELAY_TOKEN;
+}
+
+function parseSocketMessage(data: unknown): Record<string, unknown> | null {
+  if (typeof data !== "string") return null;
+  if (data.length > SCAN_RELAY_MAX_MESSAGE_CHARS) return null;
+  try {
+    const msg = JSON.parse(data);
+    return msg && typeof msg === "object" && !Array.isArray(msg)
+      ? msg as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function rateLimitScan(client: ScanClient): boolean {
+  const now = Date.now();
+  client.scanTimes = client.scanTimes.filter((t) => now - t < SCAN_RELAY_RATE_WINDOW_MS);
+  if (client.scanTimes.length >= SCAN_RELAY_MAX_SCANS_PER_WINDOW) return false;
+  client.scanTimes.push(now);
+  return true;
+}
+
+function handleScanSocket(req: Request): Response {
+  const { socket, response } = Deno.upgradeWebSocket(req);
+  const client: ScanClient = {
+    socket,
+    role: "listener",
+    deviceId: crypto.randomUUID(),
+    name: "",
+    since: Date.now(),
+    hello: false,
+    scanTimes: [],
+  };
+
+  socket.onopen = () => {
+    scanClients.add(client);
+    broadcastScannerPresence();
+  };
+
+  socket.onmessage = (e) => {
+    const msg = parseSocketMessage(e.data);
+    if (!msg) {
+      try {
+        socket.close(1003, "Invalid scan-relay message");
+      } catch { /* already closing */ }
+      return;
+    }
+
+    if (msg.type === "hello") {
+      client.role = msg.role === "scanner" ? "scanner" : "listener";
+      client.hello = true;
+      client.deviceId = client.role === "scanner"
+        ? cleanDeviceId(msg.deviceId)
+        : cleanDeviceId(msg.deviceId || client.deviceId);
+      client.name = cleanText(msg.name, 80) ||
+        (client.role === "scanner" ? client.deviceId : "listener");
+      touchScannerFleet(client);
+      broadcastScannerPresence();
+      return;
+    }
+    if (msg.type === "ping") {
+      touchScannerFleet(client);
+      if (client.role === "scanner") broadcastScannerPresence();
+      try {
+        socket.send(JSON.stringify({ type: "pong" }));
+      } catch { /* closing */ }
+      return;
+    }
+    if (msg.type === "scan" && typeof msg.value === "string" && msg.value.length > 0) {
+      if (!client.hello || client.role !== "scanner") {
+        try {
+          socket.close(1008, "Scan publisher must identify as scanner");
+        } catch { /* already closing */ }
+        return;
+      }
+      if (kiosks.get(client.deviceId)?.disabled) return;
+      if (!rateLimitScan(client)) {
+        try {
+          socket.close(1008, "Scan rate limit exceeded");
+        } catch { /* already closing */ }
+        return;
+      }
+      const value = cleanText(msg.value, SCAN_RELAY_MAX_VALUE_CHARS);
+      if (!value || value.length !== msg.value.trim().length) return;
+      const event = {
+        type: "scan",
+        value,
+        format: cleanText(msg.format, 64) || "unknown",
+        scanId: cleanText(msg.scanId, 120) || crypto.randomUUID(),
+        deviceId: client.deviceId,
+        deviceName: client.name,
+        at: Date.now(),
+      };
+      touchScannerFleet(client);
+      sendScanToLocal(event, client);
+      try {
+        scanChannel?.postMessage({ type: "scan-event", relayId: scanRelayInstanceId, event });
+      } catch { /* bridge is best-effort */ }
+      return;
+    }
+  };
+
+  const drop = () => {
+    if (!scanClients.has(client)) return;
+    scanClients.delete(client);
+    // Leave the fleet entry in place — it flips to OFFLINE via the 15s
+    // lastSeen window, mirroring how kiosk heartbeats age out.
+    broadcastScannerPresence();
+  };
+  socket.onclose = drop;
+  socket.onerror = drop;
+
+  return response;
+}
+
+// Where browsers should open the relay socket. Thin clients (kiosk binaries
+// proxying /api/* to the central deployment) point their pages at the central
+// relay so scanners and listeners always meet on one bus; the central
+// deployment itself uses same-origin ("" lets the client derive ws(s)://host).
+function scanRelayClientUrl(): string {
+  if (!REMOTE_API) return "";
+  try {
+    const u = new URL(REMOTE_API);
+    return `${u.protocol === "http:" ? "ws" : "wss"}://${u.host}/api/scan-socket`;
+  } catch {
+    return "";
+  }
+}
+
+function publicHttpBaseUrl(value: string | undefined): string {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    url.hash = "";
+    return url.href.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+function scannerCompanionUrl(): string {
+  return publicHttpBaseUrl(envValue("SCANNER_APP_URL")) ||
+    "https://admin.thirsty.store/scanner";
+}
+
+function graylogClientUrl(): string {
+  return publicHttpBaseUrl(
+    envValue("GRAYLOG_UI_URL") ||
+      envValue("GRAYLOG_SEARCH_URL") ||
+      graylogConfigFromEnv()?.url,
+  );
+}
+
+function osClientConfigJson(): string {
+  return JSON.stringify({
+    scanRelay: scanRelayClientUrl(),
+    scannerUrl: scannerCompanionUrl(),
+    graylogUrl: graylogClientUrl(),
+  }).replace(/</g, "\\u003c");
+}
 
 async function fetchCharacter() {
   try {
@@ -448,7 +844,9 @@ function renderSPAShell(): Response {
       </div>
     </div>
   </div>
+  <script>globalThis.THIRSTY_SCAN_RELAY = ${JSON.stringify(scanRelayClientUrl())};</script>
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/scan-client.js"></script>
 </body>
 </html>`;
 
@@ -470,6 +868,7 @@ function renderOSShell(): Response {
     .map((r) => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)}</option>`)
     .join("\n          ");
   const rbacJson = JSON.stringify(rbac).replace(/</g, "\\u003c");
+  const osConfigJson = osClientConfigJson();
   const html = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -500,7 +899,9 @@ function renderOSShell(): Response {
         <span id="clock" class="clock tnum"></span>
       </div>
     </footer>
-    <script>globalThis.THIRSTY_RBAC = ${rbacJson};</script>
+    <script>globalThis.THIRSTY_RBAC = ${rbacJson};
+    globalThis.THIRSTY_OS_CONFIG = ${osConfigJson};
+    globalThis.THIRSTY_SCAN_RELAY = globalThis.THIRSTY_OS_CONFIG.scanRelay || "";</script>
     <script type="module" src="/os.js"></script>
   </body>
 </html>`;
@@ -854,6 +1255,9 @@ export async function legacyHandler(req: Request): Promise<Response> {
   if (pathname === "/ui.js") {
     return await serveLocalFile("./static/ui.js", "text/javascript; charset=utf-8");
   }
+  if (pathname === "/scan-client.js") {
+    return await serveLocalFile("./static/scan-client.js", "text/javascript; charset=utf-8");
+  }
   if (pathname === "/styles.css") {
     return await serveLocalFile("./static/styles.css", "text/css; charset=utf-8");
   }
@@ -919,6 +1323,23 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
   // Fetch demo
   if (pathname === "/fetch-demo") return await handleFetchDemo();
+
+  // Realtime scan relay. Handled ahead of the thin-client proxy: a WebSocket
+  // upgrade can't be forwarded through fetch(), so every instance hosts its own
+  // relay (pages on thin clients are pointed at the central relay via
+  // THIRSTY_SCAN_RELAY — see scanRelayClientUrl).
+  if (pathname === "/api/scan-socket") {
+    if (req.headers.get("upgrade")?.toLowerCase() !== "websocket") {
+      return json({ error: "WebSocket upgrade required" }, 400);
+    }
+    if (scanClients.size >= SCAN_RELAY_MAX_CLIENTS) {
+      return json({ error: "Scan relay is at capacity" }, 503);
+    }
+    if (!scanRelayOriginAllowed(req)) {
+      return json({ error: "Forbidden scan relay origin" }, 403);
+    }
+    return handleScanSocket(req);
+  }
 
   // Thin-client mode: forward every API call to the central deployment.
   // Skip if the upstream is ourselves (misconfig guard against a proxy loop).
@@ -1713,9 +2134,14 @@ export async function legacyHandler(req: Request): Promise<Response> {
 
       // Kiosk-fleet heartbeat (in-memory; powers the dashboard's Fleet panel).
       if (pathname === "/api/heartbeat") {
-        const id = req.headers.get("x-kiosk-id") || "unknown";
+        const id = cleanDeviceId(req.headers.get("x-kiosk-id") || "unknown");
         const existing = kiosks.get(id);
-        kiosks.set(id, { lastSeen: Date.now(), disabled: existing?.disabled || false });
+        kiosks.set(id, {
+          lastSeen: Date.now(),
+          disabled: existing?.disabled || false,
+          kind: "kiosk",
+          label: existing?.label || "",
+        });
         return json({ ok: true, disabled: kiosks.get(id)?.disabled || false });
       }
       if (pathname === "/api/kiosks") {
@@ -1724,19 +2150,30 @@ export async function legacyHandler(req: Request): Promise<Response> {
           lastSeen: k.lastSeen,
           online: !k.disabled && Date.now() - k.lastSeen < 15000,
           disabled: k.disabled,
+          kind: k.kind || "kiosk",
+          label: k.label || "",
         })));
       }
       if (pathname.startsWith("/api/kiosks/") && pathname.endsWith("/disable")) {
-        // Raw path id, to match the (case-preserving) x-kiosk-id heartbeat key.
-        const id = url.pathname.split("/")[3];
+        const id = cleanDeviceId(decodeURIComponent(url.pathname.split("/")[3] || ""));
         const existing = kiosks.get(id);
-        kiosks.set(id, { lastSeen: existing?.lastSeen || 0, disabled: true });
+        kiosks.set(id, {
+          lastSeen: existing?.lastSeen || 0,
+          disabled: true,
+          kind: existing?.kind || "kiosk",
+          label: existing?.label || "",
+        });
         return json({ ok: true, id, disabled: true });
       }
       if (pathname.startsWith("/api/kiosks/") && pathname.endsWith("/enable")) {
-        const id = url.pathname.split("/")[3];
+        const id = cleanDeviceId(decodeURIComponent(url.pathname.split("/")[3] || ""));
         const existing = kiosks.get(id);
-        kiosks.set(id, { lastSeen: existing?.lastSeen || Date.now(), disabled: false });
+        kiosks.set(id, {
+          lastSeen: existing?.lastSeen || Date.now(),
+          disabled: false,
+          kind: existing?.kind || "kiosk",
+          label: existing?.label || "",
+        });
         return json({ ok: true, id, disabled: false });
       }
 

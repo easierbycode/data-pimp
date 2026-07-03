@@ -407,22 +407,30 @@ async function loadKiosks() {
   const kiosks = await json("/api/kiosks");
   const root = document.getElementById("kiosks");
 
+  // No inline onclick here: kiosk/scanner ids are client-supplied (the scan
+  // relay hello), and JS-string escaping inside an HTML attribute is exactly
+  // the double-encoding trap that invites XSS. The id rides a data attribute
+  // (escapeAttr is sufficient there) and the handler binds via DOM API.
   root.innerHTML = kiosks.length
     ? kiosks.map((kiosk) => `
     <article class="kiosk">
-      <strong>${escapeHtml(kiosk.id)}</strong>
+      <strong>${escapeHtml(kiosk.label || kiosk.id)}</strong>
+      <p class="kiosk-kind ${kiosk.kind === "scanner" ? "scanner" : ""}">${
+      kiosk.kind === "scanner" ? "Scanner" : "Kiosk"
+    }</p>
       <p class="status ${kiosk.online ? "" : "off"}">${
       kiosk.disabled ? "DISABLED" : kiosk.online ? "ONLINE" : "OFFLINE"
     }</p>
       <p class="muted">Last seen ${
       kiosk.lastSeen ? new Date(kiosk.lastSeen).toLocaleString() : "never"
     }</p>
-      <button class="small ghost" onclick="disableKiosk('${
-      escapeAttr(kiosk.id)
-    }')">Disable</button>
+      <button class="small ghost" data-kiosk-id="${escapeAttr(kiosk.id)}">Disable</button>
     </article>
   `).join("")
     : `<p class="muted">No kiosk heartbeats yet.</p>`;
+  for (const btn of root.querySelectorAll("button[data-kiosk-id]")) {
+    btn.addEventListener("click", () => disableKiosk(btn.dataset.kioskId));
+  }
 }
 
 window.disableKiosk = async (id) => {
