@@ -1,7 +1,7 @@
 // main.ts - Deno Deploy compatible server
 // Serves React SPA (shell + /app.js) + API + DB debug endpoints
 
-import { Pool } from "npm:pg";
+import { Client, Pool } from "npm:pg";
 import { initializeDatabase, Samples, Bundles, InventoryTransactions } from "./db.ts";
 import { fetchProductImage, pdpUrlForSample } from "./product-image.ts";
 // Migrated from thirsty-store-kiosk: the Graylog-backed Product Analysis
@@ -323,20 +323,131 @@ const scanChannel = (() => {
     return null;
   }
 })();
-scanChannel?.addEventListener("message", (e: MessageEvent) => {
-  const data = e.data;
+
+// One handler for bridge traffic from EITHER transport (BroadcastChannel or
+// the Postgres NOTIFY fallback below). Scans from other isolates fan out to
+// local sockets only — never re-published, so no echo loops.
+function handleScanBridgeMessage(data: unknown) {
   if (!data || typeof data !== "object") return;
-  if (data.relayId === scanRelayInstanceId) return;
-  // Scans from other isolates fan out to local sockets only (no re-publish).
-  if (data.type === "scan-event" && data.event && typeof data.event === "object") {
-    sendScanToLocal(data.event as Record<string, unknown>, null);
-  } else if (data.type === "scanner-presence" && Array.isArray(data.devices)) {
+  const msg = data as Record<string, unknown>;
+  if (msg.relayId === scanRelayInstanceId) return;
+  if (msg.type === "scan-event" && msg.event && typeof msg.event === "object") {
+    sendScanToLocal(msg.event as Record<string, unknown>, null);
+  } else if (msg.type === "scanner-presence" && Array.isArray(msg.devices)) {
     receiveRemoteScannerPresence(
-      String(data.relayId || ""),
-      data.devices as Array<Record<string, unknown>>,
+      String(msg.relayId || ""),
+      msg.devices as Array<Record<string, unknown>>,
     );
   }
+}
+
+scanChannel?.addEventListener("message", (e: MessageEvent) => {
+  handleScanBridgeMessage(e.data);
 });
+
+/* --------------------------------------- scan bridge over Postgres NOTIFY -- */
+
+// BroadcastChannel is the fast path between isolates, but not every runtime
+// this server deploys to provides it (Deno Deploy EA doesn't) — without a
+// bridge, a scanner pinned to one isolate never reaches a listener whose
+// reload reconnected onto another, which surfaced as "Inventory stops seeing
+// scans until the Scanner is reloaded too". Postgres NOTIFY/LISTEN rides the
+// DATABASE_URL every full-DB deployment already has, so bridge traffic
+// survives isolate splits. Thin clients (REMOTE_API) skip this entirely —
+// their pages already talk straight to the central relay.
+//
+// The pool above is max:1 and serves request traffic; LISTEN needs a
+// connection held open forever, so the bridge runs on its own dedicated
+// Client, reconnecting with capped backoff if the connection drops.
+const SCAN_PG_CHANNEL = "thirsty_scan_relay";
+// pg NOTIFY payloads cap at 8000 BYTES. Anything over the guard below is
+// dropped rather than erroring — possible for a scan event whose 4096-char
+// value is heavily non-ASCII (UTF-8 expands it), or an enormous presence list.
+const SCAN_PG_MAX_PAYLOAD_BYTES = 7500;
+const SCAN_PG_MAX_RECONNECTS = 10;
+
+let scanPgClient: InstanceType<typeof Client> | null = null;
+let scanPgReady = false;
+let scanPgAttempts = 0;
+
+function startScanPgBridge() {
+  if (REMOTE_API || DB_URL_ERR) return; // no local DB → nothing to bridge over
+  if (scanPgAttempts >= SCAN_PG_MAX_RECONNECTS) {
+    console.warn("[scan-relay] pg bridge gave up after repeated failures");
+    return;
+  }
+  const attempt = ++scanPgAttempts;
+  scanPgReady = false;
+
+  const client = new Client({ connectionString: DB_URL ?? undefined });
+  scanPgClient = client;
+
+  client.on("notification", (n: { channel: string; payload?: string }) => {
+    if (n.channel !== SCAN_PG_CHANNEL || !n.payload) return;
+    try {
+      handleScanBridgeMessage(JSON.parse(n.payload));
+    } catch {
+      // Foreign writers on the channel must not crash the relay.
+    }
+  });
+
+  const reconnect = () => {
+    if (scanPgClient !== client) return; // superseded by a newer attempt
+    scanPgClient = null;
+    scanPgReady = false;
+    // Delay from the LIVE counter (reset to 0 on success), not the captured
+    // attempt number — a healthy connection that drops should retry in ~1-2s,
+    // while repeated connect failures still climb the exponential ladder.
+    setTimeout(
+      startScanPgBridge,
+      Math.min(1000 * 2 ** Math.max(scanPgAttempts, 1), 60_000),
+    );
+  };
+  client.on("error", reconnect);
+  client.on("end", reconnect);
+
+  client
+    .connect()
+    .then(() => client.query(`LISTEN ${SCAN_PG_CHANNEL}`))
+    .then(() => {
+      scanPgReady = true;
+      scanPgAttempts = 0; // healthy — future drops restart the backoff ladder
+      console.log("[scan-relay] pg bridge listening");
+    })
+    .catch((err: unknown) => {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.warn("[scan-relay] pg bridge connect failed:", detail);
+      try {
+        client.end();
+      } catch { /* already dead */ }
+      reconnect();
+    });
+}
+
+startScanPgBridge();
+
+// Publish to every available bridge transport (both are best-effort; local
+// sockets were already served directly before this is called).
+function publishScanBridgeMessage(message: Record<string, unknown>) {
+  try {
+    scanChannel?.postMessage(message);
+  } catch {
+    // BroadcastChannel post can fail on teardown; pg below still covers it.
+  }
+  if (scanPgClient && scanPgReady) {
+    const payload = JSON.stringify(message);
+    // Postgres enforces the NOTIFY limit in UTF-8 bytes, not JS string length.
+    if (new TextEncoder().encode(payload).length <= SCAN_PG_MAX_PAYLOAD_BYTES) {
+      scanPgClient
+        .query("select pg_notify($1, $2)", [SCAN_PG_CHANNEL, payload])
+        .catch(() => {
+          // Connection errors also fire the client's error handler → reconnect.
+        });
+    } else if (message.type === "scan-event") {
+      console.warn("[scan-relay] scan event too large for pg bridge; dropped");
+    }
+  }
+}
 
 function localScanners(): ScanClient[] {
   return [...scanClients].filter((c) => c.role === "scanner");
@@ -385,16 +496,13 @@ function sendScanToLocal(event: Record<string, unknown>, from: ScanClient | null
 }
 
 function publishLocalScannerPresence() {
-  try {
-    scanChannel?.postMessage({
-      type: "scanner-presence",
-      relayId: scanRelayInstanceId,
-      devices: localScanners().map(scannerDevice),
-      at: Date.now(),
-    });
-  } catch {
-    // Cross-isolate presence is best-effort; local sockets remain accurate.
-  }
+  // Cross-isolate presence is best-effort; local sockets remain accurate.
+  publishScanBridgeMessage({
+    type: "scanner-presence",
+    relayId: scanRelayInstanceId,
+    devices: localScanners().map(scannerDevice),
+    at: Date.now(),
+  });
 }
 
 function receiveRemoteScannerPresence(relayId: string, devices: Array<Record<string, unknown>>) {
@@ -592,9 +700,11 @@ function handleScanSocket(req: Request): Response {
       };
       touchScannerFleet(client);
       sendScanToLocal(event, client);
-      try {
-        scanChannel?.postMessage({ type: "scan-event", relayId: scanRelayInstanceId, event });
-      } catch { /* bridge is best-effort */ }
+      publishScanBridgeMessage({
+        type: "scan-event",
+        relayId: scanRelayInstanceId,
+        event,
+      });
       return;
     }
   };
