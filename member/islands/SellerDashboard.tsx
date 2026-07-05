@@ -8,7 +8,7 @@ interface SellerDashboardProps {
 
 /**
  * Preact island wrapper for the Svelte 5 `SellerDashboard.svelte` component.
- * Same `mount()`-on-client pattern as `SvelteCounter`, but the inner
+ * Same `mount()`-on-client pattern as the other Svelte islands, but the inner
  * component lazy-imports Phaser 4 for the GMV implosion scene — Phaser
  * weighs in over a megabyte and is browser-only, so it must not land in
  * SSR or any non-island bundle.

@@ -6,7 +6,7 @@ Deno **Fresh 2.3** frontend, scaffolded alongside the existing Next.js
 - File-system routing with route groups (`routes/(saas)/app/dashboard`)
 - Preact islands (the ported `MemberDashboardV2`)
 - **Svelte 5 islands** via `@sveltejs/vite-plugin-svelte` + a thin Preact
-  wrapper that mounts the Svelte component on the client (`islands/SvelteCounter.tsx` → `components/Counter.svelte`)
+  wrapper that mounts the Svelte component on the client (e.g. `islands/SellerDashboard.tsx` → `components/SellerDashboard.svelte`)
 - CSS Modules (the dashboard styles are copied verbatim from `apps/web`)
 
 ## Run locally
@@ -51,5 +51,5 @@ porting auth.
 
 1. Drop a `Foo.svelte` file in `components/`.
 2. Create `islands/Foo.tsx` that imports it via the `mount()` pattern in
-   `islands/SvelteCounter.tsx`.
+   `islands/SellerDashboard.tsx`.
 3. Use `<Foo … />` from any route or other island.

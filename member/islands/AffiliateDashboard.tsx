@@ -11,7 +11,7 @@ import { AFFILIATE_STATS, type AffiliateStats } from "./affiliate-data.ts";
  * events, and the `sonner` toasts are all gone. Stats come from
  * `islands/affiliate-data.ts`; the real UI lives in
  * `components/AffiliateDashboard.svelte`, mounted on the client only (same
- * `mount()`-on-client pattern as `SvelteCounter`/`SellerDashboard`).
+ * `mount()`-on-client pattern as `SellerDashboard`).
  */
 
 interface AffiliateDashboardProps {

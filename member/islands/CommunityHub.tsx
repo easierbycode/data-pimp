@@ -12,7 +12,7 @@ import {
  * Port of apps/web/modules/saas/community/components/community-hub.tsx —
  * Preact wrapper for the Svelte 5 `CommunityHub.svelte` component.
  *
- * Same `mount()`-on-client pattern as `SvelteCounter` / `SellerDashboard`.
+ * Same `mount()`-on-client pattern as `SellerDashboard`.
  * The Next.js component pulled platforms + announcements from orpc/Prisma,
  * gated Discord on the user's purchases, and ran a Discord OAuth flow; all
  * of that is deferred. We pass the stub data from `community-data.ts` as
