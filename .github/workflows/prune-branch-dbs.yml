@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: canary
       - name: Prune
         # Values are passed through env (not interpolated into the shell) so a
         # crafted branch name can't inject commands.
