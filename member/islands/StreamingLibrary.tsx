@@ -9,7 +9,7 @@ interface StreamingLibraryProps {
 
 /**
  * Preact island wrapper for the Svelte 5 `StreamingLibrary.svelte` component.
- * Same `mount()`-on-client pattern as `SvelteCounter` / `SellerDashboard`:
+ * Same `mount()`-on-client pattern as `SellerDashboard`:
  * Fresh renders a placeholder `<div>` server-side, and we `mount()` the Svelte
  * component into it on the client only.
  */

@@ -3,7 +3,7 @@ import { IS_BROWSER } from "fresh/runtime";
 
 /**
  * Preact island wrapper for the Svelte 5 `MemberDashboardV2.svelte` component.
- * Same `mount()`-on-client pattern as `SvelteCounter` / `SellerDashboard`:
+ * Same `mount()`-on-client pattern as `SellerDashboard`:
  * Fresh ships and hydrates Preact, so we render a placeholder `<div>`
  * server-side and `mount()` the Svelte component into it on the client only.
  * The component imports its stub data (islands/dashboard-data.ts) directly,

@@ -8,8 +8,8 @@ interface StreamerDashboardProps {
 
 /**
  * Preact island wrapper for the Svelte 5 `StreamerDashboard.svelte`
- * component. Same `mount()`-on-client pattern as `SvelteCounter` /
- * `SellerDashboard` — Svelte runtime is dynamic-imported so it never
+ * component. Same `mount()`-on-client pattern as `SellerDashboard` —
+ * Svelte runtime is dynamic-imported so it never
  * lands in SSR or non-island bundles.
  */
 export default function StreamerDashboard(

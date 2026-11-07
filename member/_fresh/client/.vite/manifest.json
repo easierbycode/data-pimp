@@ -1,164 +1,140 @@
 {
-  "_attributes-DIevTI5r.js": {
-    "file": "assets/attributes-DIevTI5r.js",
+  "_attributes-DfdnN9Sq.js": {
+    "file": "assets/attributes-DfdnN9Sq.js",
     "name": "attributes"
   },
-  "_attributes-ViRQDofw.js": {
-    "file": "assets/attributes-ViRQDofw.js",
-    "name": "attributes",
-    "imports": [
-      "_index-client-B2RdI7_D.js"
-    ]
-  },
-  "_class-DHHBWjP4.js": {
-    "file": "assets/class-DHHBWjP4.js",
+  "_class-Cyzg4tF7.js": {
+    "file": "assets/class-Cyzg4tF7.js",
     "name": "class",
     "imports": [
-      "_attributes-DIevTI5r.js",
-      "_index-client-B2RdI7_D.js"
+      "_attributes-DfdnN9Sq.js",
+      "_index-client-B0GehODF.js"
     ]
   },
-  "_disclose-version-DsnmJJEf.js": {
-    "file": "assets/disclose-version-DsnmJJEf.js",
-    "name": "disclose-version"
+  "_disclose-version-D1mKOJ66.js": {
+    "file": "assets/disclose-version-D1mKOJ66.js",
+    "name": "disclose-version",
+    "imports": [
+      "_index-client-B0GehODF.js"
+    ]
   },
-  "_each-D2dczDzH.js": {
-    "file": "assets/each-D2dczDzH.js",
+  "_each-Bkv3d8j1.js": {
+    "file": "assets/each-Bkv3d8j1.js",
     "name": "each",
     "imports": [
-      "_index-client-B2RdI7_D.js"
+      "_index-client-B0GehODF.js"
     ]
   },
-  "_index-client-B2RdI7_D.js": {
-    "file": "assets/index-client-B2RdI7_D.js",
+  "_index-client-B0GehODF.js": {
+    "file": "assets/index-client-B0GehODF.js",
     "name": "index-client",
     "isDynamicEntry": true
   },
-  "_input-Cr7R5B-2.js": {
-    "file": "assets/input-Cr7R5B-2.js",
+  "_input-Be3X0nUv.js": {
+    "file": "assets/input-Be3X0nUv.js",
     "name": "input",
     "imports": [
-      "_index-client-B2RdI7_D.js"
+      "_index-client-B0GehODF.js"
     ]
   },
-  "_jsxRuntime.module-D_MLLzvV.js": {
-    "file": "assets/jsxRuntime.module-D_MLLzvV.js",
+  "_jsxRuntime.module-DqsIxVqb.js": {
+    "file": "assets/jsxRuntime.module-DqsIxVqb.js",
     "name": "jsxRuntime.module",
     "imports": [
-      "_shared-CuK_HSkq.js"
+      "_shared-CE3whZv8.js"
     ]
   },
-  "_props-BL8pXE4Z.js": {
-    "file": "assets/props-BL8pXE4Z.js",
+  "_props-l0bhq4vs.js": {
+    "file": "assets/props-l0bhq4vs.js",
     "name": "props",
     "imports": [
-      "_index-client-B2RdI7_D.js"
+      "_index-client-B0GehODF.js"
     ]
   },
-  "_shared-CuK_HSkq.js": {
-    "file": "assets/shared-CuK_HSkq.js",
+  "_shared-CE3whZv8.js": {
+    "file": "assets/shared-CE3whZv8.js",
     "name": "shared"
   },
-  "_style-DHbtKs_f.js": {
-    "file": "assets/style-DHbtKs_f.js",
+  "_style-BiN4s4Nw.js": {
+    "file": "assets/style-BiN4s4Nw.js",
     "name": "style",
     "imports": [
-      "_attributes-DIevTI5r.js",
-      "_index-client-B2RdI7_D.js"
+      "_attributes-DfdnN9Sq.js",
+      "_index-client-B0GehODF.js"
     ]
   },
-  "_this--dsV_Ma-.js": {
-    "file": "assets/this--dsV_Ma-.js",
+  "_this-DnWRAzkk.js": {
+    "file": "assets/this-DnWRAzkk.js",
     "name": "this",
     "imports": [
-      "_index-client-B2RdI7_D.js"
+      "_index-client-B0GehODF.js"
     ]
   },
   "components/AffiliateDashboard.svelte": {
-    "file": "assets/AffiliateDashboard-BPiIfJHG.js",
+    "file": "assets/AffiliateDashboard-nl-JtcQZ.js",
     "name": "AffiliateDashboard",
     "src": "components/AffiliateDashboard.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js"
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js"
     ],
     "css": [
       "assets/AffiliateDashboard-BhAPSsb2.css"
     ]
   },
   "components/CommunityHub.svelte": {
-    "file": "assets/CommunityHub-CwZwv9mw.js",
+    "file": "assets/CommunityHub-DmqXztxo.js",
     "name": "CommunityHub",
     "src": "components/CommunityHub.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js",
-      "_each-D2dczDzH.js",
-      "_class-DHHBWjP4.js",
-      "_props-BL8pXE4Z.js",
-      "_attributes-DIevTI5r.js"
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js",
+      "_each-Bkv3d8j1.js",
+      "_class-Cyzg4tF7.js",
+      "_props-l0bhq4vs.js",
+      "_attributes-DfdnN9Sq.js"
     ],
     "css": [
       "assets/CommunityHub-BUK6YNDQ.css"
     ]
   },
-  "components/Counter.svelte": {
-    "file": "assets/Counter-CFw8o3AP.js",
-    "name": "Counter",
-    "src": "components/Counter.svelte",
-    "isDynamicEntry": true,
-    "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_props-BL8pXE4Z.js"
-    ],
-    "css": [
-      "assets/Counter-BzMMCu5M.css"
-    ]
-  },
   "components/MemberDashboardV2.svelte": {
-    "file": "assets/MemberDashboardV2-DVOCogtW.js",
+    "file": "assets/MemberDashboardV2-C7v7J1rY.js",
     "name": "MemberDashboardV2",
     "src": "components/MemberDashboardV2.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js",
-      "_each-D2dczDzH.js",
-      "_class-DHHBWjP4.js",
-      "_style-DHbtKs_f.js",
-      "_this--dsV_Ma-.js",
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js",
+      "_each-Bkv3d8j1.js",
+      "_class-Cyzg4tF7.js",
+      "_style-BiN4s4Nw.js",
+      "_this-DnWRAzkk.js",
       "islands/dashboard-data.ts",
-      "components/Counter.svelte",
-      "_attributes-DIevTI5r.js",
-      "_props-BL8pXE4Z.js"
+      "_attributes-DfdnN9Sq.js"
     ],
     "css": [
       "assets/MemberDashboardV2-B0j9RAeR.css"
     ]
   },
   "components/SellerDashboard.svelte": {
-    "file": "assets/SellerDashboard-C1uUicHX.js",
+    "file": "assets/SellerDashboard-B3_GPdH1.js",
     "name": "SellerDashboard",
     "src": "components/SellerDashboard.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js",
-      "_each-D2dczDzH.js",
-      "_style-DHbtKs_f.js",
-      "_props-BL8pXE4Z.js",
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_this--dsV_Ma-.js",
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js",
+      "_each-Bkv3d8j1.js",
+      "_style-BiN4s4Nw.js",
+      "_props-l0bhq4vs.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_this-DnWRAzkk.js",
       "islands/seller-data.ts",
-      "_attributes-DIevTI5r.js",
-      "_shared-CuK_HSkq.js"
+      "_attributes-DfdnN9Sq.js",
+      "_shared-CE3whZv8.js"
     ],
     "dynamicImports": [
       "node_modules/.deno/phaser@4.0.0/node_modules/phaser/dist/phaser.esm.js"
@@ -168,57 +144,54 @@
     ]
   },
   "components/Settings.svelte": {
-    "file": "assets/Settings-BfLNpm7l.js",
+    "file": "assets/Settings-DNMfI6Tk.js",
     "name": "Settings",
     "src": "components/Settings.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js",
-      "_each-D2dczDzH.js",
-      "_class-DHHBWjP4.js",
-      "_input-Cr7R5B-2.js",
-      "_props-BL8pXE4Z.js",
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js",
+      "_each-Bkv3d8j1.js",
+      "_class-Cyzg4tF7.js",
+      "_input-Be3X0nUv.js",
+      "_props-l0bhq4vs.js",
       "islands/settings-data.ts",
-      "_attributes-DIevTI5r.js"
+      "_attributes-DfdnN9Sq.js"
     ],
     "css": [
       "assets/Settings-7h8DXcS_.css"
     ]
   },
   "components/StreamerDashboard.svelte": {
-    "file": "assets/StreamerDashboard-eJL5cptz.js",
+    "file": "assets/StreamerDashboard-BFBi5pA9.js",
     "name": "StreamerDashboard",
     "src": "components/StreamerDashboard.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js",
-      "_each-D2dczDzH.js",
-      "_style-DHbtKs_f.js",
-      "_props-BL8pXE4Z.js",
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js",
+      "_each-Bkv3d8j1.js",
+      "_style-BiN4s4Nw.js",
+      "_props-l0bhq4vs.js",
       "islands/streamer-data.ts",
-      "_attributes-DIevTI5r.js"
+      "_attributes-DfdnN9Sq.js"
     ],
     "css": [
       "assets/StreamerDashboard-D51W5TNU.css"
     ]
   },
   "components/StreamingLibrary.svelte": {
-    "file": "assets/StreamingLibrary-DzXEw2f3.js",
+    "file": "assets/StreamingLibrary-C7mhXSTt.js",
     "name": "StreamingLibrary",
     "src": "components/StreamingLibrary.svelte",
     "isDynamicEntry": true,
     "imports": [
-      "_disclose-version-DsnmJJEf.js",
-      "_index-client-B2RdI7_D.js",
-      "_attributes-ViRQDofw.js",
-      "_each-D2dczDzH.js",
-      "_input-Cr7R5B-2.js",
-      "_this--dsV_Ma-.js",
-      "_props-BL8pXE4Z.js",
+      "_disclose-version-D1mKOJ66.js",
+      "_index-client-B0GehODF.js",
+      "_each-Bkv3d8j1.js",
+      "_input-Be3X0nUv.js",
+      "_this-DnWRAzkk.js",
+      "_props-l0bhq4vs.js",
       "islands/video-data.ts"
     ],
     "css": [
@@ -226,133 +199,119 @@
     ]
   },
   "fresh:client-entry": {
-    "file": "assets/client-entry-9eQsmjDH.js",
+    "file": "assets/client-entry-BIXqFj8g.js",
     "name": "client-entry",
     "src": "fresh:client-entry",
     "isEntry": true,
     "imports": [
-      "_shared-CuK_HSkq.js"
+      "_shared-CE3whZv8.js"
     ],
     "css": [
       "assets/client-entry-CwqRxvTx.css"
     ]
   },
   "islands/AffiliateDashboard.tsx": {
-    "file": "assets/fresh-island__AffiliateDashboard-BdzRCsob.js",
+    "file": "assets/fresh-island__AffiliateDashboard-fVdu12to.js",
     "name": "fresh-island__AffiliateDashboard",
     "src": "islands/AffiliateDashboard.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js",
       "islands/affiliate-data.ts"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/AffiliateDashboard.svelte"
     ]
   },
   "islands/CommunityHub.tsx": {
-    "file": "assets/fresh-island__CommunityHub-7iC5IMRk.js",
+    "file": "assets/fresh-island__CommunityHub-D-L6gG1K.js",
     "name": "fresh-island__CommunityHub",
     "src": "islands/CommunityHub.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js",
       "islands/community-data.ts"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/CommunityHub.svelte"
     ]
   },
   "islands/MemberDashboardV2.tsx": {
-    "file": "assets/fresh-island__MemberDashboardV2-CXnGhJFi.js",
+    "file": "assets/fresh-island__MemberDashboardV2-IGbkWB0j.js",
     "name": "fresh-island__MemberDashboardV2",
     "src": "islands/MemberDashboardV2.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js"
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/MemberDashboardV2.svelte"
     ]
   },
   "islands/SellerDashboard.tsx": {
-    "file": "assets/fresh-island__SellerDashboard-BpW2cJ1C.js",
+    "file": "assets/fresh-island__SellerDashboard-K2OGTU0D.js",
     "name": "fresh-island__SellerDashboard",
     "src": "islands/SellerDashboard.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js",
       "islands/seller-data.ts"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/SellerDashboard.svelte"
     ]
   },
   "islands/Settings.tsx": {
-    "file": "assets/fresh-island__Settings-DLsxBWK4.js",
+    "file": "assets/fresh-island__Settings-CyJd_AOf.js",
     "name": "fresh-island__Settings",
     "src": "islands/Settings.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js",
       "islands/settings-data.ts"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/Settings.svelte"
     ]
   },
   "islands/StreamerDashboard.tsx": {
-    "file": "assets/fresh-island__StreamerDashboard-TKq1bnN3.js",
+    "file": "assets/fresh-island__StreamerDashboard-BmI0SCKv.js",
     "name": "fresh-island__StreamerDashboard",
     "src": "islands/StreamerDashboard.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js",
       "islands/streamer-data.ts"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/StreamerDashboard.svelte"
     ]
   },
   "islands/StreamingLibrary.tsx": {
-    "file": "assets/fresh-island__StreamingLibrary-DyE6M8wF.js",
+    "file": "assets/fresh-island__StreamingLibrary-Bkq7a6ww.js",
     "name": "fresh-island__StreamingLibrary",
     "src": "islands/StreamingLibrary.tsx",
     "isEntry": true,
     "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js",
+      "_jsxRuntime.module-DqsIxVqb.js",
+      "_shared-CE3whZv8.js",
       "islands/video-data.ts"
     ],
     "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
+      "_index-client-B0GehODF.js",
       "components/StreamingLibrary.svelte"
-    ]
-  },
-  "islands/SvelteCounter.tsx": {
-    "file": "assets/fresh-island__SvelteCounter-6P3f9Cak.js",
-    "name": "fresh-island__SvelteCounter",
-    "src": "islands/SvelteCounter.tsx",
-    "isEntry": true,
-    "imports": [
-      "_jsxRuntime.module-D_MLLzvV.js",
-      "_shared-CuK_HSkq.js"
-    ],
-    "dynamicImports": [
-      "_index-client-B2RdI7_D.js",
-      "components/Counter.svelte"
     ]
   },
   "islands/affiliate-data.ts": {

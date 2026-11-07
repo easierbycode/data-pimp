@@ -9,7 +9,7 @@ interface SettingsProps {
 /**
  * Port of apps/web/app/(saas)/app/(account)/settings/* — Preact island wrapper.
  *
- * Same `mount()`-on-client pattern as `SvelteCounter` / `SellerDashboard`:
+ * Same `mount()`-on-client pattern as `SellerDashboard`:
  * Fresh renders the placeholder `<div>` server-side and the Svelte 5
  * `Settings.svelte` component is mounted into it on the client only. The stub
  * user / accounts / sessions / plan come from `settings-data.ts` because the

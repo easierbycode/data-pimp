@@ -6,8 +6,6 @@
 	(islands/MemberDashboardV2.module.css) is copied verbatim into the
 	<style> block below; its class names become plain scoped classes.
 
-	The original embedded a Preact `<SvelteCounter>` wrapper; here we import
-	the Svelte `Counter.svelte` directly.
 -->
 <script lang="ts">
 	import {
@@ -26,7 +24,6 @@
 		VIDEOS,
 		type Video,
 	} from "../islands/dashboard-data.ts";
-	import Counter from "./Counter.svelte";
 
 	const fmtMoney = (n: number | null | undefined) => {
 		if (n == null || Number.isNaN(n)) return "—";
@@ -615,15 +612,6 @@
 			</div>
 		</section>
 
-		<section class="section">
-			<div class="sectionHead">
-				<h2 class="sectionTitle">
-					Svelte Island{" "}
-					<span class="pill">react + svelte side-by-side</span>
-				</h2>
-			</div>
-			<Counter initial={5} label="Compiled by Svelte 5" />
-		</section>
 	</main>
 </div>
 
